@@ -1,3 +1,0 @@
-2010-01-19 # 01.02
-
-[NEW] One can now provide an HTTP code that is added with the exeception message to the header.

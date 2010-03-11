@@ -1,7 +1,0 @@
-2010-01-26 # 1.2
-
-[CHG] The `model()` method is no longer static because as we are missing late static banding, the
-inheritence is missing, which creates an unwanted behaviour.
-
-[CHG] The event based method used to get missing properties was very CPU-hungry, because multiple
-events were triggered to get a single property. Now, only the 'ar.property' event is triggered.
