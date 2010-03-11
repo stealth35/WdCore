@@ -1,0 +1,13 @@
+2010-02-17 # 1.3
+
+[FIX] Cached objects were not updated after a save from the model. There are still not updated, but
+at least their reference is removed from the cache so that further loading return the updated
+version of the object.
+
+
+
+2009-11-18 # 1.2
+
+[NEW] Objects loaded using the load() method are now cached.
+
+[NEW] The load() method handles multiple parts primary keys.

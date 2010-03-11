@@ -1,0 +1,150 @@
+2010-01-25 # 0.7.12
+
+[CHG] Thanks to changes in the WdLocale class, catalogs are no longer loaded as module are read.
+Only the reference to their `i18n` folder is used to add it to the i18n path. Since i18n messages
+are handled by the WdLocale class, module caching is now language agnostic.
+
+[CHG] The core config is merged during module reading, saving some previous time during
+configuration time if the module caching is active.  
+
+[FIX] The module cache file is deleted when the `cache modules` config options is set to false,
+avoiding using expired data.
+
+
+
+
+2010-02-11 # 0.7.10
+
+[CHG] Because the configuration is not set but added by the loadConfig() method, the method has
+been renamed as addConfig().
+
+
+
+
+2010-01-07 # 0.7.8
+
+[CHG] Complete overhaul of the config system. The wdcore config is now handled as any other
+config (still with some special magic). Instead of a chain of `require` form _core_ config to
+_core_ config (publisher, patron, elements... ), we use WdCore::loadConfig() on startup on the
+required packages.
+
+The loadConfig() method is now static and is the only mean that should be used to configure
+the system. WdCore constructor no longer accept the config as parameter and - until the next
+release - will throw an exception if you try to configure it that way.
+
+The config system is now much lighter as it only configures classes already loaded, differing the
+configuration of clases that are not available, storing their configuration as _pending_. The
+class is automatically configured when it is loaded by the WdCore autoload callback.
+
+[NEW] Configs are loaded in an isolated environment with two variables defined : $root and
+$config_root.
+
+$root is the root to the parent directory of the config directory. $config_root is the root
+the the config directory itself.
+
+Because the config is loaded in an isolated environment, you no longer have to worry about
+variables collisions or globals polution.
+
+[CHG] Autoconfig handlers are now variable arguments functions.
+
+
+
+
+2009-12-07 # 0.7.6
+
+[CHG] Moved active records classes and models classes to the root of their module path.  
+
+Because most modules only have one active record and/or model, the "activerecords" and "models"
+directory had little purpose. These class files are now located at the root of their module path
+using the following name pattern : "<model_name>.model.php" for models and "<model_name>.ar.php"
+for active records.
+
+[NEW] Aliases to classes can now be defined using the `classes aliases` config property. Aliases
+are created on the fly by the autoload handler.  
+
+
+
+
+2009-10-24 # 0.7.4
+
+[NEW] Modules can now define the configuration for various components using their 'config' folder.
+The module descriptor was becoming completely clutered and combersome. Hooks, events, routes can
+now be defined in a lovely and clean way. The descriptor is now again what it was : tags to create
+the module object.
+
+[CHG] The autoload list is now set before the session is loaded. One can now save objects in the
+session without fearing incomplete objects the next time the session is loaded, provided the needed
+classes were defined using the `autoload` config propery.
+
+[REM] All _events_ related stuff are now in the new WdEvent class.
+
+[REM] All _hooks_ related stuff are now in the WdHook class. 
+
+
+
+
+2009-09-25 # 0.7.0
+
+[NEW] The `autoload` property of the WdCore config can be used to add classes to the autoload list.
+
+[REM] All _operations_ related stuff are now in a the new WdOperation class.
+
+
+
+
+2009-08-15 # 0.6.94
+
+[NEW] Added operation encoding support to operationEncode() and operationDecode().
+
+[CHG] operationDecode() is now compatible with operationEncode(), returning an array with the
+destination, the operation and the parameters.
+
+[NEW] Multiple models as well as active records are now handled to build the autoloading list.
+
+Objects (like <module>_WdObject) are now deprecated and replaced by active records
+(<module>_WdActiveRecord). Active records must be placed in the 'activerecords' folder of the module.
+
+
+
+
+2009-07-20 # 0.6.92
+
+[CHG] Added 'repository' to the configuration. The WDPUBLISHER_REPOSITORY_URL is now
+deprecated.
+
+
+
+
+2009-07-18 # 0.6.90
+
+[CHG] Module loading process
+
+Modules pathes are now read from the config. The addModules() method used to add modules
+by path has been removed.
+
+The caching mecanism has been completely rewritten too. Aggregated descriptors, catalog and
+autos are now cached.
+
+All catalogs are now loaded while modules are read.
+
+Modules are read during the run() method.
+
+[CHG] Caching methods
+
+The WdFileCache class is now used to handle the cache process. The methods previously
+available for this purpose have been removed.
+
+[CHG] The config option 'cache modules' replaces the WDCORE_CACHE_PACKAGES constant
+
+[CHG] WdModule::start() renamed to run()
+
+
+
+
+2009-07-10 # 0.6.81
+
+[CHG] The session identifier is now read from the config as SESSIONID. The
+WDCORE_SESSION_ID constant is now deprecated.
+
+[CHG] The constant WdCore::T_HOOKS is now used in modules descriptors to define hooks.
+The WdModuleDescirptor::HOOK constant is now deprecated.

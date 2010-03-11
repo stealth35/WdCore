@@ -1,0 +1,35 @@
+2010-02-25 # 0.2 - WIP
+
+[DEL] The `require` feature has been remove because, considering the autoload feature of WdCore, it
+was making little sense.
+
+[DEL] The `namespace` feature was removed to because callback definition was not clear, and
+defining _classic_ callback is not such a hard job, giving that they don't change very often.
+
+   
+
+
+2010-01-07 # 0.1.2
+
+[CHG] The 'callback' and 'params' keys are now numeric keys (0 and 1). Named keys are only used
+for options. Callback definitions look cleaner :
+
+	$definition = array
+	(
+		array('callback'), array
+		(
+			'param1' => array(),
+			'param2' => array()
+		)
+	)
+
+[CHG] The 'list' key, used to provide a list of hooks for a defined namespace, is now a numeric
+key with the value 0.
+
+
+
+
+2009-12-11 # 0.1.2
+
+In order to avoid the `params` property to be overriden by subsequent calls, the Hook object is now
+cloned before its callback is called.
