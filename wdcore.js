@@ -79,6 +79,7 @@ WdOperation.encode = function(destination, operation, params)
 	
 	return query;
 };
+
 function wd_update_assets(assets, done)
 {
 	var base = window.location.protocol + '//' + window.location.hostname;

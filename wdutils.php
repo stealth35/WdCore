@@ -578,20 +578,32 @@ function wd_camelCase($str, $separator='-')
 	return preg_replace_callback('/' . preg_quote($separator) . '\D/', create_function('$match', 'return mb_strtoupper($match[0]{1});'), $str);
 }
 
-function wd_shorten($str, $length=32, &$shortened)
+function wd_shorten($str, $length=32, $position=.75, &$shortened=null)
 {
-	$shortened = false;
+	$l = mb_strlen($str);
 
-	if (mb_strlen($str) > $length + 3)
+	if ($l <= $length)
 	{
-		$length /= 2;
-		$str = wd_entities(mb_substr($str, 0, $length)) . '<span class="light">…</span>' . wd_entities(mb_substr($str, -$length, $length));
-		$shortened = true;
+		return $str;
+	}
+
+	$length--;
+	$position = (int) ($position * $length);
+
+	if ($position == 0)
+	{
+		$str = '…' . mb_substr($str, -$length, $length);
+	}
+	else if ($position == $l)
+	{
+		$str = mb_substr($str, $length) . '…';
 	}
 	else
 	{
-		$str = wd_entities($str);
+		$str = mb_substr($str, 0, $position) . '…' . mb_substr($str, -($length - $position), $length - $position);
 	}
+
+	$shortened = true;
 
 	return $str;
 }
