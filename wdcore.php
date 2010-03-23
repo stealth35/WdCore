@@ -911,7 +911,7 @@ class WdCore
 	 * @var array Used to cache established database connections.
 	 */
 
-	protected $connections;
+	protected $connections = array();
 
 	/**
 	 * Get a connection to a database.

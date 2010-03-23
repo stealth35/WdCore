@@ -287,8 +287,23 @@ class WdLocale
 		return self::$cache;
 	}
 
+	/**
+	 * The `loading` static variable is used to break inifite loop while loading pending catalogs
+	 * which might happen if the loading process triggers and error (or an exception) which in
+	 * turn requests a translation, which in turn try to load pending catalogs...
+	 */
+
+	static protected $loading;
+
 	static protected function loadPendingCatalogs()
 	{
+		if (self::$loading)
+		{
+			return;
+		}
+
+		self::$loading = true;
+
 		// TODO-20100223: caching should be an option
 
 		if (self::$messages)
@@ -326,6 +341,7 @@ class WdLocale
 		}
 
 		self::$pendingCatalogs = array();
+		self::$loading = false;
 	}
 
 	static public function loadPendingCatalogs_construct()
