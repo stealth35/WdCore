@@ -1,0 +1,5 @@
+2010-03-25 # 0.7.13
+
+[NEW] WdDatabaseTable: Smart aliases are now used during SQL queries. Instead of the puzzling `t1`,
+`t2` etc. the aliases are now created using the table's name. e.g. the alias for the `system_nodes`
+table is now `node`, the alias for a `categories` table would be `category`.

@@ -62,6 +62,7 @@ class WdTags
 
 class WdDatabaseTable extends WdTags
 {
+	const T_ALIAS = 'alias';
 	const T_CONNECTION = 'connection';
 	const T_EXTENDS = 'extends';
 	const T_IMPLEMENTS = 'implements';
@@ -75,6 +76,7 @@ class WdDatabaseTable extends WdTags
 	public $name_unprefixed;
 	public $primary;
 
+	protected $alias;
 	protected $schema;
 	protected $parent;
 	protected $implements = array();
@@ -87,6 +89,7 @@ class WdDatabaseTable extends WdTags
 		{
 			switch ($tag)
 			{
+				case self::T_ALIAS: $this->alias = $value; break;
 				case self::T_CONNECTION: $this->connection = $value; break;
 				case self::T_IMPLEMENTS: $this->implements = $value; break;
 				case self::T_NAME: $this->name_unprefixed = $value;	break;
@@ -102,6 +105,35 @@ class WdDatabaseTable extends WdTags
 		}
 
 		$this->name = $this->connection->prefix . $this->name_unprefixed;
+
+		#
+		# alias
+		#
+
+		if (!$this->alias)
+		{
+			$alias = $this->name_unprefixed;
+
+			$pos = strrpos($alias, '_');
+
+			if ($pos !== false)
+			{
+				$alias = substr($alias, $pos + 1);
+			}
+
+			if (substr($alias, -3, 3) == 'ies')
+			{
+				$alias = substr($alias, 0, -3) . 'y';
+			}
+			else if (substr($alias, -1, 1) == 's')
+			{
+				$alias = substr($alias, 0, -1);
+			}
+
+//			wd_log('alias: \1 => \2', array($this->name_unprefixed, $alias));
+
+			$this->alias = $alias;
+		}
 
 		#
 		# if we have a parent, we need to extend our fields with our parent primary key
@@ -154,7 +186,7 @@ class WdDatabaseTable extends WdTags
 		# resolve inheritence and create a lovely _inner join_ string
 		#
 
-		$join = ' as t1 ';
+		$join = ' as ' . $this->alias . ' ';
 
 		$parent = $this->parent;
 
@@ -164,9 +196,7 @@ class WdDatabaseTable extends WdTags
 
 			while ($parent)
 			{
-				$name = $parent->name;
-
-				$join .= "inner join `$name` as t$i using(`{primary}`) ";
+				$join .= "inner join `{$parent->name}` as {$parent->alias} using(`{primary}`) ";
 
 				$i++;
 				$parent = $parent->parent;
@@ -766,7 +796,7 @@ class WdDatabaseTable extends WdTags
 		else
 		{
 //			$identifiers = array('count(' . ($this->primary ? '`{primary}`' : '*') . ')');
-			$identifiers = array('count(t1.{primary})');
+			$identifiers = array('count({primary})');
 		}
 
 		$statement = $this->select($identifiers, $query, $args, $options);
