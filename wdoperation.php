@@ -54,9 +54,17 @@ class WdOperation
 		$destination = null;
 		$operation = null;
 
-		if (isset($request['!do']))
+		/*
+		try
+		{*/
+			if (isset($request['!do']))/*
 		{
 			throw new WdException('The "!do" operation identifier is no longer supported', array(), 500);
+		}
+		}
+		catch (Exception $e)*/
+		{
+			$request['do'] = $request['!do'];
 		}
 
 		if (isset($request['do']) && isset($request[self::NAME]))
