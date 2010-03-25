@@ -82,6 +82,30 @@ class WdArray
 
 		return $group;
 	}
+
+	static public function reorderByProperty(array $entries, array $order, $property)
+	{
+		$by_property = array();
+
+		foreach ($entries as $entry)
+		{
+			$by_property[is_object($entry) ? $entry->$property : $entry[$property]] = $entry;
+		}
+
+		$rc = array();
+
+		foreach ($order as $o)
+		{
+			if (array_key_exists($o, $by_property[$o]))
+			{
+				continue;
+			}
+
+			$rc[] = $by_property[$o];
+		}
+
+		return $rc;
+	}
 }
 
 function wd_array_by_columns(array $array, $columns, $pad=false)
