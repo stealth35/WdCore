@@ -1,3 +1,12 @@
+/**
+ * This file is part of the WdCore framework
+ *
+ * @author Olivier Laviale <olivier.laviale@gmail.com>
+ * @link http://www.weirdog.com/wdcore/
+ * @copyright Copyright (c) 2007-2010 Olivier Laviale
+ * @license http://www.weirdog.com/wdcore/license/
+ */
+
 var WdOperation = new Class
 ({
 	Extends: Request.JSON,
