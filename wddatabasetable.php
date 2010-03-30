@@ -11,29 +11,7 @@
 
 require_once 'wddatabase.php';
 
-// TODO: get rid of this WdTags extends
-
-class WdTags
-{
-	protected $tags = array();
-
-	public function __construct($tags)
-	{
-		$this->tags = $tags;
-	}
-
-	public function getTag($tag, $default=null)
-	{
-		return isset($this->tags[$tag]) ? $this->tags[$tag] : $default;
-	}
-
-	public function getTags()
-	{
-		return $this->tags;
-	}
-}
-
-class WdDatabaseTable extends WdTags
+class WdDatabaseTable
 {
 	const T_ALIAS = 'alias';
 	const T_CONNECTION = 'connection';
@@ -55,9 +33,12 @@ class WdDatabaseTable extends WdTags
 	protected $implements = array();
 
 	protected $select_join;
+	protected $tags;
 
 	public function __construct($tags)
 	{
+		$this->tags = $tags;
+
 		foreach ($tags as $tag => $value)
 		{
 			switch ($tag)
@@ -218,8 +199,6 @@ class WdDatabaseTable extends WdTags
 //		wd_log('join query for %name: <code>:join</code>', array('%name' => $this->name, ':join' => $join));
 
 		$this->select_join = $join;
-
-		parent::__construct($tags);
 	}
 
 	/*

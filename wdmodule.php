@@ -37,7 +37,7 @@ define('PERMISSION_ADMINISTER', 5);
 
 require_once 'wdmodel.php';
 
-class WdModule extends WdTags
+class WdModule
 {
 	const T_DESCRIPTION = 'description';
 	const T_DISABLED = 'disabled';
@@ -52,6 +52,7 @@ class WdModule extends WdTags
 
 	protected $id;
 	protected $root;
+	protected $tags;
 
 	public function __construct($tags)
 	{
@@ -68,10 +69,9 @@ class WdModule extends WdTags
 			);
 		}
 
+		$this->tags = $tags;
 		$this->id = $tags[self::T_ID];
 		$this->root = $tags[self::T_ROOT];
-
-		return parent::__construct($tags);
 	}
 
 	public function __toString()
