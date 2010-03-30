@@ -469,7 +469,7 @@ function wd_log_time($str, array $params=array())
 		$add .= '+' . number_format($now - $last, 3, '\'', '') . '", ';
 	}
 
-	$add .= '&sum;' . number_format($now - $reference, 3, '\'', '') . '"';
+	$add .= '∑' . number_format($now - $reference, 3, '\'', '') . '"';
 
 	$add .= ']</var>';
 

@@ -116,6 +116,16 @@ class WdUploaded
 
 		$this->mime = $data['type'];
 
+		if (in_array($this->mime, array('application/octet-stream', 'application/force-download')))
+		{
+			$extension = substr($this->extension, 1);
+
+			if (isset(self::$mimes_by_extension[$extension]))
+			{
+				$this->mime = self::$mimes_by_extension[$extension];
+			}
+		}
+
 		switch ($this->mime)
 		{
 			case 'image/gif':
@@ -152,24 +162,6 @@ class WdUploaded
 			{
 				$this->mime = 'application/zip';
 				$this->extension = '.zip';
-			}
-			break;
-
-			#
-			# I don't really know what the 'application/force-download' mime type is all about,
-			# but I found it once while downloading a .zip file created by
-			# the windows' compressor
-			#
-
-			case 'application/octet-stream':
-			case 'application/force-download':
-			{
-				$extension = substr($this->extension, 1);
-
-				if (isset($mimes[$extension]))
-				{
-					$this->mime = $mimes[$extension];
-				}
 			}
 			break;
 		}

@@ -520,7 +520,7 @@ function wd_array_to_xml($array, $parent='root', $encoding='utf-8', $nest=1)
 
 function wd_excerpt($str, $limit=55)
 {
-	$str = strip_tags($str, '<em><strong><code><del><ins>');
+	$str = strip_tags((string) $str, '<em><strong><code><del><ins>');
 
 	$words = explode(' ', $str, $limit + 1);
 
