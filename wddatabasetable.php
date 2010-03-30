@@ -140,7 +140,7 @@ class WdDatabaseTable
 		# resolve inheritence and create a lovely _inner join_ string
 		#
 
-		$join = ' as ' . $this->alias . ' ';
+		$join = " as `{$this->alias}` ";
 
 		$parent = $this->parent;
 
@@ -150,7 +150,7 @@ class WdDatabaseTable
 
 			while ($parent)
 			{
-				$join .= "inner join `{$parent->name}` as {$parent->alias} using(`{primary}`) ";
+				$join .= "inner join `{$parent->name}` as `{$parent->alias}` using(`{primary}`) ";
 
 				$i++;
 				$parent = $parent->parent;
