@@ -291,6 +291,17 @@ class WdOperation
 		}
 
 		#
+		#
+		#
+
+		if ($this->location)
+		{
+			header('Location: ' . $this->location);
+
+			exit;
+		}
+
+		#
 		# If the `terminus` is set the script stops.
 		#
 		# note: The remaining messages in the WdDebug class logs are added in the HTTP header. This
@@ -316,17 +327,6 @@ class WdOperation
 			}
 
 			echo $rc;
-
-			exit;
-		}
-
-		#
-		#
-		#
-
-		if ($this->location)
-		{
-			header('Location: ' . $this->location);
 
 			exit;
 		}
