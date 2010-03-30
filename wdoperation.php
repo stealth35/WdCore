@@ -51,6 +51,7 @@ class WdOperation
 
 	static public function decode($request)
 	{
+		$method = 'GET';
 		$destination = null;
 		$operation = null;
 
@@ -58,9 +59,9 @@ class WdOperation
 		try
 		{*/
 			if (isset($request['!do']))/*
-		{
-			throw new WdException('The "!do" operation identifier is no longer supported', array(), 500);
-		}
+			{
+				throw new WdException('The "!do" operation identifier is no longer supported', array(), 500);
+			}
 		}
 		catch (Exception $e)*/
 		{
@@ -110,6 +111,7 @@ class WdOperation
 		}
 		else if (isset($request[self::NAME]))
 		{
+			$method = 'POST';
 			$name = $request[self::NAME];
 
 			if (empty($request[self::DESTINATION]))
@@ -128,7 +130,16 @@ class WdOperation
 			return false;
 		}
 
-		return new WdOperation($destination, $name, $request);
+		$operation = new WdOperation($destination, $name, $request);
+
+		if ($method == 'GET')
+		{
+			$operation->terminus = true;
+		}
+
+		$operation->method = $method;
+
+		return $operation;
 	}
 
 	/**
@@ -169,6 +180,7 @@ class WdOperation
 	public $response;
 	public $terminus = false;
 	public $location;
+	public $method;
 
 	public function __construct($destination, $name, array $params=array(), array $tags=array())
 	{
@@ -226,6 +238,7 @@ class WdOperation
 		if ($rc !== null)
 		{
 			$this->response->rc = $rc;
+
 			self::setResult($name, $rc);
 
 			WdEvent::fire

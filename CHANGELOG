@@ -3,3 +3,6 @@
 [NEW] WdDatabaseTable: Smart aliases are now used during SQL queries. Instead of the puzzling `t1`,
 `t2` etc. the aliases are now created using the table's name. e.g. the alias for the `system_nodes`
 table is now `node`, the alias for a `categories` table would be `category`.
+
+[NEW] WdOperation: The `method` property can now be used to known which method was used for the 
+operation (GET / POST). The `terminus` property is set to TRUE for GET method operations.
