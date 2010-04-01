@@ -609,28 +609,21 @@ class WdModule
 
 	protected function control_authenticated(WdOperation $operation)
 	{
-		global $user;
+		global $app;
 
-		if ($user->isGuest())
-		{
-			return false;
-		}
-
-		$operation->user = $user;
-
-		return true;
+		return ($app->userId != 0);
 	}
 
 	protected function control_permission(WdOperation $operation, $permission)
 	{
-		global $user;
+		global $app;
 
-		if (!$user->hasPermission($permission, $this))
+		if (!$app->user->hasPermission($permission, $this))
 		{
 			return false;
 		}
 
-		$operation->user = $user;
+		$operation->user = $app->user;
 
 		return true;
 	}
@@ -672,16 +665,16 @@ class WdModule
 			return false;
 		}
 
-		global $user;
+		global $app;
 
-		if (!$user->hasOwnership($this, $entry))
+		if (!$app->user->hasOwnership($this, $entry))
 		{
 			//wd_log('user %user has no ownership over :module.:key', array('%user' => $user->username, ':module' => $this->id, ':key' => $key));
 
 			return false;
 		}
 
-		$operation->user = $user;
+		$operation->user = $app->user;
 		$operation->entry = $entry;
 
 		return true;

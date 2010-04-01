@@ -14,6 +14,7 @@ return array
 	'autoload' => array
 	(
 		'WdActiveRecord' => $root . 'wdactiverecord.php',
+		'WdApplication' => $root . 'wdapplication.php',
 		'WdArray' => $root . 'wdarray.php',
 		'WdDatabase' => $root . 'wddatabase.php',
 		'WdDatabaseTable' => $root . 'wddatabasetable.php',
