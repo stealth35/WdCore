@@ -321,23 +321,7 @@ function wd_dump($value)
 
 		xdebug_var_dump($value);
 
-		$value = ob_get_contents();
-
-		ob_end_clean();
-
-		/*
-		$value = strtr
-		(
-			$value, array
-			(
-				'<font color=\'' => '<span style="color:',
-				'</font>' => '</span>',
-				'\'>' => '">',
-				'<small>' => '<span style="font-size:0.8em">',
-				'</small>' => '</span>'
-			)
-		);
-		*/
+		$value = ob_get_clean();
 	}
 	else
 	{

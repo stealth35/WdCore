@@ -96,7 +96,7 @@ class WdArray
 
 		foreach ($order as $o)
 		{
-			if (array_key_exists($o, $by_property[$o]))
+			if (empty($by_property[$o]) || array_key_exists($o, $by_property[$o]))
 			{
 				continue;
 			}

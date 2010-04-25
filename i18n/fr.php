@@ -2,5 +2,10 @@
 
 return array
 (
-	'The file type %mime is not supported' => 'Le type de fichier %mime n\'est pas supporté'
+	#
+	# WdUpload
+	#
+
+	'@upload.error.mime' => "Le type de fichier %mime n'est pas supporté. Le type fichier doit être %type.",
+	'@upload.error.mimeList' => "Le type de fichier %mime n'est pas supporté. Le type de fichier doit être un des suivant : :list or :last."
 );

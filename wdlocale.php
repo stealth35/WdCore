@@ -43,17 +43,9 @@ class WdLocale
 	static protected $pendingCatalogs = array();
 	static public $messages = array();
 
-
-
-
-
-
-
-
 	static public $native;
 	static public $language;
 	static public $languages;
-
 
 	static public function setLanguage($language)
 	{
@@ -67,7 +59,7 @@ class WdLocale
 		#
 		# from http://www.w3.org/WAI/ER/IG/ert/iso639.htm
 		#
-		# 'fr' and 'fr_FR' never worked for me on the servers I've tried. On the othe hand,
+		# 'fr' and 'fr_FR' never worked for me on the servers I've tried. On the other hand,
 		# the complete litteral 'french' seams to always work.
 		#
 
@@ -276,8 +268,6 @@ class WdLocale
 		}
 
 		self::$loading = true;
-
-		// TODO-20100223: caching should be an option
 
 		if (self::$messages)
 		{

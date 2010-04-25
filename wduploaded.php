@@ -25,13 +25,16 @@ class WdUploaded
 	public $mime;
 
 	public $location;
-	private $is_temporary = true;
+	protected $is_temporary = true;
+	protected $accepted_types;
 
 	public $er;
 	public $er_message;
 
 	public function __construct($key, $accepted_types=null, $mandatory=false, $index=0)
 	{
+		$this->accepted_types = $accepted_types;
+
 		#
 		# does the slot exists ?
 		#
@@ -92,38 +95,16 @@ class WdUploaded
 		}
 
 		$this->size = $data['size'];
+		$this->mime = self::getMIME($name, $this->extension);
 
-		#
-		# separate the file name from its extension
-		#
-
-		$pos = strrpos($name, '.');
-
-		if ($pos !== false)
+		if ($data['type'] && !in_array($data['type'], array('application/octet-stream', 'application/force-download')))
 		{
-			$this->name = substr($name, 0, $pos);
-			$this->extension = strtolower(substr($name, $pos));
-		}
-		else
-		{
-			$this->name = $name;
-			$this->extenstion = null;
+			$this->mime = $data['type'];
 		}
 
-		#
-		# translate exotic mime types and extract the extension
-		#
-
-		$this->mime = $data['type'];
-
-		if (in_array($this->mime, array('application/octet-stream', 'application/force-download')))
+		if ($this->extension)
 		{
-			$extension = substr($this->extension, 1);
-
-			if (isset(self::$mimes_by_extension[$extension]))
-			{
-				$this->mime = self::$mimes_by_extension[$extension];
-			}
+			$this->name = substr($name, 0, -strlen($this->extension));
 		}
 
 		switch ($this->mime)
@@ -249,7 +230,19 @@ class WdUploaded
 
 			case self::ERR_TYPE:
 			{
-				$this->er_message = t('The file type %mime is not supported', array('%mime' => $this->mime));
+				$list = $this->accepted_types;
+				$last = array_pop($list);
+
+				$this->er_message = t
+				(
+					$list ? '@upload.error.mimeList' : '@upload.error.mime', array
+					(
+							'%mime' => $this->mime,
+							'%type' => $last,
+							':list' => implode(', ', $list),
+							':last' => $last
+					)
+				);
 			}
 			break;
 
@@ -325,24 +318,25 @@ class WdUploaded
 		return true;
 	}
 
-	static $mimes_by_extension = array
+	static public $mimes_by_extension = array
 	(
-		'doc' => 'application/msword',
-		'flv' => 'video/x-flv',
-		'gif' => 'image/gif',
-		'jpg' => 'image/jpeg',
-		'jpeg' => 'image/jpeg',
-		'js' => 'application/javascript',
-		'mp3' => 'audio/mpeg',
-		'odt' => 'application/vnd.oasis.opendocument.text',
-		'pdf' => 'application/pdf',
-		'png' => 'image/png',
-		'psd' => 'application/psd',
-		'rar' => 'application/rar',
-		'zip' => 'application/zip'
+		'.doc' => 'application/msword',
+		'.flv' => 'video/x-flv',
+		'.gif' => 'image/gif',
+		'.jpg' => 'image/jpeg',
+		'.jpeg' => 'image/jpeg',
+		'.js' => 'application/javascript',
+		'.mp3' => 'audio/mpeg',
+		'.odt' => 'application/vnd.oasis.opendocument.text',
+		'.pdf' => 'application/pdf',
+		'.png' => 'image/png',
+		'.psd' => 'application/psd',
+		'.rar' => 'application/rar',
+		'.zip' => 'application/zip',
+		'.xls' => 'application/vnd.ms-excel'
 	);
 
-	static public function getMIME($filename)
+	static public function getMIME($filename, &$extension=null)
 	{
 		$pos = strrpos($filename, '.');
 
@@ -351,7 +345,7 @@ class WdUploaded
 			return;
 		}
 
-		$extension = strtolower(substr($filename, $pos + 1));
+		$extension = strtolower(substr($filename, $pos));
 
 		return isset(self::$mimes_by_extension[$extension]) ? self::$mimes_by_extension[$extension] : 'application/octet-stream';
 	}
