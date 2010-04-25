@@ -406,7 +406,8 @@ class WdModule
 		# check if the operation is handled by the module
 		#
 
-		$callback = 'operation_' . $operation->name;
+		$name = $operation->name;
+		$callback = 'operation_' . $name;
 
 		if (!method_exists($this, $callback))
 		{
@@ -414,7 +415,7 @@ class WdModule
 			(
 				'Unknown operation: %operation for module %module', array
 				(
-					'%operation' => $operation->name,
+					'%operation' => $name,
 					'%module' => $this->id
 				),
 
@@ -428,7 +429,30 @@ class WdModule
 
 		if (!$this->controlOperation($operation))
 		{
-			wd_log('Control failed on operation: \1', array($operation->name));
+			if ($operation->method == 'GET')
+			{
+				throw new WdException
+				(
+					'The operation %name of %module failed validation.', array
+					(
+						'%name' => $name,
+						'%module' => $this->id
+					),
+
+					array(500 => 'Operation failed validation')
+				);
+			}
+			else
+			{
+				wd_log
+				(
+					'The operation %operation of %destination failed validation', array
+					(
+						'%operation' => $name,
+						'%destination' => $operation->destination
+					)
+				);
+			}
 
 			return;
 		}
@@ -724,7 +748,8 @@ class WdModule
 	protected function control_form(WdOperation $operation)
 	{
 		$params = &$operation->params;
-		$form = WdForm::load($params);
+		
+		$form = isset($operation->form) ? $operation->form : WdForm::load($params);
 
 		if (!$form || !$form->validate($params))
 		{

@@ -182,7 +182,7 @@ class WdOperation
 	public $location;
 	public $method;
 
-	public function __construct($destination, $name, array $params=array(), array $tags=array())
+	public function __construct($destination, $name, array $params=array())
 	{
 		$this->destination = $destination;
 		$this->name = $name;
@@ -192,26 +192,33 @@ class WdOperation
 		{
 			$this->key = $params[self::KEY];
 		}
-
-		$this->response = (object) array
-		(
-			'rc' => null,
-			'log' => array()
-		);
 	}
 
 	public function dispatch()
 	{
 		global $core;
 
-		$destination = $this->destination;
 		$name = $this->name;
-		$module = $core->getModule($destination);
+		
+		#
+		# reset results
+		#
+
+		$this->response = (object) array
+		(
+			'rc' => null,
+			'log' => array()
+		);
+
+		self::setResult($name, null);
 
 		#
 		# We trigger the 'operation.<name>:before' event, listeners might use the event to
 		# tweak the operation before the destination module processes the operation.
 		#
+
+		$destination = $this->destination;
+		$module = $core->getModule($destination);
 
 		$event = WdEvent::fire
 		(
@@ -323,19 +330,22 @@ class WdOperation
 
 		if ($terminus)
 		{
-			$logs = array('done', 'error', 'debug');
-
-			foreach ($logs as $type)
+			if (!headers_sent())
 			{
-				$n = 1;
+				$logs = array('done', 'error', 'debug');
 
-				foreach (WdDebug::fetchMessages($type) as $message)
+				foreach ($logs as $type)
 				{
-					$message = strip_tags($message);
-					$message = str_replace("\r\n", "\n", $message);
-					$message = str_replace("\n", ' ### ', $message);
+					$n = 1;
 
-					header(sprintf('X-WdDebug-%s-%04d: %s', $type, $n++, $message));
+					foreach (WdDebug::fetchMessages($type) as $message)
+					{
+						$message = strip_tags($message);
+						$message = str_replace("\r\n", "\n", $message);
+						$message = str_replace("\n", ' ### ', $message);
+
+						header(sprintf('X-WdDebug-%s-%04d: %s', $type, $n++, $message));
+					}
 				}
 			}
 

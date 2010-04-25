@@ -1,8 +1,33 @@
+2010-04-25 # 0.7.14
+
+[NEW] The WdHook class has been completely rewrote.
+
+[NEW] WdImage: Unless the user provided a callback, the background of resized images is now filled
+with a transparent color, preserving the transparency of resized images.
+
+[NEW] The WdCore::getConstructedConfig() static method can be used to get a constructed config. If
+the constructed config doesn't exists yet, the provided constructor is called with all the pending
+configs. The resulting constructed config is then returned. The constructed config is stored if
+'cache configs' is set to true in the `core` config.
+
+For most classes, this system might be a better solution then the `autoconfig` one.  
+
+[NEW] WdFileCache: When available, APC is used to cache data.
+
+[CHG] WdFileCache: The order of the arguments for the constructor of the load() method have changed
+form 'cache, file, userdata' to 'userdata, cache, file'. 
+
+[FIX] WdException: The HTTP code is no longer set in the header during the __construct but when the
+the exception is stringified.
+
+
+
+
 2010-03-25 # 0.7.13
 
-[NEW] WdDatabaseTable: Smart aliases are now used during SQL queries. Instead of the puzzling `t1`,
-`t2` etc. the aliases are now created using the table's name. e.g. the alias for the `system_nodes`
-table is now `node`, the alias for a `categories` table would be `category`.
+[NEW] WdDatabaseTable: Smart aliases are now used during SQL queries. Instead of the puzzling `t1`
+or `t2`, the aliases are now created using the table's name. e.g. the alias for the `system_nodes`
+table would be `node` and the alias for a `categories` table would be `category`.
 
 [NEW] WdOperation: The `method` property can now be used to known which method was used for the 
 operation (GET / POST). The `terminus` property is set to TRUE for GET method operations.
