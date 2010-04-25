@@ -16,6 +16,7 @@ if (ini_get('memory_limit') < 64)
 
 class WdImage
 {
+	/*
 	public $width;
 	public $height;
 	public $mime;
@@ -25,7 +26,8 @@ class WdImage
 	public $grid_size = 'medium';
 	public $grid_color1 = 0xFFFFFF;
 	public $grid_color2 = 0xCCCCCC;
-
+	*/
+	/*
 	public function __construct($file=null)
 	{
 		if (!$file)
@@ -78,29 +80,20 @@ class WdImage
 
 //		wd_log('image create for \1 : \2', $file, $this->image);
 	}
+	*/
 
 	static public function load($file, &$info)
 	{
 		if (!is_file($file))
 		{
-			WdDebug::trigger('File <em>\1</em> does not exists', $file);
-
-			return;
+			throw new WdException('The file %file does not exists', array('%file' => $file));
 		}
 
 		$info = getimagesize($file);
 
-		/*
-		$info['width'] = $s[0];
-		$info['height'] = $s[1];
-		$this->mime = $s['mime'];
-		*/
-
 		if (!$info)
 		{
-			WdDebug::trigger('Unable to get information from file %file', array('%file' => $file));
-
-			return;
+			throw new WdException('Unable to get information from file %file', array('%file' => $file));
 		}
 
 		$mime = $info['mime'];
@@ -128,9 +121,7 @@ class WdImage
 
 			default:
 			{
-				WdDebug::trigger('Unsupported image type: %mime', array('%mime' => $mime));
-
-				return;
+				throw new WdException('Unsupported image type: %mime', array('%mime' => $mime));
 			}
 			break;
 		}
@@ -145,9 +136,10 @@ class WdImage
 		return $image;
 	}
 
+	/*
 	public function save($file, $quality=75)
 	{
-		$done = FALSE;
+		$done = false;
 
 		$ext = substr($file, strrpos($file, '.') + 1);
 
@@ -156,7 +148,7 @@ class WdImage
 			case "jpg":
 			case "jpeg":
 			{
-				$done = imagejpeg($this->image, $file, 75);
+				$done = imagejpeg($this->image, $file, $quality);
 			}
 			break;
 
@@ -181,12 +173,13 @@ class WdImage
 
 		return $done;
 	}
+	*/
 
 	const RESIZE_NONE = 'none';
 	const RESIZE_FIT = 'fit';
-	const RESIZE_SCALE_MAX = 'scale-max';
+	const RESIZE_SCALE_MAX = 'scale-max'; // deprecated by RESIZE_FIT
 	const RESIZE_FILL = 'fill';
-	const RESIZE_SCALE_MIN = 'scale-min';
+	const RESIZE_SCALE_MIN = 'scale-min'; // deprecated by RESIZE_FILL
 	const RESIZE_FIXED_HEIGHT = 'fixed-height';
 	const RESIZE_FIXED_HEIGHT_CROPPED = 'fixed-height-cropped';
 	const RESIZE_FIXED_WIDTH = 'fixed-width';
@@ -442,8 +435,6 @@ class WdImage
 				$d_w = round($s_w / $r);
 				$d_h = round($s_h / $r);
 
-				//wd_log("s: $s_w x $s_h, t: $t_w x $t_h, d: $d_w x $d_h");
-
 				$t_w = $d_w;
 				$t_h = $d_h;
 			}
@@ -471,12 +462,20 @@ class WdImage
 		$destination = imagecreatetruecolor($t_w, $t_h);
 
 		#
-		# call user's function to fill the area
+		# If the user didn't provide a callback to fill the background, the background is filled
+		# with a transparent color. This might be usefull to resample images while preserving
+		# their tranparency.
 		#
 
 		if ($fill_callback)
 		{
 			call_user_func($fill_callback, $destination, $t_w, $t_h);
+		}
+		else
+		{
+			$c = imagecolorallocatealpha($destination, 0, 0, 0, 127);
+
+			imagefill($destination, 0, 0, $c);
 		}
 
 		#
@@ -603,7 +602,7 @@ class WdImage
 	 * @return array The RGB value decoded as an array of components value
 	 */
 
-	public static function decodeColor($color)
+	static public function decodeColor($color)
 	{
 		if (is_string($color))
 		{
@@ -671,7 +670,7 @@ class WdImage
 		);
 	}
 
-	static $color_names = array
+	static public $color_names = array
 	(
 		'snow' => 0xFFFAFA,
 		'snow1' => 0xFFFAFA,
