@@ -11,6 +11,13 @@
 
 require_once 'wddatabasetable.php';
 
+//define('WDMODEL_USE_APC', false);
+
+if (!defined('WDMODEL_USE_APC'))
+{
+	define('WDMODEL_USE_APC', function_exists('apc_store'));
+}
+
 class WdModel extends WdDatabaseTable
 {
 	const T_CLASS = 'class';
@@ -55,39 +62,44 @@ class WdModel extends WdDatabaseTable
 	{
 		if (isset($tags[self::T_ACTIVERECORD_CLASS]))
 		{
-			$this->loadall_options = array('mode' => array(PDO::FETCH_CLASS, $tags[self::T_ACTIVERECORD_CLASS]/*, array($this)*/));
+			$ar_class = $tags[self::T_ACTIVERECORD_CLASS];
+
+			if (!class_exists($ar_class, true))
+			{
+				throw new WdException
+				(
+					'Unknown class %class for active records of the %model model', array
+					(
+						'%class' => $ar_class,
+						'%model' => get_class($this)
+					)
+				);
+			}
+
+			$this->loadall_options = array('mode' => array(PDO::FETCH_CLASS, $ar_class));
 		}
 
-		return parent::__construct($tags);
+		parent::__construct($tags);
 	}
 
-	static protected $objects_cache;
+	/**
+	 * Overrides the WdDatabaseTable::load() method for the cache implementation.
+	 *
+	 * @see $wd/wdcore/WdDatabaseTable#load($id)
+	 */
 
 	public function load($key)
 	{
-		$cache_key = is_array($key) ? implode('-', $key) : $key;
+		$entry = $this->retrieve($key);
 
-		if (empty(self::$objects_cache[$this->name][$cache_key]))
+		if ($entry === null)
 		{
-			$rc = parent::load($key);
+			$entry = parent::load($key);
 
-			if (!is_object($rc))
-			{
-				return $rc;
-			}
-
-			//wd_log('\1.\2 loaded', array($this->name, $key));
-
-			self::$objects_cache[$this->name][$cache_key] = $rc;
+			$this->store($key, $entry);
 		}
-		/*
-		else
-		{
-			wd_log('\1.\2 loaded from object cache: \3 !', array($this->name, $key, self::$objects_cache[$this->name][$key] ));
-		}
-		*/
 
-		return self::$objects_cache[$this->name][$cache_key];
+		return $entry;
 	}
 
 	/**
@@ -110,13 +122,89 @@ class WdModel extends WdDatabaseTable
 
 	public function save(array $properties, $key=null, array $options=array())
 	{
-		if ($key)
-		{
-			$cache_key = is_array($key) ? implode('-', $key) : $key;
-
-			self::$objects_cache[$this->name][$cache_key] = null;
-		}
+		$this->eliminate($key);
 
 		return parent::save($properties, $key, $options);
+	}
+
+	static protected $cached_objects;
+
+	protected function store($key, $value)
+	{
+		if (!is_object($value))
+		{
+			return;
+		}
+
+		$key = $this->createCacheKey($key);
+
+		if (!$key)
+		{
+			return;
+		}
+
+		self::$cached_objects[$key] = $value;
+
+		if (WDMODEL_USE_APC)
+		{
+			apc_store($key, $value);
+		}
+	}
+
+	protected function retrieve($key)
+	{
+		$key = $this->createCacheKey($key);
+
+		if (!$key)
+		{
+			return;
+		}
+
+		$entry = null;
+
+		if (isset(self::$cached_objects[$key]))
+		{
+			$entry = self::$cached_objects[$key];
+		}
+		else if (WDMODEL_USE_APC)
+		{
+			$entry = apc_fetch($key, $success);
+
+			$success ? self::$cached_objects[$key] = $entry : $entry = null;
+		}
+
+		return $entry;
+	}
+
+	protected function eliminate($key)
+	{
+		$key = $this->createCacheKey($key);
+
+		if (!$key)
+		{
+			return;
+		}
+
+		if (WDMODEL_USE_APC)
+		{
+			apc_delete($key);
+		}
+
+		self::$cached_objects[$key] = null;
+	}
+
+	protected function createCacheKey($key)
+	{
+		if ($key === null)
+		{
+			return;
+		}
+
+		if (is_array($key))
+		{
+			$key = implode('-', $key);
+		}
+
+		return (WDMODEL_USE_APC ? 'ar:' . $_SERVER['DOCUMENT_ROOT'] . '/' : '') . $this->connection->name . '/' . $this->name . '/' . $key;
 	}
 }
