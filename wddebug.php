@@ -17,10 +17,12 @@ class WdDebug
 {
 	static public $config = array
 	(
-		'codeSample' => true,
 		'maxMessages' => 100,
 		'reportAddress' => null,
 		'verbose' => true,
+		'lineNumber' => true,
+		'stackTrace' => true,
+		'codeSample' => true,
 
 		'mode' => 'test',
 		'modes' => array
@@ -32,7 +34,9 @@ class WdDebug
 
 			'production' => array
 			(
-				'verbose' => false
+				'verbose' => false,
+				'stackTrace' => false,
+				'codeSample' => false
 			)
 		)
 	);
@@ -84,13 +88,15 @@ class WdDebug
 		array_shift($stack);
 		array_shift($stack);
 
-		$lines = array_merge($lines, self::formatTrace($stack));
+		if (self::$config['stackTrace'])
+		{
+			$lines = array_merge($lines, self::formatTrace($stack));
+		}
 
-		#
-		# code sample
-		#
-
-		$lines = array_merge($lines, self::codeSample($file, $line));
+		if (self::$config['codeSample'])
+		{
+			$lines = array_merge($lines, self::codeSample($file, $line));
+		}
 
 		#
 		#
@@ -169,20 +175,42 @@ class WdDebug
 		}
 	}
 
-	const MAX_STRING_LEN = 16;
-
-	public static function formatTrace($stack)
+	public static function lineNumber($file, $line, &$saveback=null)
 	{
 		$lines = array();
 
-		if (!$stack)
+		if (!self::$config['lineNumber'])
+		{
+			return $lines();
+		}
+
+		$file = substr($file, strlen($_SERVER['DOCUMENT_ROOT']));
+
+		$lines[] = '<br />→ in <em>' . $file . '</em> at line <em>' . $line . '</em>';
+
+		if (is_array($saveback))
+		{
+			$saveback = array_merge($saveback, $lines);
+		}
+
+		return $lines;
+	}
+
+	const MAX_STRING_LEN = 16;
+
+	public static function formatTrace($stack, &$saveback=null)
+	{
+		$lines = array();
+
+		if (!$stack || !self::$config['stackTrace'])
 		{
 			return $lines;
 		}
 
 		$root = str_replace('\\', '/', realpath('.'));
+		$count = count($stack);
 
-		$lines[] = '<strong>Stack trace:</strong><br />';
+		$lines[] = '<br /><strong>Stack trace:</strong><br />';
 
 		foreach ($stack as $i => $node)
 		{
@@ -228,29 +256,29 @@ class WdDebug
 
 			$lines[] = sprintf
 			(
-				'#%02d &mdash; %s(%d): %s%s%s(%s)',
+				'%02d ➦ %s(%d): %s%s%s(%s)',
 
-				$i, $trace_file, $trace_line, $trace_class, $trace_type,
+				$count - $i, $trace_file, $trace_line, $trace_class, $trace_type,
 				$trace_function, wd_entities(join(', ', $params))
 			);
+		}
+
+		if (is_array($saveback))
+		{
+			$saveback = array_merge($saveback, self::formatTrace($stack));
 		}
 
 		return $lines;
 	}
 
-	public static function codeSample($file, $line)
+	public static function codeSample($file, $line, &$saveback=null)
 	{
 		if (!self::$config['codeSample'])
 		{
 			return array();
 		}
 
-		$lines =  array
-		(
-			'',
-			'<strong>Code sample:</strong>',
-			''
-		);
+		$lines =  array('<br /><strong>Code sample:</strong><br />');
 
 		$fh = fopen($file, 'r');
 
@@ -283,6 +311,11 @@ class WdDebug
 		}
 
 		fclose($fh);
+
+		if (is_array($saveback))
+		{
+			$saveback = array_merge($saveback, $lines);
+		}
 
 		return $lines;
 	}
@@ -355,24 +388,18 @@ class WdDebug
 
 	public static function putMessage($type, $message, array $params=array(), $messageId=null)
 	{
-		#
-		# format message
-		#
-
-		//$message = t($message, $params);
-
-		#
-		# limit the number of messages in the log
-		#
-
 		if (empty($_SESSION[__CLASS__][$type]))
 		{
 			$_SESSION[__CLASS__][$type] = array();
 		}
 
+		#
+		# limit the number of messages
+		#
+
 		$messages = &$_SESSION[__CLASS__][$type];
 
-		if (isset($messages))
+		if ($messages)
 		{
 			$max = self::$config['maxMessages'];
 			$count = count($messages);
@@ -381,11 +408,10 @@ class WdDebug
 			{
 				$messages = array_splice($messages, $count - $max);
 
-				array_unshift($messages, '*** SLICED');
+				array_unshift($messages, array('*** SLICED', array()));
 			}
 		}
 
-		//$messageId ? $messages[$messageId] = $message : $messages[] = $message;
 		$messageId ? $messages[$messageId] = array($message, $params) : $messages[] = array($message, $params);
 	}
 
@@ -395,17 +421,6 @@ class WdDebug
 		{
 			return array();
 		}
-
-		/*
-		$rc = '<ul class="wddebug ' . $type . '">' . PHP_EOL;
-
-		foreach ($messages as $message)
-		{
-			$rc .= '<li>' . t($message[0], $message[1]) . '</li>' . PHP_EOL;
-		}
-
-		$rc .= '</ul>' . PHP_EOL;
-		*/
 
 		$rc = array();
 

@@ -17,33 +17,57 @@ require_once 'wddebug.php';
 
 class WdException extends Exception
 {
-	public function __construct($message, array $params=array(), $code=null)
+	protected $code;
+	protected $title = 'Exception';
+
+	public function __construct($message, array $params=array(), $code=500)
 	{
+		$this->code = $code;
+
+		if (is_array($code))
+		{
+			$this->code = key($code);
+			$this->title = array_shift($code);
+		}
+		else if ($code == 404)
+		{
+			$this->title = 'Not Found';
+		}
+		else if ($code == 401)
+		{
+			$this->title = 'Unauthorized';
+		}
+
 		#
 		# the error message is localized and formated
 		#
 
 		$message = t($message, $params);
 
-		if ($code)
-		{
-			header('HTTP/1.0 ' . $code . ' ' . strip_tags($message));
-		}
-
 		parent::__construct($message);
 	}
 
 	public function __toString()
 	{
+		if ($this->code && !headers_sent())
+		{
+			header('HTTP/1.0 ' . $this->code . ' ' . $this->title);
+		}
+
+		#
+		#
+		#
+
+		$file = $this->getFile();
+		$line = $this->getLine();
+
 		$lines = array();
 
-		$lines[] = '<strong>Exception with the following message:</strong><br />';
-		$lines[] = $this->getMessage() . '<br />';
-		$lines[] = 'in <em>' . $this->getFile() . '</em> at line <em>' . $this->getLine() . '</em><br />';
+		$lines[] = '<strong>' . $this->title . ', with the following message:</strong><br />';
+		$lines[] = $this->getMessage();
 
-		$stack = $this->getTrace();
-
-		$lines = array_merge($lines, WdDebug::formatTrace($stack));
+		WdDebug::lineNumber($file, $line, $lines);
+		WdDebug::formatTrace($this->getTrace(), $lines);
 
 		#
 		# if WDEXCEPTION_WITH_LOG is set to true, we join the messages from the log
@@ -52,16 +76,16 @@ class WdException extends Exception
 
 		if (WDEXCEPTION_WITH_LOG)
 		{
-			if (!empty($_SESSION['log']))
+			$log = WdDebug::fetchMessages('debug');
+
+			if ($log)
 			{
 				$lines[] = '<br /><strong>Log:</strong><br />';
 
-				foreach ($_SESSION['log'] as $message)
+				foreach ($log as $message)
 				{
 					$lines[] = $message . '<br />';
 				}
-
-				$_SESSION['log'] = NULL;
 			}
 		}
 
@@ -75,5 +99,15 @@ class WdException extends Exception
 		WdDebug::report($rc);
 
 		return $rc;
+	}
+
+	public function getHTTPCode()
+	{
+		return $this->code;
+	}
+
+	public function getTitle()
+	{
+		return $this->code . ' ' . $this->title;
 	}
 }
