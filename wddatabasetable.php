@@ -144,17 +144,11 @@ class WdDatabaseTable
 
 		$parent = $this->parent;
 
-		if ($parent)
+		while ($parent)
 		{
-			$i = 2;
+			$join .= "inner join `{$parent->name}` as `{$parent->alias}` using(`{primary}`) ";
 
-			while ($parent)
-			{
-				$join .= "inner join `{$parent->name}` as `{$parent->alias}` using(`{primary}`) ";
-
-				$i++;
-				$parent = $parent->parent;
-			}
+			$parent = $parent->parent;
 		}
 
 		#
@@ -254,9 +248,10 @@ class WdDatabaseTable
 		(
 			$query, array
 			(
-				'{self}' => $this->name,
+				'{alias}' => $this->alias,
 				'{prefix}' => $this->connection->prefix,
-				'{primary}' => $this->primary
+				'{primary}' => $this->primary,
+				'{self}' => $this->name
 			)
 		);
 	}
