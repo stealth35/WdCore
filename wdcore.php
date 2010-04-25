@@ -27,7 +27,7 @@ require_once 'wdmodule.php';
 
 class WdCore
 {
-	const _VERSION = '0.7.12 (2010-01-25)';
+	const VERSION = '0.7.14 (2010-04-25)';
 
 	public $locale;
 	public $descriptors = array();
@@ -38,6 +38,7 @@ class WdCore
 
 	static protected $config = array();
 	static protected $pending_configs = array();
+	static protected $constructed_configs = array();
 
 	static public function autoconfig($config)
 	{
@@ -51,6 +52,45 @@ class WdCore
 	static public function getConfig($key, $default=null)
 	{
 		return isset(self::$config[$key]) ? self::$config[$key] : $default;
+	}
+
+	static public function getConstructedConfig($ns, $constructor=null)
+	{
+		if (isset(self::$constructed_configs[$ns]))
+		{
+			return self::$constructed_configs[$ns];
+		}
+
+//		wd_log_time("construct config '$ns' - start");
+
+		if ($constructor == 'merge')
+		{
+			$constructor = array(__CLASS__, 'mergeA');
+		}
+
+		$cache = self::cache();
+
+		$pending = isset(self::$pending_configs[$ns]) ? self::$pending_configs[$ns] : array();
+
+		if (self::$config['cache configs'])
+		{
+			$rc = $cache->load($ns . '.config', $constructor, $pending);
+		}
+		else
+		{
+			$cache->delete($ns . '.config');
+
+			$rc = call_user_func($constructor, $pending);
+		}
+
+//		wd_log_time("construct config '$ns' - finish");
+
+		return $rc;
+	}
+
+	static public function mergeA($arrays)
+	{
+		return call_user_func_array('array_merge', $arrays);
 	}
 
 	#
@@ -88,7 +128,6 @@ class WdCore
 		#
 
 		spl_autoload_register(array($class, 'autoloadHandler'));
-		register_shutdown_function(array($this, 'shutdownHandler'));
 		set_exception_handler(array($class, 'exceptionHandler'));
 		set_error_handler(array('WdDebug', 'errorHandler'));
 
@@ -110,15 +149,6 @@ class WdCore
 			ini_set('session.use_only_cookies', true);
 			ini_set('session.use_trans_sid', false);
 			ini_set('session.name', $session_name);
-
-			/*
-			#
-			# tweak session garbage collector for a longer duration
-			# note: this causes errors on Debian distributions.
-			#
-
-			ini_set('session.gc_maxlifetime', 60 * 60);
-			*/
 
 			#
 			# Well... this looks bad. It's actually a patch for Flash because this dumb ass doesn't
@@ -214,14 +244,6 @@ class WdCore
 		return false;
 	}
 
-	public function shutdownHandler()
-	{
-		foreach ($this->connections as $connection)
-		{
-			$connection = null;
-		}
-	}
-
 	/*
 	**
 
@@ -229,6 +251,25 @@ class WdCore
 
 	**
 	*/
+
+	static protected $caches = array();
+
+	static public function cache($name='core')
+	{
+		if (empty(self::$caches[$name]))
+		{
+			self::$caches[$name] = new WdFileCache
+			(
+				array
+				(
+					WdFileCache::T_REPOSITORY => self::getConfig('repository.cache') . '/' . $name,
+					WdFileCache::T_SERIALIZE => true
+				)
+			);
+		}
+
+		return self::$caches[$name];
+	}
 
 	protected $cache;
 
@@ -259,7 +300,7 @@ class WdCore
 
 		if (self::$config['cache modules'])
 		{
-			$aggregate = $this->cache->load('modules', array($this, __FUNCTION__ . '_construct'));
+			$aggregate = $this->cache->load('modules', array($this, 'readModules_construct'));
 		}
 		else
 		{
@@ -293,6 +334,8 @@ class WdCore
 		{
 			self::$pending_configs[$key] = isset(self::$pending_configs[$key]) ? array_merge(self::$pending_configs[$key], $pouic) : $pouic;
 		}
+
+		/* the config is dispatched here in order to have autoload ready */
 
 //		wd_log_time('modules dispatch config start');
 		$this->dispatchConfig();
@@ -952,10 +995,13 @@ class WdCore
 
 		sort($modules);
 
-		header('Content-Type: text/plain');
+		header('Content-Type: text/plain; charset=utf-8');
 
-		echo 'WdCore version ' . self::_VERSION . ' is running here with:' . "\n\n";
-		echo implode("\n", $modules);
+		echo 'WdCore version ' . self::VERSION . ' is running here with:' . PHP_EOL . PHP_EOL;
+		echo implode(PHP_EOL, $modules);
+		
+		echo PHP_EOL . PHP_EOL;
+		echo strip_tags(implode(PHP_EOL, WdDebug::fetchMessages('debug')));
 
 		exit;
 	}

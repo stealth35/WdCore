@@ -6,8 +6,6 @@ return array
 	(
 		'core' => 'WdCore',
 		'debug' => 'WdDebug',
-		'event' => 'WdEvent',
-		'hook' => 'WdHook',
 		'locale' => 'WdLocale'
 	),
 
@@ -30,6 +28,7 @@ return array
 		'WdUploaded' => $root . 'wduploaded.php'
 	),
 
+	'cache configs' => false,
 	'cache modules' => false,
 
 	'repository' => '/repository',

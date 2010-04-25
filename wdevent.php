@@ -11,45 +11,48 @@
 
 class WdEvent
 {
-	static protected $configs = array();
+	const DELIMITER = '~';
+
 	static protected $listeners = array();
-
-	static public function autoconfig()
-	{
-		$configs = func_get_args();
-
-		self::$configs = array_merge(self::$configs, $configs);
-	}
-
-	/**
-	 * Parse remaining listeners form the config and return the whole set.
-	 *
-	 * @return array Listeners
-	 */
 
 	static protected function listeners()
 	{
-		foreach (self::$configs as $config => $events)
+		if (empty(self::$listeners))
 		{
-			foreach ($events as $pattern => $callback)
-			{
-				self::add($pattern, $callback);
-			}
+			self::$listeners = WdCore::getConstructedConfig('event', array(__CLASS__, 'listeners_construct'));
 		}
-
-		self::$configs = array();
 
 		return self::$listeners;
 	}
 
-	static public function add($pattern, $callback)
+	static public function listeners_construct($configs)
+	{
+		$listeners = array();
+
+		foreach ($configs as $config)
+		{
+			foreach ($config as $pattern => $callback)
+			{
+				$listeners[self::translateRegEx($pattern)][] = $callback;
+			}
+		}
+
+		return $listeners;
+	}
+
+	static public function translateRegEx($pattern)
 	{
 		if (strpos($pattern, '*') !== false || strpos($pattern, '?') !== false)
 		{
-			$pattern = '~^' . str_replace(array('\*', '\?'), array('.*', '.'), preg_quote($pattern)) . '$~';
+			$pattern = self::DELIMITER . '^' . str_replace(array('\*', '\?'), array('.*', '.'), preg_quote($pattern, self::DELIMITER)) . '$' . self::DELIMITER;
 		}
 
-		self::$listeners[$pattern][] = $callback;
+		return $pattern;
+	}
+
+	static public function add($pattern, $callback)
+	{
+		self::$listeners[self::translateRegEx($pattern)][] = $callback;
 	}
 
 	static public function remove($event, $callback)
@@ -79,7 +82,7 @@ class WdEvent
 
 		foreach ($listeners as $pattern => $callbacks)
 		{
-			if (!($pattern{0} == '~' ? preg_match($pattern, $type) : $pattern == $type))
+			if (!($pattern{0} == self::DELIMITER ? preg_match($pattern, $type) : $pattern == $type))
 			{
 				continue;
 			}
@@ -94,11 +97,6 @@ class WdEvent
 				#
 				# autoload modules if the callback uses 'm:'
 				#
-
-				if (is_array($callback) && is_string($callback[0]) && substr($callback[0], 0, 8) == '!module:')
-				{
-					throw new WdException('"!module:" must be replaced with m:');
-				}
 
 				if (is_array($callback) && is_string($callback[0]) && $callback[0]{1} == ':' && $callback[0]{0} == 'm')
 				{
