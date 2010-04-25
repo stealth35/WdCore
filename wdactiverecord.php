@@ -86,8 +86,6 @@ class WdActiveRecord
 		{
 			global $core;
 
-			//echo t(__CLASS__ . '::' . __FUNCTION__ . ":&gt; load model $modelName<br />");
-
 			list($module_id, $model_id) = explode('/', $name) + array(1 => 'primary');
 
 			self::$models[$name] = $core->getModule($module_id)->model($model_id);
@@ -107,5 +105,13 @@ class WdActiveRecord
 		(
 			$properties, isset($properties[$primary]) ? $properties[$primary] : null
 		);
+	}
+
+	public function delete()
+	{
+		$model = $this->model();
+		$primary = $model->primary;
+
+		return $model->delete($this->$primary);
 	}
 }
