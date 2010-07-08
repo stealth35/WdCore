@@ -17,17 +17,15 @@ class WdLocale
 
 	static protected $config = array
 	(
-		'cache catalogs' => true,
+		'cache catalogs' => false,
 		'native' => 'en',
 		'language' => 'en-US',
 		'languages' => array('en'),
 		'timezone' => 'TZ=US/Eastern'
 	);
 
-	static public function autoconfig()
+	static public function autoconfig(array $configs)
 	{
-		$configs = func_get_args();
-
 		array_unshift($configs, self::$config);
 
 		self::$config = call_user_func_array('array_merge', $configs);
@@ -46,40 +44,15 @@ class WdLocale
 	static public $native;
 	static public $language;
 	static public $languages;
+	static public $conventions;
 
 	static public function setLanguage($language)
 	{
 		self::$language = $language;
 
-		setlocale(LC_TIME, 'fr_FR.UTF8', 'fr.UTF8');
+		setlocale(LC_ALL, 'fr_FR.UTF-8', 'fr_FR.UTF8', 'fr.UTF-8', 'fr.UTF8');
 
-		//echo "setLanguage: $language<br />";
-
-		/*
-		#
-		# from http://www.w3.org/WAI/ER/IG/ert/iso639.htm
-		#
-		# 'fr' and 'fr_FR' never worked for me on the servers I've tried. On the other hand,
-		# the complete litteral 'french' seams to always work.
-		#
-
-		static $names = array
-		(
-			'cn' => 'chinese',
-			'de' => 'german',
-			'en' => 'english',
-			'es' => 'spanish',
-			'fr' => 'french',
-			'it' => 'italian'
-		);
-
-		#
-		# I chose to only localize the time,
-		# but you can choose to localize everything if you want to.
-		#
-
-		setlocale(LC_TIME, $language, isset($names[$language]) ? $names[$language] : null);
-		*/
+		self::$conventions = localeconv();
 	}
 
 	static public function setTimezone($timezone)
@@ -350,16 +323,23 @@ class WdLocale
 
 	static private $_localize_args;
 
-	static public function translate($str, $args, array $catalog=array())
+	static public function translate($str, $args)
 	{
+		if (!$str)
+		{
+			return $str;
+		}
+
 		if (self::$pendingCatalogs)
 		{
 			self::loadPendingCatalogs();
 		}
 
-		if (!$catalog)
+		$catalog = self::$messages;
+
+		if ($str{0} == '@' && array_key_exists('count', $args))
 		{
-			$catalog = self::$messages;
+			echo "using plural selector: $str<br />";
 		}
 
 		#
@@ -372,7 +352,7 @@ class WdLocale
 		}
 		else if (0)
 		{
-			$_SESSION['wddebug']['debug'][] = "localize: $str";
+			$_SESSION['wddebug']['messages']['debug'][] = "localize: $str";
 		}
 
 		if ($args)
@@ -425,4 +405,33 @@ class WdLocale
 function t($str, array $args=array())
 {
 	return WdLocale::translate($str, $args);
+}
+
+function wd_format_size($size)
+{
+	if ($size < 1024)
+	{
+		$str = ":size\xC2\xA0b";
+	}
+	else if ($size < 1024 * 1024)
+	{
+		$str = ":size\xC2\xA0Kb";
+		$size = $size / 1024;
+	}
+	else if ($size < 1024 * 1024 * 1024)
+	{
+		$str = ":size\xC2\xA0Mb";
+		$size = $size / (1024 * 1024);
+	}
+	else
+	{
+		$str = ":size\xC2\xA0Gb";
+		$size = $size / (1024 * 1024 * 1024);
+	}
+
+	$conv = WdLocale::$conventions;
+
+	$size = number_format($size, $conv['frac_digits'], $conv['decimal_point'], $conv['thousands_sep']);
+
+	return t($str, array(':size' => $size));
 }

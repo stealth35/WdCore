@@ -9,11 +9,6 @@
  * @license http://www.weirdog.com/wdcore/license/
  */
 
-if (ini_get('memory_limit') < 64)
-{
-	ini_set('memory_limit', '64M');
-}
-
 class WdImage
 {
 	/*
@@ -604,19 +599,21 @@ class WdImage
 
 	static public function decodeColor($color)
 	{
-		if (is_string($color))
+		$len = is_string($color) ? strlen($color) : 0;
+
+		if ($len >= 4)
 		{
-			if ($color{0} == '#')
+			if ($color[0] == '#')
 			{
-				switch (strlen($color))
+				switch ($len)
 				{
 					case 4:
 					{
 						return array
 						(
-							intval($color{1} . $color{1}, 16),
-							intval($color{2} . $color{2}, 16),
-							intval($color{3} . $color{3}, 16)
+							intval($color[1] . $color[1], 16),
+							intval($color[2] . $color[2], 16),
+							intval($color[3] . $color[3], 16)
 						);
 					}
 					break;
@@ -625,9 +622,9 @@ class WdImage
 					{
 						return array
 						(
-							intval($color{1} . $color{2}, 16),
-							intval($color{3} . $color{4}, 16),
-							intval($color{5} . $color{6}, 16)
+							intval($color[1] . $color[2], 16),
+							intval($color[3] . $color[4], 16),
+							intval($color[5] . $color[6], 16)
 						);
 					}
 					break;

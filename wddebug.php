@@ -41,15 +41,32 @@ class WdDebug
 		)
 	);
 
-	static public function autoconfig($config)
+	static public function autoconfig(array $configs)
 	{
-		$configs = func_get_args();
-
 		array_unshift($configs, self::$config);
 
 		self::$config = call_user_func_array('wd_array_merge_recursive', $configs);
 
 		self::$config = array_merge(self::$config, self::$config['modes'][self::$config['mode']]);
+	}
+
+	static public function shutdown_handler()
+	{
+		/* DIRTY: SESSION
+		global $app;
+
+		if (empty($app))
+		{
+			return;
+		}
+
+		if (!headers_sent())
+		{
+			$app->session('wddebug');
+		}
+		*/
+
+		$_SESSION['wddebug']['messages'] = self::$messages;
 	}
 
 	/*
@@ -348,12 +365,12 @@ class WdDebug
 
 		$hash = md5($message);
 
-		if (isset($_SESSION[__CLASS__ . '.reported']))
+		if (isset($_SESSION['wddebug']['reported'][$hash]))
 		{
 			return;
 		}
 
-		$_SESSION[__CLASS__ . '.reported'][$hash] = true;
+		$_SESSION['wddebug']['reported'][$hash] = true;
 
 		#
 		#
@@ -386,18 +403,20 @@ class WdDebug
 	**
 	*/
 
+	static protected $messages;
+
 	public static function putMessage($type, $message, array $params=array(), $messageId=null)
 	{
-		if (empty($_SESSION[__CLASS__][$type]))
+		if (empty(self::$messages[$type]))
 		{
-			$_SESSION[__CLASS__][$type] = array();
+			self::$messages[$type] = array();
 		}
 
 		#
 		# limit the number of messages
 		#
 
-		$messages = &$_SESSION[__CLASS__][$type];
+		$messages = &self::$messages[$type];
 
 		if ($messages)
 		{
@@ -417,14 +436,14 @@ class WdDebug
 
 	public static function getMessages($type)
 	{
-		if (empty($_SESSION[__CLASS__][$type]))
+		if (empty(self::$messages[$type]))
 		{
 			return array();
 		}
 
 		$rc = array();
 
-		foreach ($_SESSION[__CLASS__][$type] as $message)
+		foreach (self::$messages[$type] as $message)
 		{
 			$rc[] = t($message[0], $message[1]);
 		}
@@ -436,11 +455,13 @@ class WdDebug
 	{
 		$rc = self::getMessages($type);
 
-		$_SESSION[__CLASS__][$type] = array();
+		self::$messages[$type] = array();
 
 		return $rc;
 	}
 }
+
+register_shutdown_function(array('WdDebug', 'shutdown_handler'));
 
 /*
 **
@@ -472,7 +493,14 @@ function wd_log_time($str, array $params=array())
 
 	if (!$reference)
 	{
-		$reference = microtime(true);
+		global $wddebug_time_reference;
+
+		$reference = isset($wddebug_time_reference) ? $wddebug_time_reference : microtime(true);
+
+		// TODO-20100525: the first call is used as an initializer, we have to find a better way
+		// to initialize the reference time.
+
+		return;
 	}
 
 	$now = microtime(true);

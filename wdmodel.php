@@ -11,7 +11,7 @@
 
 require_once 'wddatabasetable.php';
 
-//define('WDMODEL_USE_APC', false);
+define('WDMODEL_USE_APC', false);
 
 if (!defined('WDMODEL_USE_APC'))
 {
@@ -23,16 +23,18 @@ class WdModel extends WdDatabaseTable
 	const T_CLASS = 'class';
 	const T_ACTIVERECORD_CLASS = 'activerecord-class';
 
-	static public function doesExtends($descriptor, $instanceof)
+	static public function is_extending(array $tags, $instanceof)
 	{
-		if (empty($descriptor[WdModel::T_EXTENDS]))
+		// TODO-2010630: The method should handle submodels to, not just 'primary'
+
+		if (empty($tags[self::T_EXTENDS]))
 		{
 			//wd_log('no extends in \1', array($model));
 
 			return false;
 		}
 
-		$extends = $descriptor[WdModel::T_EXTENDS];
+		$extends = $tags[self::T_EXTENDS];
 
 		if ($extends == $instanceof)
 		{
@@ -52,14 +54,25 @@ class WdModel extends WdDatabaseTable
 
 		//wd_log('try: \1', array($extends));
 
-		return self::doesExtends($core->descriptors[$extends][WdModule::T_MODELS]['primary'], $instanceof);
+		return self::is_extending($core->descriptors[$extends][WdModule::T_MODELS]['primary'], $instanceof);
 	}
 
-
+	protected $ar_class;
 	protected $loadall_options = array('mode' => PDO::FETCH_OBJ);
 
 	public function __construct($tags)
 	{
+		parent::__construct($tags);
+
+		#
+		# Resolve the active record class.
+		#
+
+		if ($this->parent)
+		{
+			$this->ar_class = $this->parent->ar_class;
+		}
+
 		if (isset($tags[self::T_ACTIVERECORD_CLASS]))
 		{
 			$ar_class = $tags[self::T_ACTIVERECORD_CLASS];
@@ -76,10 +89,13 @@ class WdModel extends WdDatabaseTable
 				);
 			}
 
-			$this->loadall_options = array('mode' => array(PDO::FETCH_CLASS, $ar_class));
+			$this->ar_class = $ar_class;
 		}
 
-		parent::__construct($tags);
+		if ($this->ar_class)
+		{
+			$this->loadall_options = array('mode' => array(PDO::FETCH_CLASS, $this->ar_class));
+		}
 	}
 
 	/**
@@ -129,9 +145,18 @@ class WdModel extends WdDatabaseTable
 
 	static protected $cached_objects;
 
+	/**
+	 * Stores an object into the cache.
+	 *
+	 * Note that only WdActiveRecord instance object are actually stored.
+	 *
+	 * @param unknown_type $key
+	 * @param unknown_type $value
+	 */
+
 	protected function store($key, $value)
 	{
-		if (!is_object($value))
+		if (!is_object($value) || !($value instanceof WdActiveRecord))
 		{
 			return;
 		}
@@ -150,6 +175,12 @@ class WdModel extends WdDatabaseTable
 			apc_store($key, $value);
 		}
 	}
+
+	/**
+	 * Retrieves an object from the cache.
+	 *
+	 * @param unknown_type $key
+	 */
 
 	protected function retrieve($key)
 	{
@@ -176,6 +207,12 @@ class WdModel extends WdDatabaseTable
 		return $entry;
 	}
 
+	/**
+	 * Eliminate an object from the cache.
+	 *
+	 * @param unknown_type $key
+	 */
+
 	protected function eliminate($key)
 	{
 		$key = $this->createCacheKey($key);
@@ -192,6 +229,12 @@ class WdModel extends WdDatabaseTable
 
 		self::$cached_objects[$key] = null;
 	}
+
+	/**
+	 * Creates a unique cache key.
+	 *
+	 * @param unknown_type $key
+	 */
 
 	protected function createCacheKey($key)
 	{

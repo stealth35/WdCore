@@ -15,8 +15,39 @@ class WdOperation
 	const NAME = '#operation';
 	const KEY = '#key';
 
-	static public function encode($destination, $name, array $params=array(), $encode=false)
+	/**
+	 * Encode an operation as an URL.
+	 *
+	 * Three encoding types are available :
+	 *
+	 * 1. Simple : The URL is composed as '?do=<destination>.<method>&param1=...'
+	 * 2. Base64 (b) : The URL is encoded using base64
+	 * 3. RESTful : The URL is created as a RESTful resource : '/do/<destination>/(<key>/)?<method>&param1=...'
+	 *
+	 * TODO-20100615: reorder parameters as $destination, $operation, $key, $params, $type
+	 *
+	 * @param unknown_type $destination
+	 * @param unknown_type $name
+	 * @param array $params
+	 * @param unknown_type $encode
+	 */
+
+	static public function encode($destination, $name, array $params=array(), $encode=false, $key=null)
 	{
+		if ($encode === 'r')
+		{
+			$query = http_build_query
+			(
+				$params, '', '&'
+			);
+
+			return '/do/' . $destination . '/' . ($key ? $key . '/' : '') . $name . ($query ? '?' . $query : '');
+		}
+
+		#
+		#
+		#
+
 		$query = http_build_query
 		(
 			array
@@ -29,7 +60,7 @@ class WdOperation
 			'', '&'
 		);
 
-		if ($encode)
+		if ($encode === true || $encode == 'b')
 		{
 			$query = base64_encode($query);
 
@@ -68,7 +99,69 @@ class WdOperation
 			$request['do'] = $request['!do'];
 		}
 
-		if (isset($request['do']) && isset($request[self::NAME]))
+		#
+		# RESTful
+		#
+
+		if (substr($_SERVER['REQUEST_URI'], 0, 4) == '/do/')
+		{
+			$uri = /*substr(*/$_SERVER['REQUEST_URI']/*, 4)*/;
+
+			if ($_SERVER['QUERY_STRING'])
+			{
+				$uri = substr($uri, 0, -strlen($_SERVER['QUERY_STRING']) - 1);
+			}
+
+			#
+			#
+			#
+
+			preg_match('#^([a-z\.]+)/((\d+)/)?([a-zA-Z0-9]+)$#', substr($uri, 4), $matches);
+
+			if ($matches)
+			{
+				//$_SERVER['HTTP_ACCEPT'] = 'application/json';
+
+				list( , $destination, , $operation_key, $name) = $matches;
+
+				$request[self::KEY] = $matches[2] ? $operation_key : null;
+			}
+			else if (1)
+			{
+				$route = null;
+				$routes = WdRoute::routes();
+
+				foreach ($routes as $pattern => $route)
+				{
+					if (substr($pattern, 0, 4) != '/do/')
+					{
+						continue;
+					}
+
+					$match = WdRoute::match($uri, $pattern);
+
+					if ($match)
+					{
+						if (is_array($match))
+						{
+							$request += $match;
+						}
+
+						$operation = new WdOperation($route, $pattern, $request);
+
+						$operation->terminus = true;
+						$operation->method = 'GET';
+
+						$_SERVER['HTTP_ACCEPT'] = 'application/json';
+
+						return $operation;
+					}
+				}
+
+				throw new WdException('Uknown operation: %operation', array('%operation' => substr($uri, 4)), array(404 => 'Unknow operation'));
+			}
+		}
+		else if (isset($request['do']) && isset($request[self::NAME]))
 		{
 			throw new WdException('Ambiguous operation: both GET and POST methods are used.');
 		}
@@ -87,7 +180,7 @@ class WdOperation
 
 				if (get_magic_quotes_gpc())
 				{
-					$request_base = wd_deepStripSlashes($request_base);
+					$request_base = wd_strip_slashes_recursive($request_base);
 				}
 
 				#
@@ -142,36 +235,6 @@ class WdOperation
 		return $operation;
 	}
 
-	/**
-	 * Results from previous operations.
-	 * @var array
-	 */
-
-	static protected $results = array();
-
-	static function setResult($name, $result)
-	{
-		self::$results[$name] = $result;
-	}
-
-	/**
-	 * Return the result from previous operations.
-	 *
-	 * @param string $name The name of the previous operation.
-	 * @return mixed The result of the previous operation, or null if the operation did not occur.
-	 */
-
-	static function getResult($name=null)
-	{
-		if (!$name)
-		{
-			$keys = array_keys(self::$results);
-			$name = array_shift($keys);
-		}
-
-		return isset(self::$results[$name]) ? self::$results[$name] : null;
-	}
-
 	public $name;
 	public $destination;
 	public $key;
@@ -199,7 +262,7 @@ class WdOperation
 		global $core;
 
 		$name = $this->name;
-		
+
 		#
 		# reset results
 		#
@@ -210,31 +273,38 @@ class WdOperation
 			'log' => array()
 		);
 
-		self::setResult($name, null);
-
 		#
 		# We trigger the 'operation.<name>:before' event, listeners might use the event to
 		# tweak the operation before the destination module processes the operation.
 		#
 
 		$destination = $this->destination;
-		$module = $core->getModule($destination);
+		$module = null;
 
-		$event = WdEvent::fire
-		(
-			'operation.' . $name . ':before', array
+		if (is_array($destination))
+		{
+			$rc = call_user_func($destination['callback'], $this);
+		}
+		else
+		{
+			$module = $core->getModule($destination);
+
+			$event = WdEvent::fire
 			(
-				'operation' => $this,
-				'module' => $module
-			)
-		);
+				'operation.' . $name . ':before', array
+				(
+					'operation' => $this,
+					'module' => $module
+				)
+			);
 
-		#
-		# We ask the module to handle the operation. In return we get a response or `null` if the
-		# operation failed.
-		#
+			#
+			# We ask the module to handle the operation. In return we get a response or `null` if the
+			# operation failed.
+			#
 
-		$rc = $module->handleOperation($this);
+			$rc = $module->handle_operation($this);
+		}
 
 		#
 		# If the operation succeed, we trigger a 'operation.<name>' event, listeners might use the
@@ -242,12 +312,10 @@ class WdOperation
 		# related to an _article_ module from which an article has been deleted.
 		#
 
-		if ($rc !== null)
+		$this->response->rc = $rc;
+
+		if ($rc !== null && $module)
 		{
-			$this->response->rc = $rc;
-
-			self::setResult($name, $rc);
-
 			WdEvent::fire
 			(
 				'operation.' . $name, array
@@ -274,7 +342,7 @@ class WdOperation
 		{
 			$accept = $_SERVER['HTTP_ACCEPT'];
 
-			if ($accept == 'application/json' || $accept == 'application.xml')
+			if ($accept == 'application/json' || $accept == 'application/xml')
 			{
 				$logs = array('done', 'error');
 
@@ -353,9 +421,11 @@ class WdOperation
 
 			exit;
 		}
+
+		return $this->response->rc;
 	}
 
-	public function handleBooleans(array $booleans)
+	public function handle_booleans(array $booleans)
 	{
 		$params = &$this->params;
 

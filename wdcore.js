@@ -7,6 +7,8 @@
  * @license http://www.weirdog.com/wdcore/license/
  */
 
+"use strict";
+
 var WdOperation = new Class
 ({
 	Extends: Request.JSON,

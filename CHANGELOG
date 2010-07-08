@@ -1,3 +1,41 @@
+2010-07-08 # 0.7.16
+
+[NEW] WdModel: The active record class is now inherited from the parent model.
+
+[NEW] WdModule: Added getters support.
+
+[NEW] WdModule: Added 'model' getter.
+
+[NEW] WdHook: Callback can now be objects defined as 'o:<object_class>'.
+
+[NEW] The path to the config origin is now used as a key for each configs.
+
+[NEW] The autoloader now executes the `__static_construct()` method where available. This feature
+should be used to replace the former autoconfig process.
+
+[NEW] WdActiveRecord: One can implement the `__get_them_all` method to create a general fallback
+for the `__get` method.
+
+[NEW] Added RESTful support for operations.
+
+[NEW] Operations can now be defined using routes.
+
+[NEW] Added the WdApplicationSession class for lazy session creation using the `session` virtual
+property of the application object. The session is now started on demand.
+
+[NEW] Models can now be directly loaded using the core object. 
+
+[CHG] WdHook: Hook's callback is not longer called with a clone of the hook as first parameter.
+The arguments passed to the call() method are passed as is to the hook's callback.
+
+[CHG] The WdOperation::dispatch() method now returns the result of the operation.
+
+[CHG] The classes autoconfig() method now receive an array of configs instead of a variable number
+of arguments.
+
+
+
+
 2010-04-25 # 0.7.14
 
 [NEW] The WdHook class has been completely rewrote.

@@ -768,6 +768,11 @@ class WdDatabaseTable
 
 		return $counts;
 	}
+	
+	public function find($completion=null, array $args=array(), array $options=array())
+	{
+		return $this->select(array('*'), $completion, $args, $options);
+	}
 
 	/*
 	 * TODO: move the following methods to WdModel
@@ -776,7 +781,7 @@ class WdDatabaseTable
 
 	public function loadAll($completion=null, array $args=array(), array $options=array())
 	{
-		return $this->select(array('*'), $completion, $args, $options);
+		return $this->find($completion, $args, $options);
 	}
 
 	public function loadRange($start, $limit=null, $where=null, array $args=array(), array $options=array())
@@ -808,7 +813,7 @@ class WdDatabaseTable
 		if (is_array($this->primary))
 		{
 			$where = array();
-
+			
 			foreach ($this->primary as $identifier)
 			{
 				$where[] = "`$identifier` = ?";

@@ -25,9 +25,11 @@ require_once 'wdmodule.php';
 #
 #
 
+$stats = array();
+
 class WdCore
 {
-	const VERSION = '0.7.14 (2010-04-25)';
+	const VERSION = '0.7.16 (2010-07-08)';
 
 	public $locale;
 	public $descriptors = array();
@@ -40,10 +42,8 @@ class WdCore
 	static protected $pending_configs = array();
 	static protected $constructed_configs = array();
 
-	static public function autoconfig($config)
+	static public function autoconfig(array $configs)
 	{
-		$configs = func_get_args();
-
 		array_unshift($configs, self::$config);
 
 		self::$config = call_user_func_array('wd_array_merge_recursive', $configs);
@@ -97,13 +97,15 @@ class WdCore
 	#
 	#
 
+	public $models;
+
 	public function __construct()
 	{
 		#
 		# handle magic quotes
 		#
 
-		if (get_magic_quotes_gpc())
+		if (/*version_compare(PHP_VERSION, '5.3', '<') &&*/ get_magic_quotes_gpc())
 		{
 			#
 			# warn about magic quotes
@@ -118,7 +120,7 @@ class WdCore
 			# bad magic quotes !
 			#
 
-			wd_killMagicQuotes();
+			wd_kill_magic_quotes();
 		}
 
 		$class = get_class($this);
@@ -127,53 +129,21 @@ class WdCore
 		# register some functions
 		#
 
-		spl_autoload_register(array($class, 'autoloadHandler'));
+		spl_autoload_register(array($class, 'autoload_handler'));
 		set_exception_handler(array($class, 'exceptionHandler'));
 		set_error_handler(array('WdDebug', 'errorHandler'));
 
 		#
-		# we create a session if none is created yet
+		#
 		#
 
-		if (!session_id())
-		{
-			#
-			# we get rid of the ?PHPSESSION thingy added by PHP by default
-			#
-
-			$offsession = array() + $_SESSION;
-
-			$session_name = self::getConfig('sessionId');
-
-			ini_set('session.use_cookies', true);
-			ini_set('session.use_only_cookies', true);
-			ini_set('session.use_trans_sid', false);
-			ini_set('session.name', $session_name);
-
-			#
-			# Well... this looks bad. It's actually a patch for Flash because this dumb ass doesn't
-			# sent the cookies along its request. The only solution is to provide the session id
-			# within the POST. (added to support Fancy upload)
-			#
-
-			if (isset($_POST[$session_name]))
-			{
-				session_id($_POST[$session_name]);
-			}
-
-			#
-			# the session can now start
-			#
-
-			session_start();
-
-			if (0)
-			{
-				$_SESSION = wd_array_merge_recursive($offsession, $_SESSION);
-			}
-		}
-
 		WdLocale::addPath(dirname(__FILE__));
+
+		#
+		# access
+		#
+
+		$this->models = new WdCoreModelsArrayAccess();
 	}
 
 	public static function exceptionHandler($exception)
@@ -183,8 +153,10 @@ class WdCore
 		exit;
 	}
 
-	static private function autoloadHandler($name)
+	static private function autoload_handler($name)
 	{
+		static $lastcount;
+
 		if ($name == 'parent')
 		{
 			return false;
@@ -201,11 +173,24 @@ class WdCore
 			require_once $list[$name];
 
 			#
+			# static construct
+			#
+
+			if (method_exists($name, '__static_construct'))
+			{
+				call_user_func(array($name, '__static_construct'));
+			}
+
+			#
 			# autoconfig
 			#
 
+			// TODO-20100701: autoconfig should die
+
 			if (method_exists($name, 'autoconfig'))
 			{
+				//wd_log("The $name class still uses autoconfig instead of __static_construct");
+
 				$handlers = array_flip(self::$config['autoconfig']);
 
 				if (isset($handlers[$name]))
@@ -218,10 +203,8 @@ class WdCore
 					{
 						//wd_log('autoload: config found for class \1', array($name));
 
-						call_user_func_array(array($name, 'autoconfig'), self::$pending_configs[$config_name]);
+						call_user_func(array($name, 'autoconfig'), self::$pending_configs[$config_name]);
 					}
-
-					//var_dump($handlers);
 				}
 			}
 
@@ -232,9 +215,12 @@ class WdCore
 		# try aliases
 		#
 
-		if (isset(self::$config['classes aliases'][$name]))
+		$aliases = self::$config['classes aliases'];
+		//$aliases = array_change_key_case(self::$config['classes aliases']);
+
+		if (isset($aliases[$name]))
 		{
-			$original = self::$config['classes aliases'][$name];
+			$original = $aliases[$name];
 
 			eval('final class ' . $name . ' extends ' . $original . ' {}');
 
@@ -296,7 +282,7 @@ class WdCore
 			)
 		);
 
-		//wd_log_time('cache modules start');
+//		wd_log_time('cache modules start');
 
 		if (self::$config['cache modules'])
 		{
@@ -309,7 +295,7 @@ class WdCore
 			$aggregate = $this->readModules_construct();
 		}
 
-		//wd_log_time('cache modules done');
+//		wd_log_time('cache modules done');
 
 		#
 		# locale
@@ -330,9 +316,16 @@ class WdCore
 
 		$configs = $aggregate['configs'];
 
+		/*
 		foreach ($configs as $key => $pouic)
 		{
 			self::$pending_configs[$key] = isset(self::$pending_configs[$key]) ? array_merge(self::$pending_configs[$key], $pouic) : $pouic;
+		}
+		*/
+
+		foreach ($configs as $key => $pouic)
+		{
+			self::$pending_configs[$key] = isset(self::$pending_configs[$key]) ? array_merge($pouic, self::$pending_configs[$key]) : $pouic;
 		}
 
 		/* the config is dispatched here in order to have autoload ready */
@@ -465,7 +458,8 @@ class WdCore
 							continue;
 						}
 
-						$aggregate['configs'][$name][] = $config;
+						//$aggregate['configs'][$name][] = $config;
+						$aggregate['configs'][$name][$root . DIRECTORY_SEPARATOR . $file] = $config;
 					}
 				}
 			}
@@ -544,7 +538,10 @@ class WdCore
 				}
 
 				$configs[basename($file, '.php')] = self::isolatedRequire($config_root . $file, $config_root, $module_root);
+				//$configs[$module_root] = self::isolatedRequire($config_root . $file, $config_root, $module_root);
 			}
+
+			closedir($dh);
 		}
 
 		#
@@ -557,6 +554,43 @@ class WdCore
 		(
 			$base . '_WdModule' => $module_root . 'module.php'
 		);
+
+		$autoload_root = $module_root . 'autoload' . DIRECTORY_SEPARATOR;
+
+		if (is_dir($autoload_root))
+		{
+			$dh = opendir($autoload_root);
+
+			if (!$dh)
+			{
+				throw new WdException
+				(
+					'Unable to open direcotry %root', array
+					(
+						'%root' => $autoload_root
+					)
+				);
+			}
+
+			while (($file = readdir($dh)) !== false)
+			{
+				if (substr($file, -4, 4) != '.php')
+				{
+					continue;
+				}
+
+				$name = basename($file, '.php');
+
+				if ($name[0] == '_')
+				{
+					$name = $base . $name;
+				}
+
+				$autoload[$name] = $autoload_root . $file;
+			}
+
+			closedir($dh);
+		}
 
 		#
 		# autoloads for models and activerecords
@@ -793,11 +827,11 @@ class WdCore
 			# Thus we only need to _get_ the module.
 			#
 
-			//wd_log_time(" run module $m_id - start");
+//			wd_log_time(" run module $m_id - start");
 
 			$this->getModule($m_id);
 
-			//wd_log_time(" run module $m_id - finish");
+//			wd_log_time(" run module $m_id - finish");
 		}
 	}
 
@@ -873,10 +907,8 @@ class WdCore
 
 		foreach ($configs as $name => $pouic)
 		{
-			self::$pending_configs[$name][] = $pouic;
+			self::$pending_configs[$name][$root] = $pouic;
 		}
-
-		//self::dispatchConfig();
 	}
 
 	static protected function dispatchConfig()
@@ -915,7 +947,8 @@ class WdCore
 
 //			wd_log_time('dispatch config for \1 start', array($id));
 
-			call_user_func_array(array($handler, 'autoconfig'), $configs);
+			//call_user_func_array(array($handler, 'autoconfig'), $configs);
+			call_user_func(array($handler, 'autoconfig'), $configs);
 
 //			wd_log_time('dispatch config for \1 finish', array($id));
 
@@ -999,7 +1032,7 @@ class WdCore
 
 		echo 'WdCore version ' . self::VERSION . ' is running here with:' . PHP_EOL . PHP_EOL;
 		echo implode(PHP_EOL, $modules);
-		
+
 		echo PHP_EOL . PHP_EOL;
 		echo strip_tags(implode(PHP_EOL, WdDebug::fetchMessages('debug')));
 
@@ -1026,7 +1059,9 @@ class WdCore
 
 		self::$is_running = true;
 
+//		wd_log_time('dispatch config - start');
 		self::dispatchConfig();
+//		wd_log_time('dispatch config - finish');
 
 		#
 		# load and run modules
@@ -1043,6 +1078,8 @@ class WdCore
 //		wd_log_time('run modules start');
 		$this->runModules();
 //		wd_log_time('run modules finish');
+
+//		wd_log_time('core is running');
 
 		#
 		# dispatch operations
@@ -1095,7 +1132,39 @@ class WdCore
 
 			$operation->dispatch();
 		}
-
-//		wd_log_time('core is running');
 	}
+}
+
+class WdCoreModelsArrayAccess implements ArrayAccess
+{
+	private $models = array();
+
+	public function offsetSet($offset, $value)
+    {
+    	throw new WdException('Offset is not settable');
+    }
+
+    public function offsetExists($offset)
+    {
+        return isset($this->models[$offset]);
+    }
+
+    public function offsetUnset($offset)
+    {
+        throw new WdException('Offset is not unsettable');
+    }
+
+    public function offsetGet($offset)
+    {
+    	if (empty($this->models[$offset]))
+    	{
+    		global $core;
+
+    		list($module_id, $model_id) = explode('/', $offset) + array(1 => 'primary');
+
+			$this->models[$offset] = $core->getModule($module_id)->model($model_id);
+    	}
+
+    	return $this->models[$offset];
+    }
 }

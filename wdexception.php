@@ -33,6 +33,10 @@ class WdException extends Exception
 		{
 			$this->title = 'Not Found';
 		}
+		else if ($code == 403)
+		{
+			$this->title = 'Forbidden';
+		}
 		else if ($code == 401)
 		{
 			$this->title = 'Unauthorized';

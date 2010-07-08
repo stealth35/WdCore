@@ -74,9 +74,32 @@ class WdModule
 		$this->root = $tags[self::T_ROOT];
 	}
 
+	public function __get($property)
+	{
+		$getter = '__get_' . $property;
+
+		if (method_exists($this, $getter))
+		{
+			return $this->$property = $this->$getter();
+		}
+
+		WdDebug::trigger
+		(
+			'Unknow property %property for object of class %class', array
+			(
+				'%property' => $property, '%class' => get_class($this)
+			)
+		);
+	}
+
 	public function __toString()
 	{
 		return $this->id;
+	}
+
+	protected function __get_model()
+	{
+		return $this->model();
 	}
 
 	/**
@@ -219,7 +242,7 @@ class WdModule
 			{
 				throw new WdException
 				(
-					'Unknown model %model for module %module', array
+					'Unknown model %model for the %module module', array
 					(
 						'%model' => $which,
 						'%module' => $this->id
@@ -251,22 +274,6 @@ class WdModule
 				WdModel::T_CONNECTION => 'primary'
 			);
 
-
-			// TODO-20100115: handle for deprecated code
-
-
-			if ($tags[WdModel::T_CLASS] == 'auto')
-			{
-				throw new WdException('"auto" is no longer valid for T_CLASS in module %module', array('%module' => $this->id));
-			}
-
-			if ($tags[WdModel::T_ACTIVERECORD_CLASS] == 'auto')
-			{
-				throw new WdException('"auto" is no longer valid for T_ACTIVERECORD_CLASS in module %module', array('%module' => $this->id));
-			}
-
-			// //
-
 			#
 			# relations
 			#
@@ -279,7 +286,8 @@ class WdModule
 
 				if (is_string($extends))
 				{
-					$extends = $core->getModule($extends)->model();
+					//$extends = $core->getModule($extends)->model();
+					$extends = $core->models[$extends];
 				}
 
 				if (!$tags[WdModel::T_CLASS])
@@ -288,8 +296,6 @@ class WdModule
 
 					//wd_log('model class for \1 is \2', array($this . '/' . $which, $extends->name_unprefixed));
 				}
-
-				// TODO-20091227: what about the active record ?
 			}
 
 			if (!$tags[WdModel::T_CLASS])
@@ -328,7 +334,8 @@ class WdModule
 							)
 						);
 
-						$implement['table'] = $core->getModule($implement['table'])->model();
+						//$implement['table'] = $core->getModule($implement['table'])->model();
+						$implement['table'] = $core->models[$implement['table']];
 					}
 				}
 			}
@@ -360,35 +367,6 @@ class WdModule
 		return $this->models[$which];
 	}
 
-	/**
-	 * Return a class defined constant.
-	 *
-	 * @param $constant
-	 * The name of the constant to return.
-	 *
-	 * @return mixed
-	 * The value of the constant
-	 */
-
-	public function getConstant($constant)
-	{
-		$rc = @constant(get_class($this) . '::' . $constant);
-
-		if (!$rc)
-		{
-			WdDebug::trigger
-			(
-				'Unknown constant %constant for module %module', array
-				(
-					'%contant' => $constant,
-					'%module' => $this->id
-				)
-			);
-		}
-
-		return $rc;
-	}
-
 	/*
 	**
 
@@ -400,7 +378,7 @@ class WdModule
 	const OPERATION_SAVE = 'save';
 	const OPERATION_DELETE = 'delete';
 
-	public function handleOperation(WdOperation $operation)
+	public function handle_operation(WdOperation $operation)
 	{
 		#
 		# check if the operation is handled by the module
@@ -413,7 +391,7 @@ class WdModule
 		{
 			throw new WdException
 			(
-				'Unknown operation: %operation for module %module', array
+				'Unknown operation %operation for the %module module', array
 				(
 					'%operation' => $name,
 					'%module' => $this->id
@@ -429,11 +407,12 @@ class WdModule
 
 		if (!$this->controlOperation($operation))
 		{
+			/*
 			if ($operation->method == 'GET')
 			{
 				throw new WdException
 				(
-					'The operation %name of %module failed validation.', array
+					"The operation %name of %module didn't pass control", array
 					(
 						'%name' => $name,
 						'%module' => $this->id
@@ -446,13 +425,14 @@ class WdModule
 			{
 				wd_log
 				(
-					'The operation %operation of %destination failed validation', array
+					"The operation %name of %module didn't pass control", array
 					(
-						'%operation' => $name,
-						'%destination' => $operation->destination
+						'%name' => $name,
+						'%module' => $operation->destination
 					)
 				);
 			}
+			*/
 
 			return;
 		}
@@ -499,18 +479,20 @@ class WdModule
 	}
 
 	/**
+	 *
 	 * Validate an operation.
 	 *
-	 * The operation is validated against a set of user defined rules and callbacks.
+	 * The method uses callback methods to validate operations. For example, a "save" operation
+	 * needs a "validate_operation_save" method to be validated.
 	 *
-	 * If there is no rules defined nor callbacks, the operation will *not* be validated.
+	 * If the module doesn't define a validator for an operation, the operation is *not* validated.
 	 *
 	 * @param array $operation
 	 * @param $params
 	 * @return boolean true is the operation has been validated, false otherwise
 	 */
 
-	protected function validateOperation(WdOperation $operation)
+	protected function validate_operation(WdOperation $operation)
 	{
 		$callback = 'validate_operation_' . $operation->name;
 
@@ -518,7 +500,7 @@ class WdModule
 		{
 			throw new WdException
 			(
-				'The %module module has no validator for operation %operation', array
+				'The %module module is missing a validator for the %operation operation', array
 				(
 					'%operation' => $operation->name,
 					'%module' => $this->id
@@ -529,12 +511,13 @@ class WdModule
 		return $this->$callback($operation);
 	}
 
-	/*
-	protected function validate_operation_save(WdOperation $operation)
-	{
-		return false;
-	}
-	*/
+	/**
+	 * Validates a _delete_ operation.
+	 *
+	 * The operation is validated only if the operation key is defined.
+	 *
+	 * @param WdOperation $operation
+	 */
 
 	protected function validate_operation_delete(WdOperation $operation)
 	{
@@ -616,12 +599,12 @@ class WdModule
 
 		if ($controls[self::CONTROL_FORM] && !$this->controlForm($operation))
 		{
-			wd_log('Control down on form. Module: %module, operation: %operation', array('%module' => $this->id, '%operation' => $operation->name));
+			wd_log('Control %control failed for operation %operation on module %module', array('%control' => 'form', '%module' => $this->id, '%operation' => $operation->name));
 
 			return false;
 		}
 
-		if ($controls[self::CONTROL_VALIDATOR] === true && !$this->validateOperation($operation))
+		if ($controls[self::CONTROL_VALIDATOR] === true && !$this->validate_operation($operation))
 		{
 			wd_log('Control down on validator. Module: %module, operation: %operation', array('%module' => $this->id, '%operation' => $operation->name));
 
@@ -635,14 +618,14 @@ class WdModule
 	{
 		global $app;
 
-		return ($app->userId != 0);
+		return ($app->user_id != 0);
 	}
 
 	protected function control_permission(WdOperation $operation, $permission)
 	{
 		global $app;
 
-		if (!$app->user->hasPermission($permission, $this))
+		if (!$app->user->has_permission($permission, $this))
 		{
 			return false;
 		}
@@ -691,7 +674,7 @@ class WdModule
 
 		global $app;
 
-		if (!$app->user->hasOwnership($this, $entry))
+		if (!$app->user->has_ownership($this, $entry))
 		{
 			//wd_log('user %user has no ownership over :module.:key', array('%user' => $user->username, ':module' => $this->id, ':key' => $key));
 
@@ -748,7 +731,7 @@ class WdModule
 	protected function control_form(WdOperation $operation)
 	{
 		$params = &$operation->params;
-		
+
 		$form = isset($operation->form) ? $operation->form : WdForm::load($params);
 
 		if (!$form || !$form->validate($params))

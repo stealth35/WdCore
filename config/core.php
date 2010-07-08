@@ -32,8 +32,9 @@ return array
 	'cache modules' => false,
 
 	'repository' => '/repository',
-	'repository.temp' => '/repository/$temp',
-	'repository.cache' => '/repository/$cache',
+	'repository.temp' => '/repository/temp',
+	'repository.cache' => '/repository/cache',
+	'repository.files' => '/repository/files',
 
 	'sessionId' => 'wdsid'
 );

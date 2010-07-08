@@ -87,15 +87,17 @@ class WdEvent
 				continue;
 			}
 
-			if (!$event)
-			{
-				$event = new WdEvent($type, $params);
-			}
+			#
+			# It's time to call the event callback. If there is no event object created yet, we
+			# create one now, otherwise we update its type.
+			#
+
+			$event ? $event->type = $type : $event = new WdEvent($type, $params);
 
 			foreach ($callbacks as $callback)
 			{
 				#
-				# autoload modules if the callback uses 'm:'
+				# autoload modules if the callback is prefixed by 'm:'
 				#
 
 				if (is_array($callback) && is_string($callback[0]) && $callback[0]{1} == ':' && $callback[0]{0} == 'm')
@@ -106,13 +108,15 @@ class WdEvent
 
 					if (!$core->hasModule($module_id))
 					{
+						#
+						# If the module is unavailable, we silently continue
+						#
+
 						continue;
 					}
 
 					$callback[0] = $core->getModule($module_id);
 				}
-
-				//wd_log('call callback ! \1', array($callback));
 
 				call_user_func($callback, $event);
 
@@ -127,6 +131,7 @@ class WdEvent
 	}
 
 	protected $type;
+	protected $stop = false;
 
 	public function __construct($type, array $params=array())
 	{
@@ -137,8 +142,6 @@ class WdEvent
 			$this->$key = &$value;
 		}
 	}
-
-	protected $stop = false;
 
 	public function stop()
 	{

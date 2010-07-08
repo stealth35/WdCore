@@ -17,7 +17,7 @@
 
 class WdUploaded
 {
-	const ERR_TYPE = 'UPLOAD_ERR_TYPE';
+	const ERR_TYPE = 20;
 
 	public $name;
 	public $size;
@@ -47,7 +47,7 @@ class WdUploaded
 
 			if ($mandatory)
 			{
-				$this->SetError(UPLOAD_ERR_NO_FILE);
+				$this->setError(UPLOAD_ERR_NO_FILE);
 			}
 
 			#
@@ -237,10 +237,10 @@ class WdUploaded
 				(
 					$list ? '@upload.error.mimeList' : '@upload.error.mime', array
 					(
-							'%mime' => $this->mime,
-							'%type' => $last,
-							':list' => implode(', ', $list),
-							':last' => $last
+						'%mime' => $this->mime,
+						'%type' => $last,
+						':list' => implode(', ', $list),
+						':last' => $last
 					)
 				);
 			}

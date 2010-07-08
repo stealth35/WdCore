@@ -18,13 +18,6 @@ if (function_exists('mb_internal_encoding'))
 
 function wd_entities($str, $charset=WDCORE_CHARSET)
 {
-	if (is_array($str))
-	{
-		WdDebug::trigger('str must be a string, array given: \1', array($str));
-
-		return 'wd-entities-debug';
-	}
-
 	return htmlspecialchars($str, ENT_COMPAT, $charset);
 }
 
@@ -57,11 +50,13 @@ function wd_create_cloud($tags, $callback)
 
 function wd_remove_accents($str, $charset=WDCORE_CHARSET)
 {
-    $str = htmlentities($str, ENT_NOQUOTES, $charset);
+	//return iconv($charset, 'ASCII//TRANSLIT//IGNORE', $str);
 
-    $str = preg_replace('#\&([A-za-z])(?:uml|circ|tilde|acute|grave|cedil|ring)\;#', '\1', $str);
+	$str = htmlentities($str, ENT_NOQUOTES, $charset);
+
+	$str = preg_replace('#\&([A-za-z])(?:acute|cedil|circ|grave|ring|tilde|uml)\;#', '\1', $str);
     $str = preg_replace('#\&([A-za-z]{2})(?:lig)\;#', '\1', $str); // pour les ligatures e.g. '&oelig;'
-    $str = preg_replace('#\&[^;]+\;#', '', $str); // supprime les autres caractéres
+    $str = preg_replace('#\&[^;]+\;#', '', $str); // supprime les autres caractères
 
     return $str;
 }
@@ -115,19 +110,19 @@ function wd_discard_substr_by_length($string, $len=3, $separator='-')
 	return $string;
 }
 
-function wd_deepStripSlashes($value)
+function wd_strip_slashes_recursive($value)
 {
 	return is_array($value) ? array_map(__FUNCTION__, $value) : stripslashes($value);
 }
 
-function wd_killMagicQuotes()
+function wd_kill_magic_quotes()
 {
 	if (get_magic_quotes_gpc())
 	{
-		$_GET = array_map('wd_deepStripSlashes', $_GET);
-		$_POST = array_map('wd_deepStripSlashes', $_POST);
-		$_COOKIE = array_map('wd_deepStripSlashes', $_COOKIE);
-		$_REQUEST = array_map('wd_deepStripSlashes', $_REQUEST);
+		$_GET = array_map('wd_strip_slashes_recursive', $_GET);
+		$_POST = array_map('wd_strip_slashes_recursive', $_POST);
+		$_COOKIE = array_map('wd_strip_slashes_recursive', $_COOKIE);
+		$_REQUEST = array_map('wd_strip_slashes_recursive', $_REQUEST);
 
 		ini_set('magic_quotes_gpc', 'Off');
 	}
@@ -530,9 +525,32 @@ function wd_excerpt($str, $limit=55)
 	return $str;
 }
 
-function wd_camelCase($str, $separator='-')
+if (version_compare(PHP_VERSION, '5.3') < 0)
 {
-	return preg_replace_callback('/' . preg_quote($separator) . '\D/', create_function('$match', 'return mb_strtoupper($match[0]{1});'), $str);
+	function wd_camelCase($str, $separator='-')
+	{
+		return preg_replace_callback('/' . preg_quote($separator) . '\D/', wd_camel_case_callback($match), $str);
+	}
+
+	function wd_camel_case_callback($match)
+	{
+		return mb_strtoupper($match[0]{1});
+	}
+}
+else
+{
+	function wd_camelCase($str, $separator='-')
+	{
+		return preg_replace_callback
+		(
+			'/' . preg_quote($separator) . '\D/', function($match)
+			{
+				return mb_strtoupper($match[0]{1});
+			},
+
+			$str
+		);
+	}
 }
 
 function wd_shorten($str, $length=32, $position=.75, &$shortened=null)
@@ -549,18 +567,23 @@ function wd_shorten($str, $length=32, $position=.75, &$shortened=null)
 
 	if ($position == 0)
 	{
-		$str = '…' . mb_substr($str, -$length, $length);
+		$str = '…' . mb_substr($str, $l - $length);
 	}
-	else if ($position == $l)
+	else if ($position == $length)
 	{
-		$str = mb_substr($str, $length) . '…';
+		$str = mb_substr($str, 0, $length) . '…';
 	}
 	else
 	{
-		$str = mb_substr($str, 0, $position) . '…' . mb_substr($str, -($length - $position), $length - $position);
+		$str = mb_substr($str, 0, $position) . '…' . mb_substr($str, $l - ($length - $position));
 	}
 
 	$shortened = true;
 
 	return $str;
+}
+
+function wd_strip_root($str)
+{
+	return substr($str, strlen($_SERVER['DOCUMENT_ROOT']));
 }

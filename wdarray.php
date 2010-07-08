@@ -39,6 +39,9 @@ class WdArray
 		}
 		else
 		{
+			/* FIXME-20100520: this has been desabled because sometime empty values (e.g. '') are
+			 * correct values. The function was first used with WdForm which made sense at the time
+			 * but now changing values would be a rather strange behavious.
 			#
 			# a trick to create undefined values
 			#
@@ -47,6 +50,7 @@ class WdArray
 			{
 				$value = null;
 			}
+			*/
 
 			if ($pre)
 			{
@@ -69,7 +73,7 @@ class WdArray
 		}
 	}
 
-	static public function groupBy($key, $array)
+	static public function group_by($array, $key)
 	{
 		$group = array();
 
@@ -83,7 +87,7 @@ class WdArray
 		return $group;
 	}
 
-	static public function reorderByProperty(array $entries, array $order, $property)
+	static public function reorder_by_property(array $entries, array $order, $property)
 	{
 		$by_property = array();
 

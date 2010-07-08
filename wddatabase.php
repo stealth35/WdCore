@@ -53,7 +53,9 @@ class WdDatabase extends PDO
 		#
 		#
 
-		$_SESSION['stats']['queries'][$this->name] = 0;
+		global $stats;
+
+		$stats['queries'][$this->name] = 0;
 
 		#
 		#
@@ -188,6 +190,10 @@ class WdDatabase extends PDO
 
 		try
 		{
+			global $stats;
+
+			$stats['queries'][$this->name]++;
+
 			$rc = parent::exec($statement);
 
 			if ((int) $this->errorCode())
@@ -399,6 +405,7 @@ class WdDatabase extends PDO
 				case 'integer':
 				case 'text':
 				case 'varchar':
+				case 'bit':
 				{
 					if ($size)
 					{
@@ -461,7 +468,7 @@ class WdDatabase extends PDO
 
 				default:
 				{
-					WdDebug::trigger
+					throw new WdException
 					(
 						'Unknown type %type for row %identifier', array
 						(
@@ -469,8 +476,6 @@ class WdDatabase extends PDO
 							'%identifier' => $identifier
 						)
 					);
-
-					return false;
 				}
 				break;
 			}
@@ -657,7 +662,9 @@ class WdDatabaseStatement extends PDOStatement
 {
 	public function execute($args=array())
 	{
-		$_SESSION['stats']['queries'][$this->connection->name]++;
+		global $stats;
+
+		$stats['queries'][$this->connection->name]++;
 
 		//echo t('execute: <code>\1</code>\2<br />', array($this->queryString, $args)) . PHP_EOL;
 

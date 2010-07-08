@@ -9,7 +9,7 @@
  * @license http://www.weirdog.com/wdcore/license/
  */
 
-class WdActiveRecord
+class WdObject
 {
 	public function __construct()
 	{
@@ -25,6 +25,13 @@ class WdActiveRecord
 			return $this->$property = $this->$getter();
 		}
 
+		$getter = '__get_them_all';
+
+		if (method_exists($this, $getter))
+		{
+			return $this->$property = $this->$getter($property);
+		}
+
 		#
 		#
 		#
@@ -33,14 +40,17 @@ class WdActiveRecord
 
 		if ($success)
 		{
-			return $rc;
+			//return $rc;
+			return $this->$property = $rc;
 		}
 
 		WdDebug::trigger
 		(
-			'Unknow property %property for object of class %class', array
+			'Unknow property %property for object of class %class (available properties: :list)', array
 			(
-				'%property' => $property, '%class' => get_class($this)
+				'%property' => $property,
+				'%class' => get_class($this),
+				':list' => implode(', ', array_keys(get_object_vars($this)))
 			)
 		);
 	}
@@ -72,26 +82,15 @@ class WdActiveRecord
 
 		return $event->value;
 	}
+}
 
-	static protected $models;
-
+class WdActiveRecord extends WdObject
+{
 	protected function model($name=null)
 	{
-		if (!$name)
-		{
-			throw new WdException("Missing model's name");
-		}
+		global $core;
 
-		if (empty(self::$models[$name]))
-		{
-			global $core;
-
-			list($module_id, $model_id) = explode('/', $name) + array(1 => 'primary');
-
-			self::$models[$name] = $core->getModule($module_id)->model($model_id);
-		}
-
-		return self::$models[$name];
+		return $core->models[$name];
 	}
 
 	public function save()

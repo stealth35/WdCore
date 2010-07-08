@@ -72,9 +72,7 @@ class WdFileCache
 	{
 		if (!is_dir($this->root))
 		{
-			wd_log('The repository %repository does not exists', array('%repository' => $this->repository));
-
-			return false;
+			throw new WdHTTPException('The repository %repository does not exists', array('%repository' => $this->repository), 404);
 		}
 
 		$location = getcwd();
@@ -131,7 +129,7 @@ class WdFileCache
 
 		if (!is_dir($this->root))
 		{
-			wd_log('The repository %repository does not exists', array('%repository' => $this->repository));
+			throw new WdHTTPException('The repository %repository does not exists', array('%repository' => $this->repository), 404);
 
 			return call_user_func($contructor, $userdata, $this, $key);
 		}
@@ -192,9 +190,7 @@ class WdFileCache
 
 		if (!is_writable($this->root))
 		{
-			WdDebug::trigger('Repository %repository is not writable', array('%repository' => $this->repository));
-
-			return false;
+			throw new WdHTTPException('Repository %repository is not writable', array('%repository' => $this->repository));
 		}
 
 		$location = getcwd();
@@ -383,6 +379,11 @@ class WdFileCache
 	public function clear()
 	{
 		$files = $this->read();
+
+		if (WDCACHE_USE_APC)
+		{
+			return apc_clear_cache('user');
+		}
 
 		return $this->unlink($files);
 	}
