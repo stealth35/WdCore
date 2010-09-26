@@ -105,28 +105,31 @@ class WdOperation
 
 		if (substr($_SERVER['REQUEST_URI'], 0, 4) == '/do/')
 		{
-			$uri = /*substr(*/$_SERVER['REQUEST_URI']/*, 4)*/;
+			$uri = $_SERVER['REQUEST_URI'];
 
 			if ($_SERVER['QUERY_STRING'])
 			{
 				$uri = substr($uri, 0, -strlen($_SERVER['QUERY_STRING']) - 1);
 			}
 
-			#
-			#
-			#
-
-			preg_match('#^([a-z\.]+)/((\d+)/)?([a-zA-Z0-9]+)$#', substr($uri, 4), $matches);
-
-			if ($matches)
+			if (substr($uri, -5, 5) == '.json')
 			{
-				//$_SERVER['HTTP_ACCEPT'] = 'application/json';
+				$_SERVER['HTTP_ACCEPT'] = 'application/json';
 
-				list( , $destination, , $operation_key, $name) = $matches;
-
-				$request[self::KEY] = $matches[2] ? $operation_key : null;
+				$uri = substr($uri, 0, -5);
 			}
-			else if (1)
+			else if (substr($uri, -4, 4) == '.xml')
+			{
+				$_SERVER['HTTP_ACCEPT'] = 'application/xml';
+
+				$uri = substr($uri, 0, -4);
+			}
+
+			#
+			# routes
+			#
+
+			if (1)
 			{
 				$route = null;
 				$routes = WdRoute::routes();
@@ -152,12 +155,30 @@ class WdOperation
 						$operation->terminus = true;
 						$operation->method = 'GET';
 
-						$_SERVER['HTTP_ACCEPT'] = 'application/json';
+						//$_SERVER['HTTP_ACCEPT'] = 'application/json';
 
 						return $operation;
 					}
 				}
+			}
 
+			#
+			#
+			#
+
+			//preg_match('#^([a-z\.]+)/((\d+)/)?([a-zA-Z0-9]+)$#', substr($uri, 4), $matches);
+			preg_match('#^([a-z\.]+)/(([^/]+)/)?([a-zA-Z0-9]+)$#', substr($uri, 4), $matches);
+
+			if ($matches)
+			{
+				//$_SERVER['HTTP_ACCEPT'] = 'application/json';
+
+				list( , $destination, , $operation_key, $name) = $matches;
+
+				$request[self::KEY] = $matches[2] ? $operation_key : null;
+			}
+			else
+			{
 				throw new WdException('Uknown operation: %operation', array('%operation' => substr($uri, 4)), array(404 => 'Unknow operation'));
 			}
 		}
@@ -259,7 +280,7 @@ class WdOperation
 
 	public function dispatch()
 	{
-		global $core;
+		global $core, $app;
 
 		$name = $this->name;
 
@@ -355,6 +376,8 @@ class WdOperation
 				{
 					case 'application/json':
 					{
+						// https://addons.mozilla.org/en-US/firefox/addon/10869/
+
 						$rc = json_encode($response);
 						$rc_type = 'application/json';
 					}

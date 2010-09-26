@@ -15,30 +15,25 @@ class WdLocale
 	# Language codes: http://www.w3.org/TR/REC-html40/struct/dirlang.html#langcodes
 	#
 
-	static protected $config = array
-	(
-		'cache catalogs' => false,
-		'native' => 'en',
-		'language' => 'en-US',
-		'languages' => array('en'),
-		'timezone' => 'TZ=US/Eastern'
-	);
+	static protected $config;
 
-	static public function autoconfig(array $configs)
+	static public function __static_construct()
 	{
-		array_unshift($configs, self::$config);
+		$fragments = WdConfig::get('locale');
 
-		self::$config = call_user_func_array('array_merge', $configs);
+		$config = call_user_func_array('array_merge', $fragments);
 
-		self::$native = self::$config['native'];
-		self::$language = self::$config['language'];
-		self::$languages = array_combine(array_values(self::$config['languages']), self::$config['languages']);
+		self::$config = $config;
+
+		self::$native = $config['native'];
+		self::$language = $config['language'];
+		self::$languages = array_combine($config['languages'], $config['languages']);
 
 		self::setLanguage(self::$language);
-		self::setTimezone(self::$config['timezone']);
+		self::setTimezone($config['timezone']);
 	}
 
-	static protected $pendingCatalogs = array();
+	static protected $pending_catalogs = array();
 	static public $messages = array();
 
 	static public $native;
@@ -50,7 +45,19 @@ class WdLocale
 	{
 		self::$language = $language;
 
-		setlocale(LC_ALL, 'fr_FR.UTF-8', 'fr_FR.UTF8', 'fr.UTF-8', 'fr.UTF8');
+		list($language, $country) = explode('-', $language) + array(1 => null);
+
+		if (!$country)
+		{
+			static $country_by_language = array
+			(
+				'en' => 'US'
+			);
+
+			$country = isset($country_by_language[$language]) ? $country_by_language[$language] : strtoupper($language);
+		}
+
+		setlocale(LC_ALL, "{$language}_{$country}.UTF-8");
 
 		self::$conventions = localeconv();
 	}
@@ -71,82 +78,7 @@ class WdLocale
 		date_default_timezone_set($timezone);
 	}
 
-	/**
-	 * Create a path made of the root, the language and the file.
-	 * One would override this method to use a custom scheme e.g.
-	 * <root>/<language>-<file>
-	 *
-	 * @param $root
-	 * @param $file
-	 * @param $language
-	 * @return string
-	 * The path to the localized file
-	 */
-
-	/*
-	protected function makeFilename($root, $file, array $options=array())
-	{
-		$options += array
-		(
-			'language' => 'en',
-			'template' => '{root}/language/{language}/{file}',
-			'no-check' => false
-		);
-
-		$rc = strtr
-		(
-			$options['template'], array
-			(
-				'{file}' => $file,
-				'{language}' => $options['language'],
-				'{root}' => $root
-			)
-		);
-
-		// FIXME: on OSX, realpath() returns a valid path even if the file does not exists
-
-		if (!is_file($rc)) // FIXME: no-check ??
-		{
-			//echo t('unknown file \1<br />', array($rc));
-
-			return false;
-		}
-
-		//echo t('try: \1 == \2', array($rc, realpath($rc)));
-
-		return $options['no-check'] ? $rc : realpath($rc);
-	}
-
-	private function getFilename($root, $file, array $options=array())
-	{
-		#
-		# try to get the localized file
-		#
-
-		$path = $this->makeFilename($root, $file, $options + array('language' => $this->language));
-
-		if ($path)
-		{
-			return $path;
-		}
-		else if ($this->language == 'en')
-		{
-			#
-			# if the language is already 'en' we quit here
-			#
-
-			return;
-		}
-
-		#
-		# fallback to the non-localized file
-		#
-
-		return $this->makeFilename($root, $file, $options);
-	}
-	*/
-
-	static public function loadCatalog($root, array $options=array())
+	static protected function load_catalog($root, array $options=array())
 	{
 		//echo "loadCatalog: $root<br />";
 
@@ -168,7 +100,7 @@ class WdLocale
 		# load all catalogs
 		#
 
-		$catalog = array();
+		$messages = array();
 
 		$location = getcwd();
 
@@ -183,14 +115,12 @@ class WdLocale
 				continue;
 			}
 
-			$catalog += require $file;
+			$messages += wd_array_flatten(require $file);
 		}
-
-		//var_dump($catalog);
 
 		chdir($location);
 
-		return $catalog;
+		return $messages;
 	}
 
 	static public function addPath($root)
@@ -202,12 +132,12 @@ class WdLocale
 			return;
 		}
 
-		self::$pendingCatalogs[] = $root;
+		self::$pending_catalogs[] = $root;
 	}
 
 	static protected $cache;
 
-	static public function getCache()
+	static protected function getCache()
 	{
 		if (!self::$cache)
 		{
@@ -233,7 +163,7 @@ class WdLocale
 
 	static protected $loading;
 
-	static protected function loadPendingCatalogs()
+	static protected function load_pending_catalogs()
 	{
 		if (self::$loading)
 		{
@@ -244,7 +174,7 @@ class WdLocale
 
 		if (self::$messages)
 		{
-			$catalog = self::loadPendingCatalogs_construct();
+			$messages = self::load_pending_catalogs_construct();
 		}
 		else
 		{
@@ -257,46 +187,46 @@ class WdLocale
 				# the cache.
 				#
 
-				$catalog = $cache->load('i18n_' . WdLocale::$language, array(__CLASS__, __FUNCTION__ . '_construct'));
+				$messages = $cache->load('i18n_' . WdLocale::$language, array(__CLASS__, __FUNCTION__ . '_construct'));
 			}
 			else
 			{
 				$cache->delete('i18n_' . WdLocale::$language);
 
-				$catalog = self::loadPendingCatalogs_construct();
+				$messages = self::load_pending_catalogs_construct();
 			}
 		}
 
-		self::$messages = $catalog + self::$messages;
+		self::$messages = $messages + self::$messages;
 
 		if (0)
 		{
 			ksort(self::$messages);
 
-			echo 'loadPendingCatalogs: ' . wd_dump(self::$pendingCatalogs) . wd_dump(self::$messages);
+			echo 'load_pending_catalogs: ' . wd_dump(self::$pending_catalogs) . wd_dump(self::$messages);
 		}
 
-		self::$pendingCatalogs = array();
+		self::$pending_catalogs = array();
 		self::$loading = false;
 	}
 
-	static public function loadPendingCatalogs_construct()
+	static public function load_pending_catalogs_construct()
 	{
-		$messages = array();
+		$rc = array();
 
-		foreach (self::$pendingCatalogs as $root)
+		foreach (self::$pending_catalogs as $root)
 		{
-			$catalog = self::loadCatalog($root);
+			$messages = self::load_catalog($root);
 
-			if (!$catalog)
+			if (!$messages)
 			{
 				continue;
 			}
 
-			$messages = $messages + $catalog;
+			$rc += $messages;
 		}
 
-		return $messages;
+		return $rc;
 	}
 
 	/**
@@ -307,32 +237,16 @@ class WdLocale
 	 * @return unknown_type
 	 */
 
-	/*
-	public function getFileContents($file, $root)
-	{
-		$final = $this->getFilename($root, $file);
-
-		if (!$final)
-		{
-			return;
-		}
-
-		return file_get_contents($final);
-	}
-	*/
-
-	static private $_localize_args;
-
-	static public function translate($str, $args)
+	static public function translate($str, array $args=array(), array $options=array())
 	{
 		if (!$str)
 		{
 			return $str;
 		}
 
-		if (self::$pendingCatalogs)
+		if (self::$pending_catalogs)
 		{
-			self::loadPendingCatalogs();
+			self::load_pending_catalogs();
 		}
 
 		$catalog = self::$messages;
@@ -346,13 +260,34 @@ class WdLocale
 		#
 		#
 
-		if (isset($catalog[$str]))
+		$try = $str;
+
+		if (isset($options['scope']))
 		{
-			$str = $catalog[$str];
+			$scope = $options['scope'];
+
+			if (is_array($scope))
+			{
+				$scope = implode('.', $scope);
+			}
+
+			$try = $scope . '.' . $str;
 		}
-		else if (0)
+
+		if (isset($catalog[$try]))
 		{
-			$_SESSION['wddebug']['messages']['debug'][] = "localize: $str";
+			$str = $catalog[$try];
+		}
+		else if (isset($options['default']))
+		{
+			$default = $options['default'];
+
+			$str = $default;
+
+			if (0)
+			{
+				$_SESSION['wddebug']['messages']['debug'][] = "localize: $str";
+			}
 		}
 
 		if ($args)
@@ -402,9 +337,9 @@ class WdLocale
 	}
 }
 
-function t($str, array $args=array())
+function t($str, array $args=array(), array $options=array())
 {
-	return WdLocale::translate($str, $args);
+	return WdLocale::translate($str, $args, $options);
 }
 
 function wd_format_size($size)
@@ -431,7 +366,70 @@ function wd_format_size($size)
 
 	$conv = WdLocale::$conventions;
 
-	$size = number_format($size, $conv['frac_digits'], $conv['decimal_point'], $conv['thousands_sep']);
+	$size = number_format($size, ($size - floor($size) < .009) ? 0 : 2, $conv['decimal_point'], $conv['thousands_sep']);
 
 	return t($str, array(':size' => $size));
+}
+
+function wd_format_time($time, $format=':default')
+{
+	if ($format[0] == ':')
+	{
+		$format = 'date.formats.' . substr($format, 1);
+	}
+
+	$format = t($format);
+
+	if (is_string($time))
+	{
+		$time = strtotime($time);
+	}
+
+	return strftime($format, $time);
+}
+
+function wd_array_flatten($array, $separator='.', $depth=0)
+{
+	$rc = array();
+
+	if (is_array($separator))
+	{
+		foreach ($array as $key => $value)
+		{
+			if (!is_array($value))
+			{
+				$rc[$key . ($depth ? $separator[1] : '')] = $value;
+
+				continue;
+			}
+
+			$values = wd_array_flatten($value, $separator, $depth + 1);
+
+			foreach ($values as $vkey => $value)
+			{
+				$rc[$key . ($depth ? $separator[1] : '') . $separator[0] . $vkey] = $value;
+			}
+		}
+	}
+	else
+	{
+		foreach ($array as $key => $value)
+		{
+			if (!is_array($value))
+			{
+				$rc[$key] = $value;
+
+				continue;
+			}
+
+			$values = wd_array_flatten($value, $separator, $depth + 1);
+
+			foreach ($values as $vkey => $value)
+			{
+				$rc[$key . $separator . $vkey] = $value;
+			}
+		}
+	}
+
+	return $rc;
 }

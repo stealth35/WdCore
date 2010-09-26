@@ -9,49 +9,13 @@
  * @license http://www.weirdog.com/wdcore/license/
  */
 
-class WdApplication
+require_once 'wdobject.php';
+
+class WdApplication extends WdObject
 {
-	public function __get($property)
-	{
-		$getter = '__get_' . $property;
-
-		if (method_exists($this, $getter))
-		{
-			return $this->$property = $this->$getter();
-		}
-
-		WdDebug::trigger
-		(
-			'Unknow property %property for object of class %class', array
-			(
-				'%property' => $property, '%class' => get_class($this)
-			)
-		);
-	}
-
-	protected function __get_user()
-	{
-		throw new WdException
-		(
-			'The %method method needs to be implemented by a subclass', array
-			(
-				'%method' => __FUNCTION__
-			)
-		);
-	}
-
-	/**
-	 * Return the user's id.
-	 */
-
-	protected function __get_user_id()
-	{
-		return isset($this->session->application['user_id']) ? $this->session->application['user_id'] : null;
-	}
-
 	protected function __get_session()
 	{
-		// TODO-20100708: use config
+		// FIXME-20100708: use config
 
 		$session_name = 'wdsid';
 
@@ -64,19 +28,16 @@ class WdApplication
 			)
 		);
 
-		// FIXME-20100525: we restore _by hand_ the messages saved by the WdDebug class.
+		// TODO-20100525: we restore _by hand_ the messages saved by the WdDebug class.
+		// I'm not sure this is the right place for this.
+		// Maybe we could trigger an event 'application.session.load', giving a chance to other
+		// to handle the session, with a 'application.session.load:before' too.
 
-		if (isset($this->session->wddebug['messages']))
+		WdEvent::fire('application.session.load', array('application' => $this, 'session' => $session));
+
+		if (isset($session->wddebug['messages']))
 		{
-			foreach ($this->session->wddebug['messages'] as $type => $messages)
-			{
-				foreach ($messages as $id => $pair)
-				{
-					list($message, $params) = $pair;
-
-					WdDebug::putMessage($type, $message, $params, $id);
-				}
-			}
+			WdDebug::$messages = array_merge($session->wddebug['messages'], WdDebug::$messages);
 		}
 
 		return $session;

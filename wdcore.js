@@ -17,7 +17,7 @@ var WdOperation = new Class
 	{
 		this.destination = destination;
 		this.operation = operation;
-		
+
 		if (!options)
 		{
 			options = {};
@@ -79,7 +79,7 @@ var WdOperation = new Class
 WdOperation.encode = function(destination, operation, params)
 {
 	var query = '?do=' + destination + '.' + operation;
-	
+
 	$each
 	(
 		params, function (value, key)
@@ -87,44 +87,51 @@ WdOperation.encode = function(destination, operation, params)
 			query += '&' + key + '=' + encodeURIComponent(value);
 		}
 	);
-	
+
 	return query;
 };
 
 function wd_update_assets(assets, done)
 {
 	var base = window.location.protocol + '//' + window.location.hostname;
-	
+
 	//console.info('base: %s', base);
 
 	//
 	// initialize css
 	//
-	
+
 	var css = [];
-			
+
+	if (typeof(document_cached_css_assets) !== 'undefined')
+	{
+		//console.log('cached css assets: %a', document_cached_css_assets);
+
+		css = document_cached_css_assets;
+	}
+
 	if (assets.css)
 	{
 		css = assets.css;
-		
+
 		$(document.head).getElements('link[type="text/css"]').each
 		(
 			function(el)
 			{
 				var href = el.href.substring(base.length);
-				
+
 				if (css.indexOf(href) != -1)
 				{
 					//console.info('css already exists: %s', href);
-					
+
 					css.erase(href);
 				}
 			}
 		);
 	}
-	
+
 	//console.info('css final: %a', css);
-	
+
 	css.each
 	(
 		function(href)
@@ -132,39 +139,46 @@ function wd_update_assets(assets, done)
 			new Asset.css(href);
 		}
 	);
-	
+
 	//
 	// initialize javascript
 	//
-	
+
 	var js = [];
-	
+
+	if (typeof(document_cached_js_assets) !== 'undefined')
+	{
+		//console.log('cached js assets: %a', document_cached_js_assets);
+
+		js = document_cached_js_assets;
+	}
+
 	if (assets.js)
 	{
 		js = assets.js;
-		
+
 		$(document.html).getElements('script').each
 		(
 			function(el)
 			{
 				var src = el.src.substring(base.length);
-				
+
 				if (js.indexOf(src) != -1)
 				{
 					//console.info('script alredy exixts: %s', src);
-					
+
 					js.erase(src);
 				}
 			}
 		);
 	}
-	
+
 	//console.info('js: %a', js);
-	
+
 	if (js.length)
 	{
 		var js_count = js.length;
-		
+
 		js.each
 		(
 			function(src)
@@ -176,20 +190,20 @@ function wd_update_assets(assets, done)
 						onload: function()
 						{
 							//console.info('loaded: %a', src);
-							
+
 							js_count--;
-							
+
 							if (!js_count)
 							{
 								//console.info('no js remaingn, initialize editor');
-	
+
 								/*
 								if (response.rc.initialize)
 								{
 									eval(response.rc.initialize);
 								}
 								*/
-								
+
 								done();
 							}
 						}
@@ -206,7 +220,7 @@ function wd_update_assets(assets, done)
 			eval(response.rc.initialize);
 		}
 		*/
-		
+
 		done();
 	}
 }

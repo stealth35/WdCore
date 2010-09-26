@@ -9,8 +9,6 @@
  * @license http://www.weirdog.com/wdcore/license/
  */
 
-require_once 'wdutils.php';
-
 class WdDatabase extends PDO
 {
 	public $name;

@@ -11,5 +11,59 @@ return array
 
 	'@gender.misses' => 'Madame',
 	'@gender.miss' => 'Mademoiselle',
-	'@gender.mister' => 'Monsieur'
+	'@gender.mister' => 'Monsieur',
+
+	'salutation' => array
+	(
+		'misses' => 'Madame',
+		'miss' => 'Mademoiselle',
+		'mister' => 'Monsieur'
+	),
+
+	'date.formats' => array
+	(
+		'default' => '%d/%m/%Y',
+		'short' => '%d/%m',
+		'short_named' => '%d %b',
+		'long' => '%d %B %Y',
+		'complete' => '%A, %d %B %Y'
+	),
+
+	#
+	# Modules categories
+	#
+
+	'system.modules.categories' => array
+	(
+		'contents' => 'Contenu',
+		'resources' => 'Ressources',
+		'organize' => 'Organiser',
+		'system' => 'Système',
+		'users' => 'Utilisateurs',
+
+		// TODO-20100721: not sure about those two: "feedback" and "structure"
+
+		'feedback' => 'Réactions',
+		'structure' => 'Structure'
+	),
+
+	#
+	# i18n
+	#
+
+	'i18n.languages' => array
+	(
+		'en' => 'Anglais',
+		'es' => 'Espagnol',
+		'fr' => 'Français'
+	),
+
+	#
+	#
+	#
+
+	":size\xC2\xA0b" => ":size\xC2\xA0o",
+	":size\xC2\xA0Kb" => ":size\xC2\xA0Ko",
+	":size\xC2\xA0Mb" => ":size\xC2\xA0Mo",
+	":size\xC2\xA0Gb" => ":size\xC2\xA0Go"
 );

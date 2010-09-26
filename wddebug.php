@@ -9,62 +9,35 @@
  * @license http://www.weirdog.com/wdcore/license/
  */
 
-require_once 'wdlocale.php';
-require_once 'wdutils.php';
-require_once 'wdexception.php';
-
 class WdDebug
 {
-	static public $config = array
-	(
-		'maxMessages' => 100,
-		'reportAddress' => null,
-		'verbose' => true,
-		'lineNumber' => true,
-		'stackTrace' => true,
-		'codeSample' => true,
+	static public $config;
 
-		'mode' => 'test',
-		'modes' => array
-		(
-			'test' => array
-			(
-				'verbose' => true
-			),
-
-			'production' => array
-			(
-				'verbose' => false,
-				'stackTrace' => false,
-				'codeSample' => false
-			)
-		)
-	);
-
-	static public function autoconfig(array $configs)
+	static public function __static_construct()
 	{
-		array_unshift($configs, self::$config);
+		$fragments = WdConfig::get('debug');
 
-		self::$config = call_user_func_array('wd_array_merge_recursive', $configs);
+		self::$config = call_user_func_array('wd_array_merge_recursive', $fragments);
 
 		self::$config = array_merge(self::$config, self::$config['modes'][self::$config['mode']]);
 	}
 
 	static public function shutdown_handler()
 	{
-		/* DIRTY: SESSION
-		global $app;
-
-		if (empty($app))
+		if (!self::$messages)
 		{
 			return;
 		}
 
 		if (!headers_sent())
 		{
-			$app->session('wddebug');
+			global $app;
+
+			if (isset($app))
+			{
+				$app->session;
+			}
 		}
-		*/
 
 		$_SESSION['wddebug']['messages'] = self::$messages;
 	}
@@ -295,6 +268,13 @@ class WdDebug
 			return array();
 		}
 
+		// TODO-20100718: runtime function have strange filenames.
+
+		if (!file_exists($file))
+		{
+			return array();
+		}
+
 		$lines =  array('<br /><strong>Code sample:</strong><br />');
 
 		$fh = fopen($file, 'r');
@@ -350,11 +330,11 @@ class WdDebug
 		# add location information
 		#
 
-		$message .= '<br /><code><strong>Request URI:</strong> ' . $_SERVER['REQUEST_URI'];
+		$message .= '<br /><code><strong>Request URI:</strong> ' . wd_entities($_SERVER['REQUEST_URI']);
 
 		if (isset($_SERVER['HTTP_REFERER']))
 		{
-			$message .= '<br /><strong>Referer:</strong> ' . $_SERVER['HTTP_REFERER'];
+			$message .= '<br /><strong>Referer:</strong> ' . wd_entities($_SERVER['HTTP_REFERER']);
 		}
 
 		$message .= '</code>';
@@ -403,7 +383,7 @@ class WdDebug
 	**
 	*/
 
-	static protected $messages;
+	static public $messages=array();
 
 	public static function putMessage($type, $message, array $params=array(), $messageId=null)
 	{
@@ -462,63 +442,3 @@ class WdDebug
 }
 
 register_shutdown_function(array('WdDebug', 'shutdown_handler'));
-
-/*
-**
-
-SUPPORT FUNCTIONS
-
-**
-*/
-
-function wd_log($str, array $params=array(), $messageId=null, $type='debug')
-{
-	WdDebug::putMessage($type, $str, $params, $messageId);
-}
-
-function wd_log_done($str, array $params=array(), $messageId=null)
-{
-	wd_log($str, $params, $messageId, 'done');
-}
-
-function wd_log_error($str, array $params=array(), $messageId=null)
-{
-	wd_log($str, $params, $messageId, 'error');
-}
-
-function wd_log_time($str, array $params=array())
-{
-	static $reference;
-	static $last;
-
-	if (!$reference)
-	{
-		global $wddebug_time_reference;
-
-		$reference = isset($wddebug_time_reference) ? $wddebug_time_reference : microtime(true);
-
-		// TODO-20100525: the first call is used as an initializer, we have to find a better way
-		// to initialize the reference time.
-
-		return;
-	}
-
-	$now = microtime(true);
-
-	$add = '<var>[';
-
-	if ($last)
-	{
-		$add .= '+' . number_format($now - $last, 3, '\'', '') . '", ';
-	}
-
-	$add .= '∑' . number_format($now - $reference, 3, '\'', '') . '"';
-
-	$add .= ']</var>';
-
-	$last = $now;
-
-	$str = $add . ' ' . $str;
-
-	wd_log($str, $params);
-}

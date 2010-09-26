@@ -19,7 +19,7 @@ class WdEvent
 	{
 		if (empty(self::$listeners))
 		{
-			self::$listeners = WdCore::getConstructedConfig('event', array(__CLASS__, 'listeners_construct'));
+			self::$listeners = WdConfig::get_constructed('event', array(__CLASS__, 'listeners_construct'));
 		}
 
 		return self::$listeners;

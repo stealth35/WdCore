@@ -364,9 +364,7 @@ class WdDatabaseTable
 
 			if (!$parent_id)
 			{
-				WdDebug::trigger('Parent save failed: \1 returning \2', array((string) $this->parent, $parent_id));
-
-				return;
+				throw new WdException('Parent save failed: \1 returning \2', array((string) $this->parent->name, $parent_id));
 			}
 		}
 
@@ -402,7 +400,7 @@ class WdDatabaseTable
 			{
 				if ($driver_name == 'mysql')
 				{
-					if ($parent_id)
+					if ($parent_id && empty($holders[$this->primary]))
 					{
 						$filtered[] = $parent_id;
 						$holders[] = '`{primary}` = ?';
@@ -430,8 +428,11 @@ class WdDatabaseTable
 			# a new entry has been created, but we don't have any other fields then the primary key
 			#
 
-			$filtered[] = $parent_id;
-			$holders[] = '`{primary}` = ?';
+			if (empty($holders[$this->primary]))
+			{
+				$filtered[] = $parent_id;
+				$holders[] = '`{primary}` = ?';
+			}
 
 			$statement = 'INSERT INTO {self} SET ' . implode(', ', $holders);
 
@@ -613,11 +614,11 @@ class WdDatabaseTable
 	**
 	*/
 
-	public function delete($id)
+	public function delete($key)
 	{
 		if ($this->parent)
 		{
-			$this->parent->delete($id);
+			$this->parent->delete($key);
 		}
 
 		$where = 'where ';
@@ -640,7 +641,7 @@ class WdDatabaseTable
 
 		return $this->execute
 		(
-			'delete from `{self}` ' . $where, (array) $id
+			'delete from `{self}` ' . $where, (array) $key
 		);
 	}
 
@@ -768,7 +769,7 @@ class WdDatabaseTable
 
 		return $counts;
 	}
-	
+
 	public function find($completion=null, array $args=array(), array $options=array())
 	{
 		return $this->select(array('*'), $completion, $args, $options);
@@ -813,7 +814,7 @@ class WdDatabaseTable
 		if (is_array($this->primary))
 		{
 			$where = array();
-			
+
 			foreach ($this->primary as $identifier)
 			{
 				$where[] = "`$identifier` = ?";

@@ -58,6 +58,8 @@ class WdUploaded
 		}
 
 		$data = $_FILES[$key];
+		
+		//$this->original_file = $data;
 
 		#
 		# consolide multiple files given the 'index'
@@ -102,10 +104,7 @@ class WdUploaded
 			$this->mime = $data['type'];
 		}
 
-		if ($this->extension)
-		{
-			$this->name = substr($name, 0, -strlen($this->extension));
-		}
+		$this->name = $this->extension ? substr($name, 0, -strlen($this->extension)) : $name;
 
 		switch ($this->mime)
 		{

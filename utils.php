@@ -499,60 +499,105 @@ function wd_array_to_xml($array, $parent='root', $encoding='utf-8', $nest=1)
 
 function wd_excerpt($str, $limit=55)
 {
-	$str = strip_tags((string) $str, '<em><strong><code><del><ins>');
+	$allowed_tags = array
+	(
+		'p', 'code', 'del', 'em', 'ins', 'strong'
+	);
 
-	$words = explode(' ', $str, $limit + 1);
+	$str = strip_tags((string) $str, '<' . implode('><', $allowed_tags) . '>');
 
-	if (count($words) > $limit)
+	$parts = preg_split('#<([^\s>]+)([^>]*)>#m', $str, 0, PREG_SPLIT_DELIM_CAPTURE);
+
+	# i+0: text
+	# i+1: markup ('/' prefix for closing markups)
+	# i+2: markup attributes
+
+	$rc = '';
+	$opened = array();
+
+	foreach ($parts as $i => $part)
 	{
-		#
-		# If the number of words is greated then the limit, the last member of the array
-		# contains the rest of the string, we need to get rid of it.
-		#
+		if ($i % 3 == 0)
+		{
+			$words = preg_split('#(\s+)#', $part, 0, PREG_SPLIT_DELIM_CAPTURE);
 
-		array_pop($words);
+//			var_dump($words);
 
-		#
-		# We can now put back those words together and add a little something to indicate that
-		# the contents was truncated.
-		#
-
-		$str = implode(' ', $words);
-
-		$str .= ' [...]'; // TODO: should be an option
-	}
-
-	return $str;
-}
-
-if (version_compare(PHP_VERSION, '5.3') < 0)
-{
-	function wd_camelCase($str, $separator='-')
-	{
-		return preg_replace_callback('/' . preg_quote($separator) . '\D/', wd_camel_case_callback($match), $str);
-	}
-
-	function wd_camel_case_callback($match)
-	{
-		return mb_strtoupper($match[0]{1});
-	}
-}
-else
-{
-	function wd_camelCase($str, $separator='-')
-	{
-		return preg_replace_callback
-		(
-			'/' . preg_quote($separator) . '\D/', function($match)
+			foreach ($words as $w => $word)
 			{
-				return mb_strtoupper($match[0]{1});
-			},
+				if ($w % 2 == 0)
+				{
+					if (!$word) // TODO-20100908: strip punctuation
+					{
+						continue;
+					}
 
-			$str
-		);
+					$rc .= $word;
+
+					if (!--$limit)
+					{
+						break;
+					}
+				}
+				else
+				{
+					$rc .= $word;
+				}
+			}
+
+			if (!$limit)
+			{
+				break;
+			}
+		}
+		else if ($i % 3 == 1)
+		{
+			if ($part[0] == '/')
+			{
+				$rc .= '<' . $part . '>';
+
+				array_shift($opened);
+			}
+			else
+			{
+				array_unshift($opened, $part);
+
+				$rc .= '<' . $part . $parts[$i + 1] . '>';
+			}
+		}
 	}
+
+	if (!$limit)
+	{
+		$rc .= ' […]';
+	}
+
+	if ($opened)
+	{
+		$rc .= '</' . implode('></', $opened) . '>';
+	}
+
+	return $rc;
 }
 
+
+function wd_camelCase($str, $separator='-')
+{
+	static $callback;
+
+	if (!$callback)
+	{
+		$callback = create_function('$match', 'return mb_strtoupper(mb_substr($match[0], 1));');
+	}
+
+	return preg_replace_callback('/' . preg_quote($separator) . '\D/', $callback, $str);
+}
+/*
+function wd_camel_case_callback($match)
+{
+	return mb_strtoupper(mb_substr($match[0], 1));
+}
+*/
 function wd_shorten($str, $length=32, $position=.75, &$shortened=null)
 {
 	$l = mb_strlen($str);
@@ -586,4 +631,65 @@ function wd_shorten($str, $length=32, $position=.75, &$shortened=null)
 function wd_strip_root($str)
 {
 	return substr($str, strlen($_SERVER['DOCUMENT_ROOT']));
+}
+
+
+/*
+**
+
+SUPPORT FUNCTIONS
+
+**
+*/
+
+function wd_log($str, array $params=array(), $messageId=null, $type='debug')
+{
+	WdDebug::putMessage($type, $str, $params, $messageId);
+}
+
+function wd_log_done($str, array $params=array(), $messageId=null)
+{
+	wd_log($str, $params, $messageId, 'done');
+}
+
+function wd_log_error($str, array $params=array(), $messageId=null)
+{
+	wd_log($str, $params, $messageId, 'error');
+}
+
+function wd_log_time($str, array $params=array())
+{
+	static $reference;
+	static $last;
+
+	if (!$reference)
+	{
+		global $wddebug_time_reference;
+
+		$reference = isset($wddebug_time_reference) ? $wddebug_time_reference : microtime(true);
+
+		// TODO-20100525: the first call is used as an initializer, we have to find a better way
+		// to initialize the reference time.
+
+		return;
+	}
+
+	$now = microtime(true);
+
+	$add = '<var>[';
+
+	$add .= '∑' . number_format($now - $reference, 3, '\'', '') . '"';
+
+	if ($last)
+	{
+		$add .= ', +' . number_format($now - $last, 3, '\'', '') . '"';
+	}
+
+	$add .= ']</var>';
+
+	$last = $now;
+
+	$str = $add . ' ' . $str;
+
+	wd_log($str, $params);
 }

@@ -89,6 +89,24 @@ class WdFileCache
 		return $file ? $this->repository . '/' . $file : $file;
 	}
 
+	public function exists($key)
+	{
+		if (WDCACHE_USE_APC)
+		{
+			return apc_exists($key);
+		}
+
+		$location = getcwd();
+
+		chdir($this->root);
+
+		$rc = file_exists($key);
+
+		chdir($location);
+
+		return $rc;
+	}
+
 	/**
 	 * Load cached contents.
 	 *

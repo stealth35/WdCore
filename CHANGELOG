@@ -1,3 +1,60 @@
+2010-08-18 # 0.8.0-dev
+
+[NEW] Hooks can now be used to add methods (and getters) to instances of the FObject class.
+
+[NEW] The wd_array_insert() function can be used to insert values after or before a specified key.
+
+[NEW] The ".json" or ".xml" extensions can be appened to RESTful operations URL for a response in
+"application/json" or "application/xml" format.
+
+[NEW] The 'control_operation' callback of the WdModule class now throw WdHTTPExceptions when
+control fail on CONTROL_AUTHENTICATION, CONTROL_PERMISSION, CONTROL_ENTRY and CONTROL_OWNERSHIP.
+
+[NEW] Because isset() or get_object_vars() don't work with virtual properties, the `has_property`
+of the FObject class can be used to know if an object has a property even if the property is NULL.
+
+[NEW] The configuration system has been rewrote :
+
+The configuration process is now handled through the WdConfig class instead of the WdCore class.
+
+The 'autoconfig' feature is now deprecated. Classes can use the `__static_construct()` method to
+read configuration on loading.
+
+In order to be able to use the `__static_construct()` method, which is only called by the WdCore's
+autoloader, the WdLocale, WdDebug and WdException classes are no longer loaded by the WdCore include
+file, thus, they are only available *after* the `__construct()` method returns.
+
+[CHG] The CONTROL_AUTHENTICATED control as been renamed as CONTROL_AUTHENTICATION.
+
+[CHG] The operation control and validation process has been refined :
+
+The 'controlOperation' has been renamed as 'handle_operation_control'. The 'controlForm' method has
+been removed. The control callbacks have been renamed from 'control_<type>' to
+'control_operation_<type>'. The operation specific callbacks are now defined as
+'control_operation_<operation_name>_<type>'.
+
+As an example, the following methods are called when the 'save' operation is processed :
+
+	handle_operation
+	handle_control
+	
+	control_operation_save || control_operation
+	control_operation_save_authentication || control_operation_authentication
+	control_operation_save_form || control_operation_form
+	
+	validate_operation_save || validate_operation
+	
+[CHG] The CONTROL_AUTHENTICATION and CONTROL_ENTRY are added when the CONTROL_OWNERSHIP is defined.
+The controls are added only if they are not already defined. 
+
+[REM] The user object will no longer be added as a member of the operation object during operation
+controls. 
+
+[FIX] WdDebug messages are not restored.
+
+
+
+
 2010-07-08 # 0.7.16
 
 [NEW] WdModel: The active record class is now inherited from the parent model.

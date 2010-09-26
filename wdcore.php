@@ -16,9 +16,11 @@ defined('WDCORE_VERBOSE_MAGIC_QUOTES') or define('WDCORE_VERBOSE_MAGIC_QUOTES', 
 # includes
 #
 
-require_once 'wdlocale.php';
-require_once 'wddebug.php';
-require_once 'wdexception.php';
+require_once 'utils.php';
+
+//require_once 'wdlocale.php';
+//require_once 'wddebug.php';
+//require_once 'wdexception.php';
 require_once 'wdmodule.php';
 
 #
@@ -29,7 +31,7 @@ $stats = array();
 
 class WdCore
 {
-	const VERSION = '0.7.16 (2010-07-08)';
+	const VERSION = '0.8.0-dev';
 
 	public $locale;
 	public $descriptors = array();
@@ -38,59 +40,11 @@ class WdCore
 	 * @var array Configuration for the class
 	 */
 
-	static protected $config = array();
-	static protected $pending_configs = array();
-	static protected $constructed_configs = array();
-
-	static public function autoconfig(array $configs)
-	{
-		array_unshift($configs, self::$config);
-
-		self::$config = call_user_func_array('wd_array_merge_recursive', $configs);
-	}
+	static public $config = array();
 
 	static public function getConfig($key, $default=null)
 	{
 		return isset(self::$config[$key]) ? self::$config[$key] : $default;
-	}
-
-	static public function getConstructedConfig($ns, $constructor=null)
-	{
-		if (isset(self::$constructed_configs[$ns]))
-		{
-			return self::$constructed_configs[$ns];
-		}
-
-//		wd_log_time("construct config '$ns' - start");
-
-		if ($constructor == 'merge')
-		{
-			$constructor = array(__CLASS__, 'mergeA');
-		}
-
-		$cache = self::cache();
-
-		$pending = isset(self::$pending_configs[$ns]) ? self::$pending_configs[$ns] : array();
-
-		if (self::$config['cache configs'])
-		{
-			$rc = $cache->load($ns . '.config', $constructor, $pending);
-		}
-		else
-		{
-			$cache->delete($ns . '.config');
-
-			$rc = call_user_func($constructor, $pending);
-		}
-
-//		wd_log_time("construct config '$ns' - finish");
-
-		return $rc;
-	}
-
-	static public function mergeA($arrays)
-	{
-		return call_user_func_array('array_merge', $arrays);
 	}
 
 	#
@@ -102,32 +56,20 @@ class WdCore
 	public function __construct()
 	{
 		#
-		# handle magic quotes
+		# add config
 		#
 
-		if (/*version_compare(PHP_VERSION, '5.3', '<') &&*/ get_magic_quotes_gpc())
-		{
-			#
-			# warn about magic quotes
-			#
+		WdConfig::add(dirname(__FILE__), 10);
 
-			if (WDCORE_VERBOSE_MAGIC_QUOTES)
-			{
-				wd_log('You should disable magic quotes');
-			}
+		$fragments = WdConfig::get('core');
 
-			#
-			# bad magic quotes !
-			#
-
-			wd_kill_magic_quotes();
-		}
-
-		$class = get_class($this);
+		self::$config = call_user_func_array('wd_array_merge_recursive', $fragments);
 
 		#
 		# register some functions
 		#
+
+		$class = get_class($this);
 
 		spl_autoload_register(array($class, 'autoload_handler'));
 		set_exception_handler(array($class, 'exceptionHandler'));
@@ -138,6 +80,20 @@ class WdCore
 		#
 
 		WdLocale::addPath(dirname(__FILE__));
+
+		#
+		# handle magic quotes
+		#
+
+		if (get_magic_quotes_gpc())
+		{
+			if (WDCORE_VERBOSE_MAGIC_QUOTES)
+			{
+				wd_log('You should disable magic quotes');
+			}
+
+			wd_kill_magic_quotes();
+		}
 
 		#
 		# access
@@ -155,8 +111,6 @@ class WdCore
 
 	static private function autoload_handler($name)
 	{
-		static $lastcount;
-
 		if ($name == 'parent')
 		{
 			return false;
@@ -181,33 +135,6 @@ class WdCore
 				call_user_func(array($name, '__static_construct'));
 			}
 
-			#
-			# autoconfig
-			#
-
-			// TODO-20100701: autoconfig should die
-
-			if (method_exists($name, 'autoconfig'))
-			{
-				//wd_log("The $name class still uses autoconfig instead of __static_construct");
-
-				$handlers = array_flip(self::$config['autoconfig']);
-
-				if (isset($handlers[$name]))
-				{
-					$config_name = $handlers[$name];
-
-//					wd_log("the class $name has an autoconfig method for the config $config_name]");
-
-					if (isset(self::$pending_configs[$config_name]))
-					{
-						//wd_log('autoload: config found for class \1', array($name));
-
-						call_user_func(array($name, 'autoconfig'), self::$pending_configs[$config_name]);
-					}
-				}
-			}
-
 			return true;
 		}
 
@@ -215,12 +142,11 @@ class WdCore
 		# try aliases
 		#
 
-		$aliases = self::$config['classes aliases'];
-		//$aliases = array_change_key_case(self::$config['classes aliases']);
+		$list = self::$config['classes aliases'];
 
-		if (isset($aliases[$name]))
+		if (isset($list[$name]))
 		{
-			$original = $aliases[$name];
+			$original = $list[$name];
 
 			eval('final class ' . $name . ' extends ' . $original . ' {}');
 
@@ -257,8 +183,6 @@ class WdCore
 		return self::$caches[$name];
 	}
 
-	protected $cache;
-
 	public function readModules()
 	{
 		if (empty(self::$config['modules']))
@@ -273,7 +197,7 @@ class WdCore
 		# subclasses to use the object, to clear the cache for example
 		#
 
-		$this->cache = new WdFileCache
+		$cache = new WdFileCache
 		(
 			array
 			(
@@ -286,22 +210,24 @@ class WdCore
 
 		if (self::$config['cache modules'])
 		{
-			$aggregate = $this->cache->load('modules', array($this, 'readModules_construct'));
+			$aggregate = $cache->load('modules', array($this, 'readModules_construct'));
 		}
 		else
 		{
-			$this->cache->delete('modules');
+			$cache->delete('modules');
 
 			$aggregate = $this->readModules_construct();
 		}
 
+//		var_dump($aggregate);
+
 //		wd_log_time('cache modules done');
+
+		$this->descriptors = $aggregate['descriptors'];
 
 		#
 		# locale
 		#
-
-		$this->descriptors = $aggregate['descriptors'];
 
 		foreach ($aggregate['catalogs'] as $path)
 		{
@@ -309,80 +235,17 @@ class WdCore
 		}
 
 		#
-		# autoconfig
+		# configuration
 		#
 
-		//wd_log('modules configs: \1', array($aggregate['configs']));
-
-		$configs = $aggregate['configs'];
-
-		/*
-		foreach ($configs as $key => $pouic)
-		{
-			self::$pending_configs[$key] = isset(self::$pending_configs[$key]) ? array_merge(self::$pending_configs[$key], $pouic) : $pouic;
-		}
-		*/
-
-		foreach ($configs as $key => $pouic)
-		{
-			self::$pending_configs[$key] = isset(self::$pending_configs[$key]) ? array_merge($pouic, self::$pending_configs[$key]) : $pouic;
-		}
-
-		/* the config is dispatched here in order to have autoload ready */
-
-//		wd_log_time('modules dispatch config start');
-		$this->dispatchConfig();
-//		wd_log_time('modules dispatch config finish');
-
-//		wd_log('<h1>CONFIGS</h1>\1', array(self::$pending_configs));
-
+		WdConfig::add($aggregate['configs']);
 
 		#
-		# check circular dependencies of extends
+		# reload config with modules fragments and add collected autoloads
 		#
 
-		if (WDCORE_CHECK_CIRCULAR_DEPENDENCIES)
-		{
-			foreach ($this->descriptors as $module_id => $descriptor)
-			{
-				if (isset($descriptor[WdDatabaseTable::T_EXTENDS]))
-				{
-					$heritage = array();
-
-					$extends = explode(WdPackageDescriptor::SEPARATOR, $module_id);
-
-					while ($extends)
-					{
-						list($ext_p, $ext_m) = $extends;
-
-						$ext_id = implode(WdPackageDescriptor::SEPARATOR, $extends);
-
-						if (in_array($ext_id, $heritage))
-						{
-							throw new WdException
-							(
-								'Circular extends detected on %extends in %heritage', array
-								(
-									'%extends' => $ext_id,
-									'%heritage' => implode(' -> ', $heritage)
-								)
-							);
-						}
-
-						$heritage[] = $ext_id;
-
-						if (empty($this->descriptors[$ext_id][WdDatabaseTable::T_EXTENDS]))
-						{
-							break;
-						}
-
-						$extends = $this->descriptors[$ext_id][WdDatabaseTable::T_EXTENDS];
-					}
-
-					//wd_log('heritage: \1', implode(' -> ', $heritage));
-				}
-			}
-		}
+		self::$config = WdConfig::get_constructed('core', 'merge_recursive');
+		self::$config['autoload'] = array_merge(self::$config['autoload'], $aggregate['autoload']);
 	}
 
 	/**
@@ -397,13 +260,8 @@ class WdCore
 		(
 			'descriptors' => array(),
 			'catalogs' => array(),
-			'configs' => array
-			(
-				'core' => array
-				(
-					array()
-				)
-			),
+			'configs' => array(),
+			'autoload' => array()
 		);
 
 		foreach (self::$config['modules'] as $root)
@@ -432,34 +290,26 @@ class WdCore
 					continue;
 				}
 
-				$read = $this->readModules_unit($file, $root . DIRECTORY_SEPARATOR . $file . DIRECTORY_SEPARATOR);
+				$module_root = $root . DIRECTORY_SEPARATOR . $file;
+				$read = $this->readModules_unit($file, $module_root . DIRECTORY_SEPARATOR);
 
 				if ($read)
 				{
 					$aggregate['descriptors'][$file] = $read['descriptor'];
 
-					if ($read['i18n'])
+					if (is_dir($module_root . '/i18n'))
 					{
-						$aggregate['catalogs'][] = $read['i18n'];
+						$aggregate['catalogs'][] = $module_root;
 					}
 
-					foreach ($read['configs'] as $name => $config)
+					if (is_dir($module_root . '/config'))
 					{
-						#
-						# WdCore config is handled separately, because we know how to merge
-						# multiple configs, and because the merge is done here and the result will
-						# probably be cached, we might save some precious time.
-						#
+						$aggregate['configs'][] = $module_root;
+					}
 
-						if ($name == 'core')
-						{
-							$aggregate['configs']['core'][0] = wd_array_merge_recursive($aggregate['configs']['core'][0], $config);
-
-							continue;
-						}
-
-						//$aggregate['configs'][$name][] = $config;
-						$aggregate['configs'][$name][$root . DIRECTORY_SEPARATOR . $file] = $config;
+					if ($read['autoload'])
+					{
+						$aggregate['autoload'] += $read['autoload'];
 					}
 				}
 			}
@@ -496,53 +346,6 @@ class WdCore
 
 		$descriptor[WdModule::T_ROOT] = $module_root;
 		$descriptor[WdModule::T_ID] = $module_id;
-
-		#
-		# add locale catalog
-		#
-
-		$i18n = null;
-
-		if (is_dir($module_root . 'i18n'))
-		{
-			$i18n = $module_root;
-		}
-
-		#
-		# config
-		#
-
-		$configs = array();
-		$config_root = $module_root . 'config' . DIRECTORY_SEPARATOR;
-
-		if (is_dir($config_root))
-		{
-			$dh = opendir($config_root);
-
-			if (!$dh)
-			{
-				throw new WdException
-				(
-					'Unable to open directory %root', array
-					(
-						'%root' => $config_root
-					)
-				);
-			}
-
-			while (($file = readdir($dh)) !== false)
-			{
-				if (substr($file, -4, 4) != '.php')
-				{
-					continue;
-				}
-
-				$configs[basename($file, '.php')] = self::isolatedRequire($config_root . $file, $config_root, $module_root);
-				//$configs[$module_root] = self::isolatedRequire($config_root . $file, $config_root, $module_root);
-			}
-
-			closedir($dh);
-		}
 
 		#
 		# autoloads for the module
@@ -607,13 +410,6 @@ class WdCore
 			}
 		}
 
-		if (empty($configs['core']['autoload']))
-		{
-			$configs['core']['autoload'] = array();
-		}
-
-		$configs['core']['autoload'] += $autoload;
-
 		#
 		# return what we've collected
 		#
@@ -621,8 +417,7 @@ class WdCore
 		return array
 		(
 			'descriptor' => $descriptor,
-			'i18n' => $i18n,
-			'configs' => $configs
+			'autoload' => $autoload
 		);
 	}
 
@@ -835,125 +630,9 @@ class WdCore
 		}
 	}
 
-	static protected function readConfig($root)
+	public function get_loaded_modules_ids()
 	{
-		$parent_root = $root . DIRECTORY_SEPARATOR;
-		$root = $parent_root . 'config';
-
-		$dh = opendir($root);
-
-		if (!$dh)
-		{
-			throw new WdException
-			(
-				'Unable to open directory %root', array
-				(
-					'%root' => $root
-				)
-			);
-		}
-
-		$root .= DIRECTORY_SEPARATOR;
-		$configs = array();
-
-		while (($file = readdir($dh)) !== false)
-		{
-			if (substr($file, -4, 4) != '.php')
-			{
-				continue;
-			}
-
-			$config = self::isolatedRequire($root . $file, $root, $parent_root);
-			$config_name = basename($file, '.php');
-
-			$configs[$config_name] = $config;
-		}
-
-		return $configs;
-	}
-
-	static protected function isolatedRequire($path, $config_root, $root)
-	{
-		return require $path;
-	}
-
-	static public function addConfig($root=null)
-	{
-		if (self::$is_running)
-		{
-			WdDebug::trigger('Too late to add config, core is already running.');
-		}
-
-		if (!self::$config)
-		{
-			$core_root = dirname(__FILE__) . DIRECTORY_SEPARATOR;
-			$core_config_root = $core_root . 'config' . DIRECTORY_SEPARATOR;
-
-			self::$config = self::isolatedRequire($core_config_root . 'core.php', $core_config_root, $core_root);
-
-			// TODO-20100107: load the rest of the config.
-
-			//self::addConfig();
-		}
-
-		if (!$root)
-		{
-			$trace = debug_backtrace();
-
-			$root = dirname($trace[0]['file']);
-		}
-
-		$configs = self::readConfig($root);
-
-		foreach ($configs as $name => $pouic)
-		{
-			self::$pending_configs[$name][$root] = $pouic;
-		}
-	}
-
-	static protected function dispatchConfig()
-	{
-		//WdDebug::trigger('dispatchConfig: \1', array(self::$pending_configs));
-
-		$handlers = self::$config['autoconfig'];
-
-		foreach (self::$pending_configs as $id => $configs)
-		{
-			if (empty($handlers[$id]))
-			{
-				//throw new WdException('There is no autoconfig handler for %id', array('%id' => $id));
-
-				continue;
-			}
-
-			$handler = $handlers[$id];
-
-			#
-			# The config is applyed to existing - _loaded_, rather - classes. If the class has not
-			# yet been loaded, the configuration is differed. The classes will later be configured
-			# by the `autoloadHandler` function.
-			#
-
-			if (!class_exists($handler, false))
-			{
-				//echo "la class $handler n'est pas chargée, la configuration est différée<br />";
-
-//				wd_log("la class $handler n'est pas chargée, la configuration est différée");
-
-//				wd_log_time('dispatch config for \1 delayed, finish', array($id));
-
-				continue;
-			}
-
-//			wd_log_time('dispatch config for \1 start', array($id));
-
-			//call_user_func_array(array($handler, 'autoconfig'), $configs);
-			call_user_func(array($handler, 'autoconfig'), $configs);
-
-//			wd_log_time('dispatch config for \1 finish', array($id));
-
-			unset(self::$pending_configs[$id]);
-		}
+		return array_keys($this->loaded_modules);
 	}
 
 	/**
@@ -1059,10 +738,6 @@ class WdCore
 
 		self::$is_running = true;
 
-//		wd_log_time('dispatch config - start');
-		self::dispatchConfig();
-//		wd_log_time('dispatch config - finish');
-
 		#
 		# load and run modules
 		#
@@ -1167,4 +842,117 @@ class WdCoreModelsArrayAccess implements ArrayAccess
 
     	return $this->models[$offset];
     }
+}
+
+class WdConfig
+{
+	static private $pending_paths_by_priority = array();
+
+	static public function add($path, $priority=0)
+	{
+		if (is_array($path))
+		{
+			if (isset(self::$pending_paths_by_priority[$priority]))
+			{
+				self::$pending_paths_by_priority[$priority] = array_merge(self::$pending_paths_by_priority[$priority], $path);
+			}
+			else
+			{
+				self::$pending_paths_by_priority[$priority] = $path;
+			}
+		}
+		else
+		{
+			self::$pending_paths_by_priority[$priority][] = $path;
+		}
+
+		ksort(self::$pending_paths_by_priority);
+	}
+
+	static private $required = array();
+
+	static protected function isolated_require($__file__, $root)
+	{
+		if (empty(self::$required[$__file__]))
+		{
+			self::$required[$__file__] = file_exists($__file__) ? require $__file__ : array();
+		}
+
+		return self::$required[$__file__];
+	}
+
+	static public function get($which)
+	{
+		$pending = self::$pending_paths_by_priority;
+
+		$fragments = array();
+
+		foreach ($pending as $paths)
+		{
+			foreach ($paths as $path)
+			{
+				$file = $path . '/config/' . $which . '.php';
+				$fragments[$path] = self::isolated_require($file, $path . '/');
+			}
+		}
+
+		return $fragments;
+	}
+
+	static private $constructed;
+	static private $cache;
+
+	static public function get_constructed($name, $constructor=null, $from=null)
+	{
+		if (isset(self::$constructed[$name]))
+		{
+			return self::$constructed[$name];
+		}
+
+//		wd_log_time("construct config '$name' - start");
+
+		$cache = self::$cache ? self::$cache : new WdFileCache
+		(
+			array
+			(
+				WdFileCache::T_REPOSITORY => WdCore::getConfig('repository.cache') . '/core',
+				WdFileCache::T_SERIALIZE => true
+			)
+		);
+
+		if (WdCore::$config['cache configs'])
+		{
+			$rc = $cache->load($name . '.config', array(__CLASS__, 'get_constructed_constructor'), array($from ? $from : $name, $constructor));
+		}
+		else
+		{
+			$cache->delete($name . '.config');
+
+			$rc = self::get_constructed_constructor(array($from ? $from : $name, $constructor));
+		}
+
+		self::$constructed[$name] = $rc;
+
+//		wd_log_time("construct config '$name' - finish");
+
+		return $rc;
+	}
+
+	static public function get_constructed_constructor(array $userdata)
+	{
+		list($name, $constructor) = $userdata;
+
+		$fragments = self::get($from ? $from : $name);
+
+		if ($constructor == 'merge')
+		{
+			$rc = call_user_func_array('array_merge', $fragments);
+		}
+		else if ($constructor == 'merge_recursive')
+		{
+			$rc = call_user_func_array('wd_array_merge_recursive', $fragments);
+		}
+
+		return $rc;
+	}
 }

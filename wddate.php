@@ -15,6 +15,8 @@
  * @license http://www.weirdog.com/wdcore/license/
  */
 
+// http://en.wikipedia.org/wiki/Calendar_date
+
 class WdDateTime
 {
 	private $time;
@@ -52,9 +54,51 @@ class WdDateTime
 	}
 }
 
-function wd_ftime($date, $format='%A, %d %B %Y', $modify=NULL, $upperize=false)
+function wd_ftime($date, $format=':default', $modify=NULL, $upperize=false)
 {
+	if ($format[0] == ':')
+	{
+		$format = 'date.formats.' . substr($format, 1);
+	}
+
+	$format = t($format);
+
 	$date = new WdDateTime($date);
 
 	return $date->format($format, $modify, $upperize);
+}
+
+function wd_date_period($date)
+{
+	require_once WDCORE_ROOT . 'wddate.php';
+
+	if (is_numeric($date))
+	{
+		$date_secs = $date;
+		$date = date('Y-m-d', $date);
+	}
+	else
+	{
+		$date_secs = strtotime($date);
+	}
+
+	$today_days = strtotime(date('Y-m-d')) / (60 * 60 * 24);
+	$date_days = strtotime(date('Y-m-d', $date_secs)) / (60 * 60 * 24);
+
+	$diff = $today_days - $date_days;
+
+	if ($diff == 0)
+	{
+		return "Aujourd'hui";
+	}
+	else if ($diff == 1)
+	{
+		return 'Hier';
+	}
+	else if ($diff < 6)
+	{
+		return ucfirst(strftime('%A', $date_secs));
+	}
+
+	return wd_ftime($date);
 }

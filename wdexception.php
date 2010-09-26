@@ -9,10 +9,6 @@
  * @license http://www.weirdog.com/wdcore/license/
  */
 
-require_once 'wdutils.php';
-require_once 'wdlocale.php';
-require_once 'wddebug.php';
-
 @define('WDEXCEPTION_WITH_LOG', true);
 
 class WdException extends Exception

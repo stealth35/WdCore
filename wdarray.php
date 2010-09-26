@@ -142,31 +142,38 @@ function wd_array_by_columns(array $array, $columns, $pad=false)
 	return $finish;
 }
 
-/*
-			foreach ($entries as $key => $entry)
-			{
-				$rc_columns[$i++ % $by_columns][$key] = $entry;
-			}
+/**
+ * Inserts a value in a array before, or after, at given key.
+ *
+ * Numeric keys are not preserved.
+ *
+ * @param $array
+ * @param $relative
+ * @param $value
+ * @param $key
+ * @param $after
+ */
 
-			var_dump($rc_columns);
+function wd_array_insert($array, $relative, $value, $key=null, $after=false)
+{
+	$keys = array_keys($array);
+	$pos = array_search($relative, $keys, true);
 
-			$real_finish = array();
+	if ($after)
+	{
+		$pos++;
+	}
 
-			foreach ($rc_columns as $column)
-			{
-				$count = count($column);
+	$spliced = array_splice($array, $pos);
 
-				if ($pad)
-				{
-					//$column = array_pad($column, $columns, null);
+	if ($key !== null)
+	{
+		$array = array_merge($array, array($key => $value));
+	}
+	else
+	{
+		array_unshift($spliced, $value);
+	}
 
-
-
-				}
-
-				foreach ($column as $key => $value)
-				{
-					$real_finish[] = $key . '-' . $value;
-				}
-			}
-			*/
+	return array_merge($array, $spliced);
+}

@@ -13,7 +13,7 @@ class WdHook
 {
 	static protected $hooks = array();
 
-	static public function configConstructor($configs)
+	static public function config_constructor($configs)
 	{
 		$by_ns = array();
 
@@ -32,7 +32,7 @@ class WdHook
 
 				foreach ($hooks as $name => $definition)
 				{
-					$by_ns[$namespace . '∋' . $name] = $definition;
+					$by_ns[$namespace . '/' . $name] = $definition;
 				}
 			}
 		}
@@ -52,15 +52,15 @@ class WdHook
 			# the (array) cast is a workaround for an APC bug: http://pecl.php.net/bugs/bug.php?id=8118
 			#
 
-			self::$hooks = (array) WdCore::getConstructedConfig('hook', array(__CLASS__, 'configConstructor'));
+			self::$hooks = (array) WdConfig::get_constructed('hook', array(__CLASS__, 'config_constructor'));
 		}
 
-		if (empty(self::$hooks[$ns . '∋' . $name]))
+		if (empty(self::$hooks[$ns . '/' . $name]))
 		{
 			throw new WdException('Undefined hook %name in namespace %ns', array('%name' => $name, '%ns' => $ns));
 		}
 
-		$hook = self::$hooks[$ns . '∋' . $name];
+		$hook = self::$hooks[$ns . '/' . $name];
 
 		#
 		# `$hook` is an array when the hook has not been created yet, in which case we create the
@@ -89,7 +89,7 @@ class WdHook
 				$hook = new WdHook($callback, $params, $tags);
 			}
 
-			self::$hooks[$ns . '∋' . $name] = $hook;
+			self::$hooks[$ns . '/' . $name] = $hook;
 		}
 
 		return $hook;

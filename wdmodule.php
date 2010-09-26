@@ -39,6 +39,7 @@ require_once 'wdmodel.php';
 
 class WdModule
 {
+	const T_CATEGORY = 'category';
 	const T_DESCRIPTION = 'description';
 	const T_DISABLED = 'disabled';
 	const T_ID = 'id';
@@ -191,7 +192,7 @@ class WdModule
 	{
 		if (empty($this->tags[self::T_MODELS]))
 		{
-			return null;
+			return;
 		}
 
 		$rc = true;
@@ -236,6 +237,8 @@ class WdModule
 
 	public function model($which='primary')
 	{
+		global $core;
+
 		if (empty($this->models[$which]))
 		{
 			if (empty($this->tags[self::T_MODELS][$which]))
@@ -381,7 +384,7 @@ class WdModule
 	public function handle_operation(WdOperation $operation)
 	{
 		#
-		# check if the operation is handled by the module
+		# We check if the operation is handled by the module.
 		#
 
 		$name = $operation->name;
@@ -402,44 +405,17 @@ class WdModule
 		}
 
 		#
-		# before we process the operation, we ask for its validation
+		# Before we process the operation, we ask for its validation.
 		#
 
-		if (!$this->controlOperation($operation))
+		if (!$this->handle_operation_control($operation))
 		{
-			/*
-			if ($operation->method == 'GET')
-			{
-				throw new WdException
-				(
-					"The operation %name of %module didn't pass control", array
-					(
-						'%name' => $name,
-						'%module' => $this->id
-					),
-
-					array(500 => 'Operation failed validation')
-				);
-			}
-			else
-			{
-				wd_log
-				(
-					"The operation %name of %module didn't pass control", array
-					(
-						'%name' => $name,
-						'%module' => $operation->destination
-					)
-				);
-			}
-			*/
-
 			return;
 		}
 
 		#
-		# the operation access has been controled, we can now call the operation
-		# handler
+		# The operation access has been controled and validated, we can now call the operation
+		# callback method.
 	  	#
 
 		return $this->$callback($operation);
@@ -449,7 +425,7 @@ class WdModule
 	 *
 	 */
 
-	const CONTROL_AUTHENTICATED = 101;
+	const CONTROL_AUTHENTICATION = 101;
 	const CONTROL_PERMISSION = 102;
 	const CONTROL_ENTRY = 103;
 	const CONTROL_OWNERSHIP = 104;
@@ -478,66 +454,34 @@ class WdModule
 		);
 	}
 
-	/**
-	 *
-	 * Validate an operation.
-	 *
-	 * The method uses callback methods to validate operations. For example, a "save" operation
-	 * needs a "validate_operation_save" method to be validated.
-	 *
-	 * If the module doesn't define a validator for an operation, the operation is *not* validated.
-	 *
-	 * @param array $operation
-	 * @param $params
-	 * @return boolean true is the operation has been validated, false otherwise
-	 */
-
-	protected function validate_operation(WdOperation $operation)
+	protected function handle_operation_control(WdOperation $operation)
 	{
-		$callback = 'validate_operation_' . $operation->name;
+		$operation_name = $operation->name;
 
-		if (!method_exists($this, $callback))
+		$controls = $this->getOperationsAccessControls();
+		$controls = isset($controls[$operation_name]) ? $controls[$operation_name] : array();
+
+		#
+		# Add some controls for the ownership control. The controls are added using a union so that
+		# they won't override user defined controls.
+		#
+
+		if (!empty($controls[self::CONTROL_OWNERSHIP]))
 		{
-			throw new WdException
+			$controls += array
 			(
-				'The %module module is missing a validator for the %operation operation', array
-				(
-					'%operation' => $operation->name,
-					'%module' => $this->id
-				)
+				self::CONTROL_AUTHENTICATION => true,
+				self::CONTROL_ENTRY => true
 			);
 		}
 
-		return $this->$callback($operation);
-	}
+		#
+		# Fill in with defaults
+		#
 
-	/**
-	 * Validates a _delete_ operation.
-	 *
-	 * The operation is validated only if the operation key is defined.
-	 *
-	 * @param WdOperation $operation
-	 */
-
-	protected function validate_operation_delete(WdOperation $operation)
-	{
-		if (empty($operation->params[WdOperation::KEY]) && empty($operation->params[WdOperation::KEYS]))
-		{
-			return false;
-		}
-
-		return true;
-	}
-
-	protected function controlOperation(WdOperation $operation)
-	{
-		$controls = $this->getOperationsAccessControls();
-
-		$operation_name = $operation->name;
-
-		$controls = (isset($controls[$operation_name]) ? $controls[$operation_name] : array()) + array
+		$controls += array
 		(
-			self::CONTROL_AUTHENTICATED => false,
+			self::CONTROL_AUTHENTICATION => false,
 			self::CONTROL_PERMISSION => PERMISSION_NONE,
 			self::CONTROL_ENTRY => false,
 			self::CONTROL_OWNERSHIP => false,
@@ -555,73 +499,149 @@ class WdModule
 		return $this->$callback($operation, $controls);
 	}
 
-	protected function controlForm(WdOperation $operation)
-	{
-		$callback = 'control_form_' . $operation->name;
-
-		if (!method_exists($this, $callback))
-		{
-			$callback = 'control_form';
-		}
-
-		return $this->$callback($operation);
-	}
-
 	protected function control_operation(WdOperation $operation, array $controls)
 	{
-		if ($controls[self::CONTROL_AUTHENTICATED] && !$this->control_authenticated($operation))
-		{
-			wd_log('Control down on authenticated. Module: %module, operation: %operation', array('%module' => $this->id, '%operation' => $operation->name));
+		$operation_name = $operation->name;
 
-			return false;
+		if ($controls[self::CONTROL_AUTHENTICATION])
+		{
+			$callback = 'control_operation_' . $operation_name . '_authentication';
+
+			if (!method_exists($this, $callback))
+			{
+				$callback = 'control_operation_authentication';
+			}
+
+			if (!$this->$callback($operation))
+			{
+				throw new WdHTTPException
+				(
+					'The %operation operation requires authentication.', array
+					(
+						'%operation' => $operation_name
+					),
+
+					401
+				);
+			}
 		}
 
-		if ($controls[self::CONTROL_PERMISSION] && !$this->control_permission($operation, $controls[self::CONTROL_PERMISSION]))
+		if ($controls[self::CONTROL_PERMISSION])
 		{
-			wd_log('Control down on permission. Module: %module, operation: %operation', array('%module' => $this->id, '%operation' => $operation->name));
+			$callback = 'control_operation_' . $operation_name . '_permission';
 
-			return false;
+			if (!method_exists($this, $callback))
+			{
+				$callback = 'control_operation_permission';
+			}
+
+			if (!$this->$callback($operation, $controls[self::CONTROL_PERMISSION]))
+			{
+				throw new WdHTTPException
+				(
+					"You don't have permission to request the %operation operation on the %module module.", array
+					(
+						'%operation' => $operation_name,
+						'%module' => $this->id
+					),
+
+					401
+				);
+			}
 		}
 
-		if ($controls[self::CONTROL_ENTRY] && !$this->control_entry($operation))
+		if ($controls[self::CONTROL_ENTRY])
 		{
-			wd_log('Control down on entry. Module: %module, operation: %operation', array('%module' => $this->id, '%operation' => $operation->name));
+			$callback = 'control_operation_' . $operation_name . '_entry';
 
-			return false;
+			if (!method_exists($this, $callback))
+			{
+				$callback = 'control_operation_entry';
+			}
+
+			if (!$this->$callback($operation))
+			{
+				throw new WdHTTPException
+				(
+					"The requested entry %key could not be loaded from the %module module.", array
+					(
+						'%key' => $key,
+						'%module' => $this->id
+					),
+
+					404
+				);
+			}
 		}
 
-		if ($controls[self::CONTROL_OWNERSHIP] && !$this->control_ownership($operation))
+		if ($controls[self::CONTROL_OWNERSHIP])
 		{
-			wd_log('Control down on ownership. Module: %module, operation: %operation', array('%module' => $this->id, '%operation' => $operation->name));
+			$callback = 'control_operation_' . $operation_name . '_ownership';
 
-			return false;
+			if (!method_exists($this, $callback))
+			{
+				$callback = 'control_operation_ownership';
+			}
+
+			if (!$this->$callback($operation))
+			{
+				throw new WdHTTPException
+				(
+					"You don't have ownership of the entry %key.", array
+					(
+						'%key' => $operation->key
+					),
+
+					401
+				);
+			}
 		}
 
-		if ($controls[self::CONTROL_FORM] && !$this->controlForm($operation))
+		if ($controls[self::CONTROL_FORM])
 		{
-			wd_log('Control %control failed for operation %operation on module %module', array('%control' => 'form', '%module' => $this->id, '%operation' => $operation->name));
+			$callback = 'control_operation_' . $operation_name . '_form';
 
-			return false;
+			if (!method_exists($this, $callback))
+			{
+				$callback = 'control_operation_form';
+			}
+
+			if (!$this->$callback($operation))
+			{
+				wd_log('Control %control failed for operation %operation on module %module.', array('%control' => 'form', '%module' => $this->id, '%operation' => $operation_name));
+
+				return false;
+			}
 		}
 
-		if ($controls[self::CONTROL_VALIDATOR] === true && !$this->validate_operation($operation))
+		if ($controls[self::CONTROL_VALIDATOR])
 		{
-			wd_log('Control down on validator. Module: %module, operation: %operation', array('%module' => $this->id, '%operation' => $operation->name));
+			$callback = 'validate_operation_' . $operation_name;
 
-			return false;
+			if (!method_exists($this, $callback))
+			{
+				$callback = 'validate_operation';
+			}
+
+			if (!$this->$callback($operation))
+			{
+				wd_log('Control down on validator. Module: %module, operation: %operation', array('%module' => $this->id, '%operation' => $operation_name));
+
+				return false;
+			}
 		}
 
 		return true;
 	}
 
-	protected function control_authenticated(WdOperation $operation)
+	protected function control_operation_authentication(WdOperation $operation)
 	{
 		global $app;
 
 		return ($app->user_id != 0);
 	}
 
-	protected function control_permission(WdOperation $operation, $permission)
+	protected function control_operation_permission(WdOperation $operation, $permission)
 	{
 		global $app;
 
@@ -630,9 +650,60 @@ class WdModule
 			return false;
 		}
 
-		$operation->user = $app->user;
+		return true;
+	}
+
+	/**
+	 * Control the existence of the entry the operation is to be applied to.
+	 *
+	 * The operation's key is used to load the entry from the primary model of the module. If the
+	 * loading fails, the method returns false. Otherwise, the loaded entry is added to the
+	 * operation object under the `entry` property and the method returns true.
+	 *
+	 * @param $operation The operation object.
+	 */
+
+	protected function control_operation_entry(WdOperation $operation)
+	{
+		$key = $operation->key;
+
+		if (!$key)
+		{
+			$operation->entry = null;
+
+			return false;
+		}
+
+		$entry = $this->model()->load($key);
+
+		if (!$entry)
+		{
+			return false;
+		}
+
+		$operation->entry = $entry;
 
 		return true;
+	}
+
+	/**
+	 * Control 'entry' for the 'save' operation.
+	 *
+	 * Unlike the default 'entry' control, this method return true if the operation as no key.
+	 *
+	 * @param WdOperation $operation
+	 */
+
+	protected function control_operation_save_entry(WdOperation $operation)
+	{
+		if (!$operation->key)
+		{
+			$operation->entry = null;
+
+			return true;
+		}
+
+		return $this->control_operation_entry($operation);
 	}
 
 	/**
@@ -644,81 +715,46 @@ class WdModule
 	 * Note that the control is considered sucessful if the operation has no key, in which case
 	 * the `user` and `entry` properties added to the operation object are null.
 	 *
-	 * Note: This is not control_entry(). If the operation's key is not defined the control will
-	 * still return TRUE but with a NULL entry !
+	 * Note: This is not control_operation_entry(). If the operation's key is not defined the control will
+	 * still return TRUE.
 	 *
 	 * @param WdOperation $operation
 	 * @return bool
 	 */
 
-	protected function control_ownership(WdOperation $operation)
+	protected function control_operation_ownership(WdOperation $operation)
 	{
 		$key = $operation->key;
 
 		if (!$key)
 		{
-			$operation->user = null;
-			$operation->entry = null;
-
 			return true;
 		}
 
-		$entry = $this->model()->load($key);
+		$entry = $operation->entry;
 
-		if (!$entry)
+		if ($entry)
 		{
-			wd_log_error('Unable to load entry: %nid', array('%nid' => $key));
+			global $app;
 
-			return false;
+			if (!$app->user->has_ownership($this, $entry))
+			{
+				return false;
+			}
 		}
-
-		global $app;
-
-		if (!$app->user->has_ownership($this, $entry))
-		{
-			//wd_log('user %user has no ownership over :module.:key', array('%user' => $user->username, ':module' => $this->id, ':key' => $key));
-
-			return false;
-		}
-
-		$operation->user = $app->user;
-		$operation->entry = $entry;
-
-		return true;
-	}
-
-	protected function control_entry(WdOperation $operation)
-	{
-		$key = $operation->key;
-
-		if (!$key)
-		{
-			$operation->entry = null;
-
-			return false;
-		}
-
-		$entry = $this->model()->load($key);
-
-		if (!$entry)
-		{
-			wd_log_error('Unable to load entry: %nid', array('%nid' => $key));
-
-			return false;
-		}
-
-		$operation->entry = $entry;
 
 		return true;
 	}
 
 	/**
-	 * Control the form which triggered the operation.
+	 * Control the form associated with the operation.
+	 *
+	 * This is the default method callback for the `form` control.
 	 *
 	 * The function assumes the form was saved in the user's session.
 	 *
 	 * If the function fails to retieve or validate the saved form it returns false. Otherwise
-	 * the retrieved form is set in the operation object under the 'form' property and the function
+	 * the retrieved form is set in the operation object under the `form` property and the function
 	 * returns true.
 	 *
 	 * One can override this method to modify operation parameters before the form gets validated,
@@ -728,7 +764,7 @@ class WdModule
 	 * @return bool
 	 */
 
-	protected function control_form(WdOperation $operation)
+	protected function control_operation_form(WdOperation $operation)
 	{
 		$params = &$operation->params;
 
@@ -745,6 +781,26 @@ class WdModule
 	}
 
 	/**
+	 * Default callback for the 'validate' control.
+	 *
+	 * If the module doesn't define a validator for an operation, an exception is thrown.
+	 *
+	 * @param array $operation
+	 */
+
+	protected function validate_operation(WdOperation $operation)
+	{
+		throw new WdException
+		(
+			'The %module module is missing a validator for the %operation operation', array
+			(
+				'%operation' => $operation->name,
+				'%module' => $this->id
+			)
+		);
+	}
+
+	/**
 	 * Handle the OPERATION_SAVE operation
 	 *
 	 * @param array $params
@@ -753,34 +809,48 @@ class WdModule
 
 	protected function operation_save(WdOperation $operation)
 	{
-		$key = $operation->key;
-		$id = $this->model()->save($operation->params, $key);
-		$logParams = array('%key' => $key, '%module' => $this->id);
+		$operation_key = $operation->key;
+		$key = $this->model()->save($operation->params, $operation_key);
+		$log_params = array('%key' => $operation_key, '%module' => $this->id);
 
-		if (!$id)
+		if (!$key)
 		{
 			#
-			# We need to return `null` because `false` is a valid value for the
+			# We need to return `null` because `false` is a valid result for the
 			# WdOperation::dispatch() method, and will trigger an event, which is something we
-			# don't want since the operation failed.
+			# don't want to happen since the operation failed.
 			#
 
-			wd_log_error($key ? 'Unable to update entry %key in %module.' : 'Unable to create entry in %module.', $logParams, 'save');
+			wd_log_error($operation_key ? 'Unable to update entry %key in %module.' : 'Unable to create entry in %module.', $log_params, 'save');
 
 			return;
 		}
 
-		wd_log_done($key ? 'The entry %key in %module has been saved.' : 'A new entry has been saved in %module.', $logParams, 'save');
-
-		// FIXME-20091213: should check operation method and remove query string on "GET".
-
-		//$operation->location = $_SERVER['REQUEST_URI'];
+		wd_log_done($operation_key ? 'The entry %key in %module has been saved.' : 'A new entry has been saved in %module.', $log_params, 'save');
 
 		return array
 		(
-			'mode' => $key ? 'update' : 'insert', // TODO-20100205: rename 'insert' as 'create', in a CRUD style baby
-			'key' => $id
+			'mode' => $operation_key ? 'update' : 'create',
+			'key' => $key
 		);
+	}
+
+	/**
+	 * Validates the 'delete' operation.
+	 *
+	 * The operation is validated only if the operation key is defined.
+	 *
+	 * @param WdOperation $operation
+	 */
+
+	protected function validate_operation_delete(WdOperation $operation)
+	{
+		if (empty($operation->params[WdOperation::KEY]) && empty($operation->params[WdOperation::KEYS]))
+		{
+			return false;
+		}
+
+		return true;
 	}
 
 	protected function operation_delete(WdOperation $operation)
@@ -825,15 +895,6 @@ class WdModule
 			throw new WdException('Keys are missing for the delete operation.');
 		}
 	}
-
-	/*
-	protected function operation_getBlock($params)
-	{
-		echo call_user_func_array(array($this, 'getBlock'), $params);
-
-		exit;
-	}
-	*/
 
 	/**
 	 * Get a block.
