@@ -46,15 +46,9 @@ var WdOperation = new Class
 
 	get: function(params)
 	{
-		var url = this.options.url;
+		this.options.url = '/api/' + this.destination + '/' + this.operation;
 
-		this.options.url += '?do=' + this.destination + '.' + this.operation;
-
-		var rc = this.parent(params);
-
-		this.options.url = url;
-
-		return rc;
+		return this.parent(params);
 	},
 
 	success: function(text)
@@ -78,15 +72,21 @@ var WdOperation = new Class
 
 WdOperation.encode = function(destination, operation, params)
 {
-	var query = '?do=' + destination + '.' + operation;
+	var query = '/api/' + destination + '/' + operation;
+	var parts = [];
 
-	$each
+	Object.each
 	(
 		params, function (value, key)
 		{
-			query += '&' + key + '=' + encodeURIComponent(value);
+			parts.push(key + '=' + encodeURIComponent(value));
 		}
 	);
+
+	if (parts)
+	{
+		query += '?' + parts.join('&');
+	}
 
 	return query;
 };

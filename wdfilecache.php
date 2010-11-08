@@ -11,7 +11,7 @@
 
 // @TODO implement time rules
 
-//define('WDCACHE_USE_APC', false);
+define('WDCACHE_USE_APC', false);
 
 if (!defined('WDCACHE_USE_APC'))
 {
@@ -40,7 +40,7 @@ class WdFileCache
 	{
 		if (empty($tags[self::T_REPOSITORY]))
 		{
-			throw new WdException('The %tag tag is mandatory', array('%tag' => 'T_REPOSITORY'));
+			throw new WdException('The %tag tag is required', array('%tag' => 'T_REPOSITORY'));
 		}
 
 		foreach ($tags as $tag => $value)
@@ -72,7 +72,7 @@ class WdFileCache
 	{
 		if (!is_dir($this->root))
 		{
-			throw new WdHTTPException('The repository %repository does not exists', array('%repository' => $this->repository), 404);
+			throw new WdHTTPException('The repository %repository does not exists.', array('%repository' => $this->repository), 404);
 		}
 
 		$location = getcwd();
@@ -147,7 +147,7 @@ class WdFileCache
 
 		if (!is_dir($this->root))
 		{
-			throw new WdHTTPException('The repository %repository does not exists', array('%repository' => $this->repository), 404);
+			throw new WdHTTPException('The repository %repository does not exists.', array('%repository' => $this->repository), 404);
 
 			return call_user_func($contructor, $userdata, $this, $key);
 		}
@@ -208,7 +208,7 @@ class WdFileCache
 
 		if (!is_writable($this->root))
 		{
-			throw new WdHTTPException('Repository %repository is not writable', array('%repository' => $this->repository));
+			throw new WdHTTPException('The repository %repository is not writable.', array('%repository' => $this->repository));
 		}
 
 		$location = getcwd();

@@ -54,20 +54,6 @@ class WdDateTime
 	}
 }
 
-function wd_ftime($date, $format=':default', $modify=NULL, $upperize=false)
-{
-	if ($format[0] == ':')
-	{
-		$format = 'date.formats.' . substr($format, 1);
-	}
-
-	$format = t($format);
-
-	$date = new WdDateTime($date);
-
-	return $date->format($format, $modify, $upperize);
-}
-
 function wd_date_period($date)
 {
 	require_once WDCORE_ROOT . 'wddate.php';
@@ -100,5 +86,5 @@ function wd_date_period($date)
 		return ucfirst(strftime('%A', $date_secs));
 	}
 
-	return wd_ftime($date);
+	return wd_format_time($date);
 }

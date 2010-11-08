@@ -1,4 +1,4 @@
-2010-08-18 # 0.8.0-dev
+2010-11-08 # 0.8.0
 
 [NEW] Hooks can now be used to add methods (and getters) to instances of the FObject class.
 
@@ -7,8 +7,8 @@
 [NEW] The ".json" or ".xml" extensions can be appened to RESTful operations URL for a response in
 "application/json" or "application/xml" format.
 
-[NEW] The 'control_operation' callback of the WdModule class now throw WdHTTPExceptions when
-control fail on CONTROL_AUTHENTICATION, CONTROL_PERMISSION, CONTROL_ENTRY and CONTROL_OWNERSHIP.
+[NEW] WdModule: The 'control_operation' callback now throws WdHTTPException exceptions when control
+fail on CONTROL_AUTHENTICATION, CONTROL_PERMISSION, CONTROL_ENTRY and CONTROL_OWNERSHIP.
 
 [NEW] Because isset() or get_object_vars() don't work with virtual properties, the `has_property`
 of the FObject class can be used to know if an object has a property even if the property is NULL.
@@ -21,22 +21,36 @@ The 'autoconfig' feature is now deprecated. Classes can use the `__static_constr
 read configuration on loading.
 
 In order to be able to use the `__static_construct()` method, which is only called by the WdCore's
-autoloader, the WdLocale, WdDebug and WdException classes are no longer loaded by the WdCore include
-file, thus, they are only available *after* the `__construct()` method returns.
+autoloader, the WdLocale, WdDebug and WdException classes are no longer loaded by the WdCore
+include file, thus, they can only be available *after* the `__construct()` method returns.
+
+[NEW] Module models can now use models from other modules, finally introducing a form of model
+inheritance, or at least reusing. Instead of defining the tags to create the model to use, one can
+provide the name of another module's model e.g. 'contents/primary', or use the keywork 'inherit'
+that will try to find a model matching the module's parent class.
+
+[NEW] Extended tables are now updated in a single operation.
+
+[NEW] WdEvent: events are now configured in the 'events' namespace instead of the 'event'
+namespace. Event definitition have changed from a simple callback to a definition made of the
+callback as index 0 and options. Currently, the 'instanceof' option can be used to filter targets
+for which the callback is actually called when the event is triggered.
 
 [CHG] The CONTROL_AUTHENTICATED control as been renamed as CONTROL_AUTHENTICATION.
 
 [CHG] The operation control and validation process has been refined :
 
 The 'controlOperation' has been renamed as 'handle_operation_control'. The 'controlForm' method has
-been removed. The control callbacks have been renamed from 'control_<type>' to
-'control_operation_<type>'. The operation specific callbacks are now defined as
-'control_operation_<operation_name>_<type>'.
+been removed. The getOperationAccessControl() method has been broken into callbacks. The control
+callbacks have been renamed from 'control_<type>' to 'control_operation_<type>'. The operation
+specific callbacks are now defined as 'control_operation_<operation_name>_<type>'.
 
 As an example, the following methods are called when the 'save' operation is processed :
 
 	handle_operation
-	handle_control
+	handle_operation_control
+	
+	get_operation_save_controls || get_operation_controls
 	
 	control_operation_save || control_operation
 	control_operation_save_authentication || control_operation_authentication
@@ -47,8 +61,12 @@ As an example, the following methods are called when the 'save' operation is pro
 [CHG] The CONTROL_AUTHENTICATION and CONTROL_ENTRY are added when the CONTROL_OWNERSHIP is defined.
 The controls are added only if they are not already defined. 
 
+[CHG] The URL base used to issue RESTful operation is now "/api/" instead of "/do/".
+
 [REM] The user object will no longer be added as a member of the operation object during operation
 controls. 
+
+[REM] The application object is gone, everything goes through the core object now.
 
 [FIX] WdDebug messages are not restored.
 

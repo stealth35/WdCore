@@ -671,7 +671,7 @@ function wd_log_time($str, array $params=array())
 		// TODO-20100525: the first call is used as an initializer, we have to find a better way
 		// to initialize the reference time.
 
-		return;
+//		return;
 	}
 
 	$now = microtime(true);

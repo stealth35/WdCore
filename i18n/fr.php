@@ -20,14 +20,19 @@ return array
 		'mister' => 'Monsieur'
 	),
 
+	/*
+	// http://www.btb.gc.ca/btb.php?lang=fra&cont=868
+	// http://www.aidenet.eu/grammaire06b.htm
+
 	'date.formats' => array
 	(
 		'default' => '%d/%m/%Y',
 		'short' => '%d/%m',
 		'short_named' => '%d %b',
 		'long' => '%d %B %Y',
-		'complete' => '%A, %d %B %Y'
+		'complete' => '%A %d %B %Y'
 	),
+	*/
 
 	#
 	# Modules categories

@@ -32,13 +32,11 @@ class WdDatabaseTable
 	protected $parent;
 	protected $implements = array();
 
+	protected $update_join;
 	protected $select_join;
-	protected $tags;
 
 	public function __construct($tags)
 	{
-		$this->tags = $tags;
-
 		foreach ($tags as $tag => $value)
 		{
 			switch ($tag)
@@ -55,7 +53,7 @@ class WdDatabaseTable
 
 		if (!$this->connection)
 		{
-			throw new WdException('The %tag tag is mandatory', array('%tag' => 'T_CONNECTION'));
+			throw new WdException('The %tag tag is required', array('%tag' => 'T_CONNECTION'));
 		}
 
 		$this->name = $this->connection->prefix . $this->name_unprefixed;
@@ -146,10 +144,12 @@ class WdDatabaseTable
 
 		while ($parent)
 		{
-			$join .= "inner join `{$parent->name}` as `{$parent->alias}` using(`{primary}`) ";
+			$join .= "inner join `{$parent->name}` as `{$parent->alias}` using(`{$this->primary}`) ";
 
 			$parent = $parent->parent;
 		}
+
+		$this->update_join = $join;
 
 		#
 		# resolve implements
@@ -293,13 +293,14 @@ class WdDatabaseTable
 	**
 	*/
 
-	protected function filterValues(array $values)
+	protected function filter_values(array $values, $extended=false)
 	{
 		$filtered = array();
 		$holders = array();
 		$identifiers = array();
 
-		$fields = $this->schema['fields'];
+		$schema = $extended ? $this->getExtendedSchema() : $this->schema;
+		$fields = $schema['fields'];
 
 		foreach ($values as $identifier => $value)
 		{
@@ -322,9 +323,7 @@ class WdDatabaseTable
 	{
 		if ($id)
 		{
-			$this->update($values, $id);
-
-			return $id;
+			return $this->update($values, $id) ? $id : false;
 		}
 
 		//wd_log(__CLASS__ . '::' . __FUNCTION__ . ':: id: \1, values: \2', $id, $values);
@@ -374,7 +373,7 @@ class WdDatabaseTable
 
 		//echo t('here in \1, parent: \2<br />', array($this->name, $this->parent ? $this->parent->name : 'NONE'));
 
-		list($filtered, $holders) = $this->filterValues($values);
+		list($filtered, $holders) = $this->filter_values($values);
 
 		//wd_log('we: \3, parent_id: \1, holders: \2', $parent_id, $holders, $this->name);
 
@@ -469,7 +468,7 @@ class WdDatabaseTable
 
 	public function insert(array $values, array $options=array())
 	{
-		list($values, $holders, $identifiers) = $this->filterValues($values);
+		list($values, $holders, $identifiers) = $this->filter_values($values);
 
 		if (!$values)
 		{
@@ -523,7 +522,7 @@ class WdDatabaseTable
 				}
 				else
 				{
-					list($update_values, $update_holders) = $this->filterValues($on_duplicate);
+					list($update_values, $update_holders) = $this->filter_values($on_duplicate);
 				}
 
 				$query .= ' ON DUPLICATE KEY UPDATE ' . implode(', ', $update_holders);
@@ -543,63 +542,22 @@ class WdDatabaseTable
 		return $this->execute($query, $values);
 	}
 
+	/**
+	 * Update the values of an entry.
+	 *
+	 * Even if the entry is spread over multiple tables, all the tables are updated in a single
+	 * step.
+	 *
+	 * @param array $values
+	 * @param mixed $key
+	 */
 
-	public function update(array $values, $id)
+	public function update(array $values, $key)
 	{
-		if (!$id)
-		{
-			throw new WdException
-			(
-				'The id of the row to be updated must be defined: <code>\1</code> \2', array
-				(
-					$query, $values
-				)
-			);
-		}
+		list($values, $holders) = $this->filter_values($values, true);
 
-		return $this->update_callback($values, $id);
-	}
-
-	protected function update_callback(array $values, $id)
-	{
-		if (empty($this->schema['primary-key']))
-		{
-			throw new WdException
-			(
-				'There is no primary key defined for %name, schema: :schema', array
-				(
-					'%name' => $this->name_unprefixed,
-					':schema' => $this->schema
-				)
-			);
-		}
-
-
-		if ($this->parent)
-		{
-			$this->parent->update_callback($values, $id);
-		}
-
-
-
-
-		#
-		#
-		#
-
-		list($values, $holders) = $this->filterValues($values);
-
-		//wd_log(__CLASS__ . '::' . __FUNCTION__ . 'values \1 holders \2', $values, $holders);
-
-		if (!$holders)
-		{
-			return;
-		}
-
-		$query = 'UPDATE `{self}` SET ' . implode(', ', $holders);
-
-		$query .= ' WHERE `{primary}` = ?';
-		$values[] = $id;
+		$query = 'UPDATE `{self}` ' . $this->update_join . ' SET ' . implode(', ', $holders) . ' WHERE `{primary}` = ?';
+		$values[] = $key;
 
 		return $this->execute($query, $values);
 	}
@@ -830,11 +788,3 @@ class WdDatabaseTable
 		return $statement->fetchAndClose();
 	}
 }
-
-/*
-
-20091111 # 01.02
-
-[NEW] Parent implements are now inherited too.
-
-*/

@@ -5,7 +5,6 @@ return array
 	'autoload' => array
 	(
 		'WdActiveRecord' => $root . 'wdactiverecord.php',
-		'WdApplication' => $root . 'wdapplication.php',
 		'WdArray' => $root . 'wdarray.php',
 		'WdDatabase' => $root . 'wddatabase.php',
 		'WdDatabaseTable' => $root . 'wddatabasetable.php',
@@ -13,6 +12,7 @@ return array
 		'WdDebug' => $root . 'wddebug.php',
 		'WdEvent' => $root . 'wdevent.php',
 		'WdException' => $root . 'wdexception.php',
+		'WdHTTPException' => $root . 'wdexception.php',
 		'WdFileCache' => $root . 'wdfilecache.php',
 		'WdHook' => $root . 'wdhook.php',
 		'WdImage' => $root . 'wdimage.php',
@@ -22,6 +22,8 @@ return array
 		'WdModule' => $root . 'wdmodule.php',
 		'WdObject' => $root . 'wdobject.php',
 		'WdOperation' => $root . 'wdoperation.php',
+		'WdRoute' => $root . 'wdroute.php',
+		'WdSession' => $root . 'wdsession.php',
 		'WdUploaded' => $root . 'wduploaded.php'
 	),
 
@@ -29,6 +31,11 @@ return array
 	'cache modules' => false,
 
 	'classes aliases' => array
+	(
+
+	),
+
+	'connections' => array
 	(
 
 	),

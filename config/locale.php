@@ -6,5 +6,5 @@ return array
 	'native' => 'en',
 	'language' => 'en-US',
 	'languages' => array('en'),
-	'timezone' => 'TZ=US/Eastern'
+	'timezone' => 'US/Eastern'
 );

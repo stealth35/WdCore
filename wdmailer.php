@@ -87,7 +87,7 @@ class WdMailer
 						break;
 					}
 
-					$this->modifyHeader(array('Bcc' => implode(',', (array) $value)));
+					$this->modifyHeader(array('Bcc' => is_string($value) ? $value : implode(',', (array) $value)));
 				}
 				break;
 			}

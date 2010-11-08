@@ -111,3 +111,21 @@ class WdException extends Exception
 		return $this->code . ' ' . $this->title;
 	}
 }
+
+class WdHTTPException extends WdException
+{
+	public function __toString()
+	{
+		if ($this->code && !headers_sent())
+		{
+			header('HTTP/1.0 ' . $this->code . ' ' . $this->title);
+		}
+
+		$rc  = '<code class="exception">';
+		$rc .= '<strong>' . $this->title . ', with the following message:</strong><br /><br />';
+		$rc .= $this->getMessage() . '<br />';
+		$rc .= '</code>';
+
+		return $rc;
+	}
+}

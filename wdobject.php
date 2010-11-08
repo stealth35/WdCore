@@ -11,24 +11,24 @@
 
 class WdObject
 {
-	static protected $methods;
-	static protected $class_methods;
+	static private $methods;
+	static private $class_methods;
 
 	static private function get_methods_definitions()
 	{
 		if (self::$methods === null)
 		{
-			self::$methods = WdConfig::get_constructed('objects.methods', array(__CLASS__, 'get_methods_definitions_constructor'), 'hook');
+			self::$methods = WdConfig::get_constructed('objects.methods', array(__CLASS__, 'get_methods_definitions_constructor'), 'hooks');
 		}
 
 		return self::$methods;
 	}
 
-	static public function get_methods_definitions_constructor($configs)
+	static public function get_methods_definitions_constructor($fragments)
 	{
 		$methods = array();
 
-		foreach ($configs as $root => $config)
+		foreach ($fragments as $root => $config)
 		{
 			if (empty($config['objects.methods']))
 			{
@@ -39,12 +39,12 @@ class WdObject
 
 			foreach ($hooks as $method => $definition)
 			{
-				if (empty($definition['instancesof']))
+				if (empty($definition['instanceof']))
 				{
 					throw new WdException('Missing <em>instancesof</em> in config (%root): !definition', array('!definition' => $definition, '%root' => $root));
 				}
 
-				foreach ((array) $definition['instancesof'] as $class)
+				foreach ((array) $definition['instanceof'] as $class)
 				{
 					$methods[$class][$method] = $definition[0];
 				}

@@ -19,7 +19,7 @@ class WdEvent
 	{
 		if (empty(self::$listeners))
 		{
-			self::$listeners = WdConfig::get_constructed('event', array(__CLASS__, 'listeners_construct'));
+			self::$listeners = WdConfig::get_constructed('events', array(__CLASS__, 'listeners_construct'));
 		}
 
 		return self::$listeners;
@@ -31,9 +31,9 @@ class WdEvent
 
 		foreach ($configs as $config)
 		{
-			foreach ($config as $pattern => $callback)
+			foreach ($config as $pattern => $definition)
 			{
-				$listeners[self::translateRegEx($pattern)][] = $callback;
+				$listeners[self::translateRegEx($pattern)][] = $definition;
 			}
 		}
 
@@ -80,7 +80,7 @@ class WdEvent
 		$event = null;
 		$listeners = self::listeners();
 
-		foreach ($listeners as $pattern => $callbacks)
+		foreach ($listeners as $pattern => $definitions)
 		{
 			if (!($pattern{0} == self::DELIMITER ? preg_match($pattern, $type) : $pattern == $type))
 			{
@@ -94,8 +94,41 @@ class WdEvent
 
 			$event ? $event->type = $type : $event = new WdEvent($type, $params);
 
-			foreach ($callbacks as $callback)
+			foreach ($definitions as $definition)
 			{
+				list($callback) = $definition;
+
+				if (isset($params['target']) && isset($definition['instanceof']))
+				{
+					$target = $params['target'];
+					$instanceof = $definition['instanceof'];
+					$is_instance_of = false;
+
+					if (is_array($instanceof))
+					{
+						foreach ($instanceof as $name)
+						{
+							if (!$target instanceof $name)
+							{
+								continue;
+							}
+
+							$is_instance_of = true;
+
+							break;
+						}
+					}
+					else
+					{
+						$is_instance_of = $target instanceof $instanceof;
+					}
+
+					if (!$is_instance_of)
+					{
+						continue;
+					}
+				}
+
 				#
 				# autoload modules if the callback is prefixed by 'm:'
 				#

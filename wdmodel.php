@@ -23,8 +23,15 @@ class WdModel extends WdDatabaseTable
 	const T_CLASS = 'class';
 	const T_ACTIVERECORD_CLASS = 'activerecord-class';
 
-	static public function is_extending(array $tags, $instanceof)
+	static public function is_extending($tags, $instanceof)
 	{
+		if (is_string($tags))
+		{
+			wd_log('is_extending is not competent with string references: \1', array($tags));
+
+			return true;
+		}
+
 		// TODO-2010630: The method should handle submodels to, not just 'primary'
 
 		if (empty($tags[self::T_EXTENDS]))
@@ -52,9 +59,11 @@ class WdModel extends WdDatabaseTable
 			return false;
 		}
 
+		$tags = $core->descriptors[$extends][WdModule::T_MODELS]['primary'];
+
 		//wd_log('try: \1', array($extends));
 
-		return self::is_extending($core->descriptors[$extends][WdModule::T_MODELS]['primary'], $instanceof);
+		return self::is_extending($tags, $instanceof);
 	}
 
 	protected $ar_class;
@@ -62,6 +71,31 @@ class WdModel extends WdDatabaseTable
 
 	public function __construct($tags)
 	{
+		if (isset($tags[self::T_EXTENDS]) && empty($tags[self::T_SCHEMA]))
+		{
+			$extends = $tags[self::T_EXTENDS];
+
+//			wd_log('extending a model without schema: \1', array($extends));
+
+			$tags[self::T_NAME] = $extends->name;
+			$tags[self::T_SCHEMA] = $extends->schema;
+			$tags[self::T_EXTENDS] = $extends->parent;
+
+			if (empty($tags[self::T_ACTIVERECORD_CLASS]))
+			{
+				$tags[self::T_ACTIVERECORD_CLASS] = $extends->ar_class;
+			}
+		}
+
+
+
+
+
+
+
+
+
+
 		parent::__construct($tags);
 
 		#
@@ -77,6 +111,7 @@ class WdModel extends WdDatabaseTable
 		{
 			$ar_class = $tags[self::T_ACTIVERECORD_CLASS];
 
+			/*
 			if (!class_exists($ar_class, true))
 			{
 				throw new WdException
@@ -88,6 +123,7 @@ class WdModel extends WdDatabaseTable
 					)
 				);
 			}
+			*/
 
 			$this->ar_class = $ar_class;
 		}

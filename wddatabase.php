@@ -664,8 +664,6 @@ class WdDatabaseStatement extends PDOStatement
 
 		$stats['queries'][$this->connection->name]++;
 
-		//echo t('execute: <code>\1</code>\2<br />', array($this->queryString, $args)) . PHP_EOL;
-
 		try
 		{
 			return parent::execute($args);
@@ -683,73 +681,6 @@ class WdDatabaseStatement extends PDOStatement
 			);
 		}
 	}
-
-	/*
-	public function setFetchMode($mode, $one=null, $two=null)
-	{
-		$args = func_get_args();
-
-		//wd_log('query: \2, SetFetchMode: \1', array($args, $this->queryString));
-
-		/*
-
-		$this->mode = $args;
-
-		wd_log('statement: \1mode: \2', array($this, $args));
-
-		* /
-
-		return call_user_func_array(array($this, 'parent::' . __FUNCTION__), $args);
-	}
-	*/
-
-	/*
-	public function fetch($fetch_style=PDO::FETCH_BOTH, $cursor_orientation=PDO::FETCH_ORI_NEXT, $cursor_offset=0)
-	{
-		$args = func_get_args();
-
-		echo 'fetch <code>' . $this->queryString . '</code><br />';
-
-		$rc = call_user_func_array(array($this, 'parent::' . __FUNCTION__), $args);
-
-		WdDebug::trigger('fetch');
-
-		//$this->closeCursor();
-
-		return $rc;
-	}
-
-	public function fetchColumn($column_number=0)
-	{
-		WdDebug::trigger('fetch');
-
-		$args = func_get_args();
-
-		echo 'fetch <code>' . $this->queryString . '</code><br />';
-
-		return call_user_func_array(array($this, 'parent::' . __FUNCTION__), $args);
-	}
-	*/
-
-	/*
-	public function fetchAll($how=null, $class_name=null, $ctor_args=null)
-	{
-		$args = func_get_args();
-
-		//wd_log('query: \2, fetchAll: \1', array($args, $this->queryString));
-
-		/*
-		if (isset($this->mode))
-		{
-			wd_log('fetch all mode: \1', array($this->mode));
-
-			call_user_func_array(array($this, 'parent::setFetchMode'), $this->mode);
-		}
-		* /
-
-		return call_user_func_array(array($this, 'parent::' . __FUNCTION__), $args);
-	}
-	*/
 
 	public function fetchAndClose($fetch_style=PDO::FETCH_BOTH, $cursor_orientation=PDO::FETCH_ORI_NEXT, $cursor_offset=0)
 	{

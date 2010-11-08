@@ -10,26 +10,10 @@ return array
 	'@upload.error.mimeList' => "The file type %mime is not supported. The file type must be of the following: :list or :last.",
 
 	'salutation' => array
-	(
+  	(
 		'misses' => 'Misses',
 		'miss' => 'Miss',
 		'mister' => 'Mister'
-	),
-
-	#
-	# Date
-	#
-
-	'date' => array
-	(
-		'formats' => array
-		(
-			'default' => '%m/%d/%Y',
-			'short' => '%m/%d',
-			'short_named' => '%b %d',
-			'long' => '%B %d, %Y',
-			'complete' => '%A, %B %d, %Y'
-		)
 	),
 
 	#

@@ -35,15 +35,13 @@ define('PERMISSION_MAINTAIN', 3);
 define('PERMISSION_MANAGE', 4);
 define('PERMISSION_ADMINISTER', 5);
 
-require_once 'wdmodel.php';
-
-class WdModule
+class WdModule extends WdObject
 {
 	const T_CATEGORY = 'category';
 	const T_DESCRIPTION = 'description';
 	const T_DISABLED = 'disabled';
 	const T_ID = 'id';
-	const T_MANDATORY = 'mandatory';
+	const T_REQUIRED = 'required';
 	const T_MODELS = 'models';
 	const T_PERMISSION = 'permission';
 	const T_PERMISSIONS = 'permissions';
@@ -63,7 +61,7 @@ class WdModule
 		{
 			throw new WdException
 			(
-				'The %tag tag is mandatory', array
+				'The %tag tag is required', array
 				(
 					'%tag' => 'T_ID'
 				)
@@ -75,27 +73,14 @@ class WdModule
 		$this->root = $tags[self::T_ROOT];
 	}
 
-	public function __get($property)
-	{
-		$getter = '__get_' . $property;
-
-		if (method_exists($this, $getter))
-		{
-			return $this->$property = $this->$getter();
-		}
-
-		WdDebug::trigger
-		(
-			'Unknow property %property for object of class %class', array
-			(
-				'%property' => $property, '%class' => get_class($this)
-			)
-		);
-	}
-
 	public function __toString()
 	{
 		return $this->id;
+	}
+
+	protected function __get_flat_id()
+	{
+		return strtr($this->id, '.', '_');
 	}
 
 	protected function __get_model()
@@ -254,102 +239,27 @@ class WdModule
 			}
 
 			#
-			# default
+			# resolve model tags
 			#
 
-			//$name = str_replace('_WdModule', '', get_class($this));
+			$callback = "resolve_{$which}_model_tags";
 
-			$prefix = '_WdModule';
-			$prefixLength = strlen($prefix);
-
-			$name = substr(get_class($this), 0, -$prefixLength);
-
-			if ($which != 'primary')
+			if (!method_exists($this, $callback))
 			{
-				$name .= '_' . $which;
+				$callback = 'resolve_model_tags';
 			}
 
-			$tags = $this->tags[self::T_MODELS][$which] += array
-			(
-				WdModel::T_CLASS => file_exists($this->root . $which . '.model.php') ? $name . '_WdModel' : null,
-				WdModel::T_ACTIVERECORD_CLASS => file_exists($this->root . $which . '.ar.php') ? $name . '_WdActiveRecord' : null,
-				WdModel::T_NAME => $name,
-				WdModel::T_CONNECTION => 'primary'
-			);
+			$tags = $this->$callback($this->tags[self::T_MODELS][$which], $which);
 
 			#
-			# relations
+			# COMPAT WITH 'inherit'
 			#
 
-			global $core;
-
-			if (isset($tags[WdModel::T_EXTENDS]))
+			if ($tags instanceof WdModel)
 			{
-				$extends = &$tags[WdModel::T_EXTENDS];
+				$this->models[$which] = $tags;
 
-				if (is_string($extends))
-				{
-					//$extends = $core->getModule($extends)->model();
-					$extends = $core->models[$extends];
-				}
-
-				if (!$tags[WdModel::T_CLASS])
-				{
-					$tags[WdModel::T_CLASS] = get_class($extends);
-
-					//wd_log('model class for \1 is \2', array($this . '/' . $which, $extends->name_unprefixed));
-				}
-			}
-
-			if (!$tags[WdModel::T_CLASS])
-			{
-				$tags[WdModel::T_CLASS] = 'WdModel';
-			}
-
-			if (isset($tags[WdModel::T_IMPLEMENTS]))
-			{
-				$implements =& $tags[WdModel::T_IMPLEMENTS];
-
-				foreach ($implements as &$implement)
-				{
-					if (isset($implement['model']))
-					{
-						list($i_module, $i_which) = array_pad(explode('/', $implement['model']), 2, 'primary');
-
-						if ($this->id == $i_module && $which == $i_which)
-						{
-							throw new WdException('Model %module/%model implements itself !', array('%module' => $this->id, '%model' => $which));
-						}
-
-						$module =  ($i_module == $this->id) ? $this : $core->getModule($i_module);
-
-						$implement['table'] = $module->model($i_which);
-					}
-					else if (is_string($implement['table']))
-					{
-						throw new WdException
-						(
-							'Model %model of module %module implements a table: %table', array
-							(
-								'%model' => $which,
-								'%module' => $this->id,
-								'%table' => $implement['table']
-							)
-						);
-
-						//$implement['table'] = $core->getModule($implement['table'])->model();
-						$implement['table'] = $core->models[$implement['table']];
-					}
-				}
-			}
-
-			#
-			# connection
-			#
-
-			if (is_string($tags[WdModel::T_CONNECTION]))
-			{
-				$tags[WdModel::T_CONNECTION] = $core->db($tags[WdModel::T_CONNECTION]);
+				return $tags;
 			}
 
 			#
@@ -361,6 +271,13 @@ class WdModule
 			//wd_log('create model \2 with tags: \1', array($tags, $this->id . '/' . $which));
 
 			$this->models[$which] = new $class($tags);
+
+			/* DIRTY
+			if ($this->id == 'press.releases')
+			{
+				var_dump($this->models[$which]);
+			}
+			*/
 		}
 
 		#
@@ -368,6 +285,154 @@ class WdModule
 		#
 
 		return $this->models[$which];
+	}
+
+	protected function resolve_model_tags($tags, $which)
+	{
+		global $core;
+
+		//$ns = str_replace('_WdModule', '', get_class($this));
+
+		$ns = strtr($this->id, '.', '_');
+
+		$has_model_class = file_exists($this->root . $which . '.model.php');
+		$has_ar_class = file_exists($this->root . $which . '.ar.php');
+
+		/*
+		$prefix = '_WdModule';
+		$prefix_length = strlen($prefix);
+
+		$table_name = substr(get_class($this), 0, -$prefix_length);
+		*/
+
+		$table_name = $ns;
+
+		if ($which != 'primary')
+		{
+			$table_name .= '_' . $which;
+		}
+
+		#
+		# The model may use another model, in which case the model to used is defined using a
+		# string e.g. 'contents' or 'taxonomy.terms/nodes'
+		#
+
+		if (is_string($tags))
+		{
+			$model_name = $tags;
+
+			if ($model_name == 'inherit')
+			{
+				$prefix = '_WdModule';
+				$prefixLength = strlen($prefix);
+
+				$inherit_module_id = substr(get_parent_class($this), 0, -$prefixLength);
+
+//				wd_log('inherit model %model from module %module', array('%model' => $which, '%module' => $inherit_module_id));
+
+				$model_name = $inherit_module_id . '/' . $which;
+				$model_name = strtr($model_name, '_', '.');
+			}
+
+			$tags = array
+			(
+				WdModel::T_EXTENDS => $model_name
+			);
+		}
+
+
+		#
+		# defaults
+		#
+
+		$tags += array
+		(
+			WdModel::T_CLASS => $has_model_class ? $ns . ($which == 'primary' ? '' : '_' . $which) . '_WdModel' : null,
+			WdModel::T_ACTIVERECORD_CLASS => $has_ar_class ? $ns . ($which == 'primary' ? '' : '_' . $which) . '_WdActiveRecord' : null,
+			WdModel::T_NAME => $table_name,
+			WdModel::T_CONNECTION => 'primary'
+		);
+
+		#
+		# relations
+		#
+
+		if (isset($tags[WdModel::T_EXTENDS]))
+		{
+			$extends = &$tags[WdModel::T_EXTENDS];
+
+			if (is_string($extends))
+			{
+				$extends = $core->models[$extends];
+			}
+
+			if (!$tags[WdModel::T_CLASS])
+			{
+				$tags[WdModel::T_CLASS] = get_class($extends);
+			}
+		}
+
+		#
+		#
+		#
+
+		if (isset($tags[WdModel::T_IMPLEMENTS]))
+		{
+			$implements =& $tags[WdModel::T_IMPLEMENTS];
+
+			foreach ($implements as &$implement)
+			{
+				if (isset($implement['model']))
+				{
+					list($i_module, $i_which) = explode('/', $implement['model']) + array(1 => 'primary');
+
+					if ($this->id == $i_module && $which == $i_which)
+					{
+						throw new WdException('Model %module/%model implements itself !', array('%module' => $this->id, '%model' => $which));
+					}
+
+					$module =  ($i_module == $this->id) ? $this : $core->getModule($i_module);
+
+					$implement['table'] = $module->model($i_which);
+				}
+				else if (is_string($implement['table']))
+				{
+					throw new WdException
+					(
+						'Model %model of module %module implements a table: %table', array
+						(
+							'%model' => $which,
+							'%module' => $this->id,
+							'%table' => $implement['table']
+						)
+					);
+
+					$implement['table'] = $core->models[$implement['table']];
+				}
+			}
+		}
+
+		#
+		# default class, if none was defined.
+		#
+
+		if (!$tags[WdModel::T_CLASS])
+		{
+			$tags[WdModel::T_CLASS] = 'WdModel';
+		}
+
+		#
+		# connection
+		#
+
+		$connection = $tags[WdModel::T_CONNECTION];
+
+		if (is_string($connection))
+		{
+			$tags[WdModel::T_CONNECTION] = $core->db($connection);
+		}
+
+		return $tags;
 	}
 
 	/*
@@ -392,9 +457,9 @@ class WdModule
 
 		if (!method_exists($this, $callback))
 		{
-			throw new WdException
+			throw new WdHTTPException
 			(
-				'Unknown operation %operation for the %module module', array
+				'Unknown operation %operation for the %module module.', array
 				(
 					'%operation' => $name,
 					'%module' => $this->id
@@ -432,25 +497,27 @@ class WdModule
 	const CONTROL_FORM = 105;
 	const CONTROL_VALIDATOR = 106;
 
-	protected function getOperationsAccessControls()
+	protected function get_operation_controls(WdOperation $operation)
 	{
 		return array
 		(
-			self::OPERATION_SAVE => array
-			(
-				self::CONTROL_PERMISSION => PERMISSION_CREATE,
-				self::CONTROL_OWNERSHIP => true,
-				self::CONTROL_FORM => true,
-				self::CONTROL_VALIDATOR => true
-			),
+			self::CONTROL_AUTHENTICATION => false,
+			self::CONTROL_PERMISSION => PERMISSION_NONE,
+			self::CONTROL_ENTRY => false,
+			self::CONTROL_OWNERSHIP => false,
+			self::CONTROL_FORM => false,
+			self::CONTROL_VALIDATOR => true
+		);
+	}
 
-			self::OPERATION_DELETE => array
-			(
-				self::CONTROL_PERMISSION => PERMISSION_MANAGE,
-				self::CONTROL_OWNERSHIP => true,
-				self::CONTROL_FORM => false,
-				self::CONTROL_VALIDATOR => true
-			)
+	protected function get_operation_delete_controls(WdOperation $operation)
+	{
+		return array
+		(
+			self::CONTROL_PERMISSION => PERMISSION_MANAGE,
+			self::CONTROL_OWNERSHIP => true,
+			self::CONTROL_FORM => false,
+			self::CONTROL_VALIDATOR => true
 		);
 	}
 
@@ -458,8 +525,18 @@ class WdModule
 	{
 		$operation_name = $operation->name;
 
-		$controls = $this->getOperationsAccessControls();
-		$controls = isset($controls[$operation_name]) ? $controls[$operation_name] : array();
+		#
+		# Get the controls for the operation using the appropriate callback.
+		#
+
+		$callback = 'get_operation_' . $operation_name . '_controls';
+
+		if (!method_exists($this, $callback))
+		{
+			$callback = 'get_operation_controls';
+		}
+
+		$controls = $this->$callback($operation);
 
 		#
 		# Add some controls for the ownership control. The controls are added using a union so that
@@ -470,10 +547,19 @@ class WdModule
 		{
 			$controls += array
 			(
-				self::CONTROL_AUTHENTICATION => true,
+//				self::CONTROL_AUTHENTICATION => true,
 				self::CONTROL_ENTRY => true
 			);
 		}
+
+		/*
+
+		NOTE: CONTROL_AUTHENTICATION cannot be required while creating/updating entries,
+		a guest user may well have the permission to create entries e.g. comments.
+
+		CONTROL_ENTRY is successful if there is no entry to check (operation key is not defined).
+
+		*/
 
 		#
 		# Fill in with defaults
@@ -636,16 +722,16 @@ class WdModule
 
 	protected function control_operation_authentication(WdOperation $operation)
 	{
-		global $app;
+		global $core;
 
-		return ($app->user_id != 0);
+		return ($core->user_id != 0);
 	}
 
 	protected function control_operation_permission(WdOperation $operation, $permission)
 	{
-		global $app;
+		global $core;
 
-		if (!$app->user->has_permission($permission, $this))
+		if (!$core->user->has_permission($permission, $this))
 		{
 			return false;
 		}
@@ -687,26 +773,6 @@ class WdModule
 	}
 
 	/**
-	 * Control 'entry' for the 'save' operation.
-	 *
-	 * Unlike the default 'entry' control, this method return true if the operation as no key.
-	 *
-	 * @param WdOperation $operation
-	 */
-
-	protected function control_operation_save_entry(WdOperation $operation)
-	{
-		if (!$operation->key)
-		{
-			$operation->entry = null;
-
-			return true;
-		}
-
-		return $this->control_operation_entry($operation);
-	}
-
-	/**
 	 * Control the ownership of the user over the operation destination entry.
 	 *
 	 * The control is considered sucessful if the entry can be loaded and the ownership of the
@@ -735,9 +801,9 @@ class WdModule
 
 		if ($entry)
 		{
-			global $app;
+			global $core;
 
-			if (!$app->user->has_ownership($this, $entry))
+			if (!$core->user->has_ownership($this, $entry))
 			{
 				return false;
 			}
@@ -798,6 +864,45 @@ class WdModule
 				'%module' => $this->id
 			)
 		);
+	}
+
+	/**
+	 * Returns the controls for the "save" operation.
+	 *
+	 * @param WdOperation $operation
+	 * @return array The controls of the operation.
+	 */
+
+	protected function get_operation_save_controls(WdOperation $operation)
+	{
+		return array
+		(
+			self::CONTROL_AUTHENTICATION => false,
+			self::CONTROL_PERMISSION => PERMISSION_CREATE,
+			self::CONTROL_OWNERSHIP => true,
+			self::CONTROL_FORM => true,
+			self::CONTROL_VALIDATOR => true
+		);
+	}
+
+	/**
+	 * Override the `control_operation_entry` to pass empty entries as valid if the operation has
+	 * no key, allowing new entries to be created.
+	 *
+	 * @param WdOperation $operation
+	 * @return boolean
+	 */
+
+	protected function control_operation_save_entry(WdOperation $operation)
+	{
+		if (!$operation->key)
+		{
+			$operation->entry = null;
+
+			return true;
+		}
+
+		return $this->control_operation_entry($operation);
 	}
 
 	/**

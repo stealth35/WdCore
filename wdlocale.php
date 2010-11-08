@@ -59,7 +59,7 @@ class WdLocale
 
 		setlocale(LC_ALL, "{$language}_{$country}.UTF-8");
 
-		self::$conventions = localeconv();
+		self::load_conv($language, $country);
 	}
 
 	static public function setTimezone($timezone)
@@ -76,6 +76,13 @@ class WdLocale
 		}
 
 		date_default_timezone_set($timezone);
+	}
+
+	static protected function load_conv($language, $country=null)
+	{
+		self::$conventions = localeconv();
+
+		self::$conventions += require dirname(__FILE__) . '/i18n/conv/' . $language . '.php';
 	}
 
 	static protected function load_catalog($root, array $options=array())
@@ -125,10 +132,10 @@ class WdLocale
 
 	static public function addPath($root)
 	{
-		$i18n = $root . DIRECTORY_SEPARATOR . 'i18n';
-
-		if (!is_dir($i18n))
+		if (is_array($root))
 		{
+			self::$pending_catalogs = array_merge(self::$pending_catalogs, $root);
+
 			return;
 		}
 
@@ -178,10 +185,10 @@ class WdLocale
 		}
 		else
 		{
-			$cache = self::getCache();
-
 			if (self::$config['cache catalogs'])
 			{
+				$cache = self::getCache();
+
 				#
 				# There are no messages yet, this is the first time the function is called, we can use
 				# the cache.
@@ -191,8 +198,6 @@ class WdLocale
 			}
 			else
 			{
-				$cache->delete('i18n_' . WdLocale::$language);
-
 				$messages = self::load_pending_catalogs_construct();
 			}
 		}
@@ -371,14 +376,17 @@ function wd_format_size($size)
 	return t($str, array(':size' => $size));
 }
 
-function wd_format_time($time, $format=':default')
+function wd_format_time($time, $format='default')
 {
 	if ($format[0] == ':')
 	{
-		$format = 'date.formats.' . substr($format, 1);
+		$format = substr($format, 1);
 	}
 
-	$format = t($format);
+	if (isset(WdLocale::$conventions['date']['formats'][$format]))
+	{
+		$format = WdLocale::$conventions['date']['formats'][$format];
+	}
 
 	if (is_string($time))
 	{

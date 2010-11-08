@@ -31,7 +31,7 @@ class WdUploaded
 	public $er;
 	public $er_message;
 
-	public function __construct($key, $accepted_types=null, $mandatory=false, $index=0)
+	public function __construct($key, $accepted_types=null, $required=false, $index=0)
 	{
 		$this->accepted_types = $accepted_types;
 
@@ -42,10 +42,10 @@ class WdUploaded
 		if (empty($_FILES[$key]))
 		{
 			#
-			# the slot does not exixts, if it's mandatory we trigger an error
+			# the slot does not exixts, if it's required we trigger an error
 			#
 
-			if ($mandatory)
+			if ($required)
 			{
 				$this->setError(UPLOAD_ERR_NO_FILE);
 			}
@@ -58,14 +58,20 @@ class WdUploaded
 		}
 
 		$data = $_FILES[$key];
-		
+
 		//$this->original_file = $data;
 
 		#
 		# consolide multiple files given the 'index'
 		#
 
-		$name = $data['name'];
+		//$name = $data['name'];
+		$name = urldecode($data['name']);
+
+		if (get_magic_quotes_gpc())
+		{
+			$name = stripslashes($name);
+		}
 
 		if (is_array($name))
 		{
@@ -80,11 +86,11 @@ class WdUploaded
 		}
 
 		#
-		# if the file has not been downloaded, but is not mandatory
+		# if the file has not been downloaded, but is not required
 		# we exit peacefully
 		#
 
-		if (($data['error'] == UPLOAD_ERR_NO_FILE) && !$mandatory)
+		if (($data['error'] == UPLOAD_ERR_NO_FILE) && !$required)
 		{
 			return;
 		}

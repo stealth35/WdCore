@@ -31,11 +31,11 @@ class WdDebug
 
 		if (!headers_sent())
 		{
-			global $app;
+			global $core;
 
-			if (isset($app))
+			if (isset($core))
 			{
-				$app->session;
+				$core->session;
 			}
 		}
 
@@ -330,11 +330,16 @@ class WdDebug
 		# add location information
 		#
 
-		$message .= '<br /><code><strong>Request URI:</strong> ' . wd_entities($_SERVER['REQUEST_URI']);
+		$message .= '<code><br /><br /><strong>Request URI:</strong> ' . wd_entities($_SERVER['REQUEST_URI']);
 
 		if (isset($_SERVER['HTTP_REFERER']))
 		{
-			$message .= '<br /><strong>Referer:</strong> ' . wd_entities($_SERVER['HTTP_REFERER']);
+			$message .= '<br /><br /><strong>Referer:</strong> ' . wd_entities($_SERVER['HTTP_REFERER']);
+		}
+
+		if (isset($_SERVER['HTTP_USER_AGENT']))
+		{
+			$message .= '<br /><br /><strong>User Agent:</strong> ' . wd_entities($_SERVER['HTTP_USER_AGENT']);
 		}
 
 		$message .= '</code>';

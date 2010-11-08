@@ -22,7 +22,7 @@ class WdOperation
 	 *
 	 * 1. Simple : The URL is composed as '?do=<destination>.<method>&param1=...'
 	 * 2. Base64 (b) : The URL is encoded using base64
-	 * 3. RESTful : The URL is created as a RESTful resource : '/do/<destination>/(<key>/)?<method>&param1=...'
+	 * 3. RESTful : The URL is created as a RESTful resource : '/api/<destination>/(<key>/)?<method>?param1=...'
 	 *
 	 * TODO-20100615: reorder parameters as $destination, $operation, $key, $params, $type
 	 *
@@ -34,16 +34,17 @@ class WdOperation
 
 	static public function encode($destination, $name, array $params=array(), $encode=false, $key=null)
 	{
-		if ($encode === 'r')
+		//if ($encode === 'r')
 		{
 			$query = http_build_query
 			(
 				$params, '', '&'
 			);
 
-			return '/do/' . $destination . '/' . ($key ? $key . '/' : '') . $name . ($query ? '?' . $query : '');
+			return '/api/' . $destination . '/' . ($key ? $key . '/' : '') . $name . ($query ? '?' . $query : '');
 		}
 
+		/*
 		#
 		#
 		#
@@ -78,7 +79,11 @@ class WdOperation
 		}
 
 		return '?' . $query;
+		*/
 	}
+
+	const RESTFUL_BASE = '/api/';
+	const RESTFUL_BASE_LENGHT = 5;
 
 	static public function decode($request)
 	{
@@ -86,15 +91,7 @@ class WdOperation
 		$destination = null;
 		$operation = null;
 
-		/*
-		try
-		{*/
-			if (isset($request['!do']))/*
-			{
-				throw new WdException('The "!do" operation identifier is no longer supported', array(), 500);
-			}
-		}
-		catch (Exception $e)*/
+		if (isset($request['!do']))
 		{
 			$request['do'] = $request['!do'];
 		}
@@ -103,10 +100,20 @@ class WdOperation
 		# RESTful
 		#
 
-		if (substr($_SERVER['REQUEST_URI'], 0, 4) == '/do/')
-		{
-			$uri = $_SERVER['REQUEST_URI'];
+		$uri = $_SERVER['REQUEST_URI'];
 
+		if (substr($uri, 0, 4) == '/do/')
+		{
+			if (WdDebug::$config['mode'] == 'test')
+			{
+				WdDebug::trigger('The URL for RESTful operation is now "/api/" instead of "/do/": %uri', array('%uri' => $uri));
+			}
+
+			$uri = '/api/' + substr($uri, 4);
+		}
+
+		if (substr($uri, 0, self::RESTFUL_BASE_LENGHT) == self::RESTFUL_BASE)
+		{
 			if ($_SERVER['QUERY_STRING'])
 			{
 				$uri = substr($uri, 0, -strlen($_SERVER['QUERY_STRING']) - 1);
@@ -129,36 +136,30 @@ class WdOperation
 			# routes
 			#
 
-			if (1)
+			$routes = WdRoute::routes();
+
+			foreach ($routes as $pattern => $route)
 			{
-				$route = null;
-				$routes = WdRoute::routes();
-
-				foreach ($routes as $pattern => $route)
+				if (substr($pattern, 0, self::RESTFUL_BASE_LENGHT) != self::RESTFUL_BASE)
 				{
-					if (substr($pattern, 0, 4) != '/do/')
+					continue;
+				}
+
+				$match = WdRoute::match($uri, $pattern);
+
+				if ($match)
+				{
+					if (is_array($match))
 					{
-						continue;
+						$request += $match;
 					}
 
-					$match = WdRoute::match($uri, $pattern);
+					$operation = new WdOperation($route, $pattern, $request);
 
-					if ($match)
-					{
-						if (is_array($match))
-						{
-							$request += $match;
-						}
+					$operation->terminus = true;
+					$operation->method = 'GET';
 
-						$operation = new WdOperation($route, $pattern, $request);
-
-						$operation->terminus = true;
-						$operation->method = 'GET';
-
-						//$_SERVER['HTTP_ACCEPT'] = 'application/json';
-
-						return $operation;
-					}
+					return $operation;
 				}
 			}
 
@@ -166,14 +167,11 @@ class WdOperation
 			#
 			#
 
-			//preg_match('#^([a-z\.]+)/((\d+)/)?([a-zA-Z0-9]+)$#', substr($uri, 4), $matches);
-			preg_match('#^([a-z\.]+)/(([^/]+)/)?([a-zA-Z0-9]+)$#', substr($uri, 4), $matches);
+			preg_match('#^([a-z\.]+)/(([^/]+)/)?([a-zA-Z0-9_]+)$#', substr($uri, self::RESTFUL_BASE_LENGHT), $matches);
 
 			if ($matches)
 			{
-				//$_SERVER['HTTP_ACCEPT'] = 'application/json';
-
-				list( , $destination, , $operation_key, $name) = $matches;
+				list(, $destination, , $operation_key, $name) = $matches;
 
 				$request[self::KEY] = $matches[2] ? $operation_key : null;
 			}
@@ -280,7 +278,7 @@ class WdOperation
 
 	public function dispatch()
 	{
-		global $core, $app;
+		global $core;
 
 		$name = $this->name;
 
@@ -310,11 +308,15 @@ class WdOperation
 		{
 			$module = $core->getModule($destination);
 
+			// TODO-20101104: use 'target' rather then 'module', this way, WdEvent would be able to
+			// use conditional filters.
+
 			$event = WdEvent::fire
 			(
 				'operation.' . $name . ':before', array
 				(
 					'operation' => $this,
+					'target' => $module,
 					'module' => $module
 				)
 			);
@@ -343,6 +345,7 @@ class WdOperation
 				(
 					'rc' => &$this->response->rc,
 					'operation' => $this,
+					'target' => $module,
 					'module' => $module
 				)
 			);
