@@ -1,3 +1,13 @@
+2010-11-16 # 0.8.2-dev
+
+[NEW] Events are now defined in the "events" namespace of the "hooks" config.
+
+[NEW] The "<flat_module_id>_WdHook" class is added to the autoload classes if the file "hooks.php"
+is found in the root of a module directory.
+
+
+
+
 2010-11-08 # 0.8.0
 
 [NEW] Hooks can now be used to add methods (and getters) to instances of the FObject class.

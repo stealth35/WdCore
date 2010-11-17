@@ -27,7 +27,7 @@ $stats = array();
 
 class WdCore extends WdObject
 {
-	const VERSION = '0.8.0';
+	const VERSION = '0.8.2-dev';
 
 	public $locale;
 	public $descriptors = array();
@@ -330,11 +330,11 @@ class WdCore extends WdObject
 		# autoloads for the module
 		#
 
-		$base = strtr($module_id, '.', '_');
+		$flat_module_id = strtr($module_id, '.', '_');
 
 		$autoload = array
 		(
-			$base . '_WdModule' => $module_root . 'module.php'
+			$flat_module_id . '_WdModule' => $module_root . 'module.php'
 		);
 
 		$autoload_root = $module_root . 'autoload' . DIRECTORY_SEPARATOR;
@@ -365,13 +365,22 @@ class WdCore extends WdObject
 
 				if ($name[0] == '_')
 				{
-					$name = $base . $name;
+					$name = $flat_module_id . $name;
 				}
 
 				$autoload[$name] = $autoload_root . $file;
 			}
 
 			closedir($dh);
+		}
+
+		#
+		#
+		#
+
+		if (file_exists($module_root . 'hooks.php'))
+		{
+			$autoload[$flat_module_id . '_WdHooks'] = $module_root . 'hooks.php';
 		}
 
 		#
@@ -382,7 +391,7 @@ class WdCore extends WdObject
 		{
 			foreach ($descriptor[WdModule::T_MODELS] as $model => $dummy)
 			{
-				$class_base = $base . ($model == 'primary' ? '' : '_' . $model);
+				$class_base = $flat_module_id . ($model == 'primary' ? '' : '_' . $model);
 				$file_base = $module_root . $model;
 
 				if (file_exists($file_base . '.model.php'))

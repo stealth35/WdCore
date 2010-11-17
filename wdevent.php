@@ -19,19 +19,24 @@ class WdEvent
 	{
 		if (empty(self::$listeners))
 		{
-			self::$listeners = WdConfig::get_constructed('events', array(__CLASS__, 'listeners_construct'));
+			self::$listeners = WdConfig::get_constructed('events', array(__CLASS__, 'listeners_construct'), 'hooks');
 		}
 
 		return self::$listeners;
 	}
 
-	static public function listeners_construct($configs)
+	static public function listeners_construct($fragments)
 	{
 		$listeners = array();
 
-		foreach ($configs as $config)
+		foreach ($fragments as $config)
 		{
-			foreach ($config as $pattern => $definition)
+			if (empty($config['events']))
+			{
+				continue;
+			}
+
+			foreach ($config['events'] as $pattern => $definition)
 			{
 				$listeners[self::translateRegEx($pattern)][] = $definition;
 			}

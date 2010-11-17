@@ -158,5 +158,3 @@ class WdMailer
 		return implode(',', $rc);
 	}
 }
-
-?>

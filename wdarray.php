@@ -110,8 +110,24 @@ class WdArray
 
 		return $rc;
 	}
+
+	static public function by_columns(array $array, $columns, $pad=false)
+	{
+		$values_by_columns = ceil(count($array) / $columns);
+
+		$i = 0;
+		$by_columns = array();
+
+		foreach ($array as $value)
+		{
+			$by_columns[$i++ % $values_by_columns][] = $value;
+		}
+
+		return $by_columns;
+	}
 }
 
+/*
 function wd_array_by_columns(array $array, $columns, $pad=false)
 {
 	$values_by_columns = ceil(count($array) / $columns);
@@ -141,6 +157,7 @@ function wd_array_by_columns(array $array, $columns, $pad=false)
 
 	return $finish;
 }
+*/
 
 /**
  * Inserts a value in a array before, or after, at given key.

@@ -41,7 +41,7 @@ class WdObject
 			{
 				if (empty($definition['instanceof']))
 				{
-					throw new WdException('Missing <em>instancesof</em> in config (%root): !definition', array('!definition' => $definition, '%root' => $root));
+					throw new WdException('Missing <em>instanceof</em> in config (%root): !definition', array('!definition' => $definition, '%root' => $root));
 				}
 
 				foreach ((array) $definition['instanceof'] as $class)
@@ -196,7 +196,7 @@ class WdObject
 		(
 			'ar.property', array
 			(
-				'ar' => $this,
+				'target' => $this,
 				'property' => $property
 			)
 		);
