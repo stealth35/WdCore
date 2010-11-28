@@ -16,7 +16,8 @@ defined('WDCORE_VERBOSE_MAGIC_QUOTES') or define('WDCORE_VERBOSE_MAGIC_QUOTES', 
 # includes
 #
 
-require_once 'utils.php';
+require_once 'helpers/utils.php';
+require_once 'helpers/debug.php';
 require_once 'wdobject.php';
 
 #
@@ -29,24 +30,10 @@ class WdCore extends WdObject
 {
 	const VERSION = '0.8.2-dev';
 
-	public $locale;
-	public $descriptors = array();
-
-	/**
-	 * @var array Configuration for the class
-	 */
-
 	static public $config = array();
 
-	static public function getConfig($key, $default=null)
-	{
-		return isset(self::$config[$key]) ? self::$config[$key] : $default;
-	}
-
-	#
-	#
-	#
-
+	public $locale;
+	public $descriptors = array();
 	public $models;
 
 	public function __construct(array $tags=array())
@@ -96,7 +83,7 @@ class WdCore extends WdObject
 		#
 		#
 
-		WdLocale::addPath($tags['paths']['i18n']);
+		WdI18n::$load_paths = array_merge(WdI18n::$load_paths, $tags['paths']['i18n']);
 
 		if (get_magic_quotes_gpc())
 		{
@@ -207,7 +194,8 @@ class WdCore extends WdObject
 
 		$this->descriptors = $aggregate['descriptors'];
 
-		WdLocale::addPath($aggregate['catalogs']);
+		WdI18n::$load_paths = array_merge(WdI18n::$load_paths, $aggregate['catalogs']);
+
 		WdConfig::add($aggregate['configs'], 5);
 
 //		wd_log_time('path added');

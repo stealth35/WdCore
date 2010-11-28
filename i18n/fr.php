@@ -2,6 +2,22 @@
 
 return array
 (
+	'permission' => array
+	(
+		'none' => 'Néan',
+		'access' => 'Accéder',
+		'create' => 'Créer',
+		'maintain' => 'Maintenir',
+		'manage' => 'Gérer',
+		'administer' => 'Administrer'
+	),
+
+
+
+
+
+
+
 	#
 	# WdUpload
 	#
@@ -48,7 +64,7 @@ return array
 
 		// TODO-20100721: not sure about those two: "feedback" and "structure"
 
-		'feedback' => 'Réactions',
+		'feedback' => 'Interactions',
 		'structure' => 'Structure'
 	),
 

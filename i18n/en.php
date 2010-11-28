@@ -2,6 +2,34 @@
 
 return array
 (
+	'label' => array
+	(
+		'cancel' => 'Cancel',
+		'continue' => 'Continue',
+		'save' => 'Save',
+		'send' => 'Send',
+		'use' => 'Use'
+	),
+
+	'permission' => array
+	(
+		'none' => 'None',
+		'access' => 'Access',
+		'create' => 'Create',
+		'maintain' => 'Maintain',
+		'manage' => 'Manage',
+		'administer' => 'Administer'
+	),
+
+
+
+
+
+
+
+
+
+
 	#
 	# WdUpload
 	#

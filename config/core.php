@@ -5,6 +5,7 @@ return array
 	'autoload' => array
 	(
 		'WdActiveRecord' => $root . 'wdactiverecord.php',
+		'WdActiveRecordQuery' => $root . 'wdactiverecordquery.php',
 		'WdArray' => $root . 'wdarray.php',
 		'WdDatabase' => $root . 'wddatabase.php',
 		'WdDatabaseTable' => $root . 'wddatabasetable.php',
@@ -15,8 +16,8 @@ return array
 		'WdHTTPException' => $root . 'wdexception.php',
 		'WdFileCache' => $root . 'wdfilecache.php',
 		'WdHook' => $root . 'wdhook.php',
+		'WdI18n' => $root . 'wdi18n.php',
 		'WdImage' => $root . 'wdimage.php',
-		'WdLocale' => $root . 'wdlocale.php',
 		'WdMailer' => $root . 'wdmailer.php',
 		'WdModel' => $root . 'wdmodel.php',
 		'WdModule' => $root . 'wdmodule.php',

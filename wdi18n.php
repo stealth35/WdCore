@@ -9,8 +9,10 @@
  * @license http://www.weirdog.com/wdcore/license/
  */
 
-class WdLocale
+class WdI18n
 {
+	static public $load_paths = array();
+
 	#
 	# Language codes: http://www.w3.org/TR/REC-html40/struct/dirlang.html#langcodes
 	#
@@ -19,7 +21,7 @@ class WdLocale
 
 	static public function __static_construct()
 	{
-		$fragments = WdConfig::get('locale');
+		$fragments = WdConfig::get('i18n');
 
 		$config = call_user_func_array('array_merge', $fragments);
 
@@ -33,7 +35,6 @@ class WdLocale
 		self::setTimezone($config['timezone']);
 	}
 
-	static protected $pending_catalogs = array();
 	static public $messages = array();
 
 	static public $native;
@@ -82,7 +83,14 @@ class WdLocale
 	{
 		self::$conventions = localeconv();
 
-		self::$conventions += require dirname(__FILE__) . '/i18n/conv/' . $language . '.php';
+		$conventions = require dirname(__FILE__) . '/i18n/conv/' . $language . '.php';
+
+		if ($language != 'en')
+		{
+			$conventions = wd_array_merge_recursive($conventions, require dirname(__FILE__) . '/i18n/conv/en.php');
+		}
+
+		self::$conventions += $conventions;
 	}
 
 	static protected function load_catalog($root, array $options=array())
@@ -130,17 +138,19 @@ class WdLocale
 		return $messages;
 	}
 
+	/*
 	static public function addPath($root)
 	{
 		if (is_array($root))
 		{
-			self::$pending_catalogs = array_merge(self::$pending_catalogs, $root);
+			self::$load_paths = array_merge(self::$load_paths, $root);
 
 			return;
 		}
 
-		self::$pending_catalogs[] = $root;
+		self::$load_paths[] = $root;
 	}
+	*/
 
 	static protected $cache;
 
@@ -153,7 +163,7 @@ class WdLocale
 				array
 				(
 					WdFileCache::T_COMPRESS => true,
-					WdFileCache::T_REPOSITORY => WdCore::getConfig('repository.cache') . '/core',
+					WdFileCache::T_REPOSITORY => WdCore::$config['repository.cache'] . '/core',
 					WdFileCache::T_SERIALIZE => true
 				)
 			);
@@ -170,7 +180,7 @@ class WdLocale
 
 	static protected $loading;
 
-	static protected function load_pending_catalogs()
+	static protected function load_catalogs()
 	{
 		if (self::$loading)
 		{
@@ -181,7 +191,7 @@ class WdLocale
 
 		if (self::$messages)
 		{
-			$messages = self::load_pending_catalogs_construct();
+			$messages = self::load_catalogs_construct();
 		}
 		else
 		{
@@ -194,32 +204,34 @@ class WdLocale
 				# the cache.
 				#
 
-				$messages = $cache->load('i18n_' . WdLocale::$language, array(__CLASS__, __FUNCTION__ . '_construct'));
+				$messages = $cache->load('i18n_' . self::$language, array(__CLASS__, __FUNCTION__ . '_construct'));
 			}
 			else
 			{
-				$messages = self::load_pending_catalogs_construct();
+				$messages = self::load_catalogs_construct();
 			}
 		}
 
 		self::$messages = $messages + self::$messages;
 
+//		var_dump(self::$messages);
+
 		if (0)
 		{
 			ksort(self::$messages);
 
-			echo 'load_pending_catalogs: ' . wd_dump(self::$pending_catalogs) . wd_dump(self::$messages);
+			echo 'load_catalogs: ' . wd_dump(self::$load_paths) . wd_dump(self::$messages);
 		}
 
-		self::$pending_catalogs = array();
+		self::$load_paths = array();
 		self::$loading = false;
 	}
 
-	static public function load_pending_catalogs_construct()
+	static public function load_catalogs_construct()
 	{
 		$rc = array();
 
-		foreach (self::$pending_catalogs as $root)
+		foreach (self::$load_paths as $root)
 		{
 			$messages = self::load_catalog($root);
 
@@ -249,23 +261,31 @@ class WdLocale
 			return $str;
 		}
 
-		if (self::$pending_catalogs)
+		if (self::$load_paths)
 		{
-			self::load_pending_catalogs();
+			self::load_catalogs();
 		}
 
 		$catalog = self::$messages;
+		$suffix = null;
 
-		if ($str{0} == '@' && array_key_exists('count', $args))
+		if (array_key_exists(':count', $args))
 		{
-			echo "using plural selector: $str<br />";
+			$count = $args[':count'];
+
+			if ($count == 0)
+			{
+				$suffix = '.none';
+			}
+			else if ($count == 1)
+			{
+				$suffix = '.one';
+			}
+			else
+			{
+				$suffix = '.other';
+			}
 		}
-
-		#
-		#
-		#
-
-		$try = $str;
 
 		if (isset($options['scope']))
 		{
@@ -273,21 +293,43 @@ class WdLocale
 
 			if (is_array($scope))
 			{
-				$scope = implode('.', $scope);
-			}
+				while ($scope)
+				{
+					$try = implode('.', $scope) . '.' . $str;
 
-			$try = $scope . '.' . $str;
+					array_shift($scope);
+
+					if (isset($catalog[$try . $suffix]))
+					{
+						$str = $try;
+
+						break;
+					}
+				}
+			}
+			else if (isset($catalog[$scope . '.' . $str . $suffix]))
+			{
+				$str = $scope . '.' . $str;
+			}
 		}
 
-		if (isset($catalog[$try]))
+		if (isset($catalog[$str . $suffix]))
 		{
-			$str = $catalog[$try];
+			$str = $catalog[$str . $suffix];
 		}
 		else if (isset($options['default']))
 		{
-			$default = $options['default'];
+			$default = (array) $options['default'];
 
-			$str = $default;
+			foreach ($default as $str)
+			{
+				if (isset($catalog[$str . $suffix]))
+				{
+					$str = $catalog[$str . $suffix];
+
+					break;
+				}
+			}
 
 			if (0)
 			{
@@ -340,11 +382,22 @@ class WdLocale
 
 		return $str;
 	}
+
+	static public function store_translation($language, $translation)
+	{
+		$translation = wd_array_flatten($translation);
+
+		self::$messages = $translation + self::$messages;
+	}
 }
+
+/*
+ * HELPERS
+ */
 
 function t($str, array $args=array(), array $options=array())
 {
-	return WdLocale::translate($str, $args, $options);
+	return WdI18n::translate($str, $args, $options);
 }
 
 function wd_format_size($size)
@@ -369,7 +422,7 @@ function wd_format_size($size)
 		$size = $size / (1024 * 1024 * 1024);
 	}
 
-	$conv = WdLocale::$conventions;
+	$conv = WdI18n::$conventions;
 
 	$size = number_format($size, ($size - floor($size) < .009) ? 0 : 2, $conv['decimal_point'], $conv['thousands_sep']);
 
@@ -383,9 +436,9 @@ function wd_format_time($time, $format='default')
 		$format = substr($format, 1);
 	}
 
-	if (isset(WdLocale::$conventions['date']['formats'][$format]))
+	if (isset(WdI18n::$conventions['date']['formats'][$format]))
 	{
-		$format = WdLocale::$conventions['date']['formats'][$format];
+		$format = WdI18n::$conventions['date']['formats'][$format];
 	}
 
 	if (is_string($time))

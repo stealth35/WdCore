@@ -1,9 +1,15 @@
-2010-11-16 # 0.8.2-dev
+2010-11-28 # 0.8.2-dev
 
 [NEW] Events are now defined in the "events" namespace of the "hooks" config.
 
 [NEW] The "<flat_module_id>_WdHook" class is added to the autoload classes if the file "hooks.php"
 is found in the root of a module directory.
+
+[CHG] When defined as an array, the `scope` option is now cascading, a translation is searched in
+the different scopes : array('users', 'delete', 'operation') can be used to search for a
+translation in the 'users.delete.operation', 'delete.operaton' and 'operation' namespaces.
+
+[CHG] Renamed the WdLocale class as WdI18n.
 
 
 
