@@ -242,23 +242,29 @@ class WdDatabaseTable
 		return $schema;
 	}
 
-	protected function resolveStatement($query, array $args=array())
+	public function resolve_statement($statement)
 	{
 		return strtr
 		(
-			$query, array
+			$statement, array
 			(
 				'{alias}' => $this->alias,
 				'{prefix}' => $this->connection->prefix,
 				'{primary}' => $this->primary,
-				'{self}' => $this->name
+				'{self}' => $this->name,
+				'{self_and_related}' => $this->name . $this->select_join
 			)
 		);
 	}
 
+	protected function quote($string, $parameter_type=PDO::PARAM_STR)
+	{
+		return $this->connection->quote($string, $parameter_type);
+	}
+
 	public function prepare($query, $options=array())
 	{
-		$query = $this->resolveStatement($query);
+		$query = $this->resolve_statement($query);
 
 		return $this->connection->prepare($query, $options);
 	}
@@ -272,13 +278,10 @@ class WdDatabaseTable
 
 	public function query($query, array $args=array(), array $options=array())
 	{
-		$query = $this->resolveStatement($query, $args);
+		$query = $this->resolve_statement($query);
 
 		$statement = $this->prepare($query, $options);
-
 		$statement->execute($args);
-
-		//wd_log(__CLASS__ . '::' . __FUNCTION__ . ':: query: \1', $statement);
 
 		return $statement;
 	}

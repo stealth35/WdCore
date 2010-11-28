@@ -66,7 +66,7 @@ class WdModel extends WdDatabaseTable
 		return self::is_extending($tags, $instanceof);
 	}
 
-	protected $ar_class;
+	public $ar_class;
 	protected $loadall_options = array('mode' => PDO::FETCH_OBJ);
 
 	public function __construct($tags)
@@ -285,5 +285,40 @@ class WdModel extends WdDatabaseTable
 		}
 
 		return (WDMODEL_USE_APC ? 'ar:' . $_SERVER['DOCUMENT_ROOT'] . '/' : '') . $this->connection->name . '/' . $this->name . '/' . $key;
+	}
+
+
+
+
+
+	private function defer_to_actionrecord_query()
+	{
+		$trace = debug_backtrace(false);
+		$arr = new WdActiveRecordQuery($this);
+
+		return call_user_func_array(array($arr, $trace[1]['function']), $trace[1]['args']);
+	}
+
+	public function joins($expression)
+	{
+		return $this->defer_to_actionrecord_query();
+	}
+
+	public function _select($expression)
+	{
+		$arr = new WdActiveRecordQuery($this);
+		$args = func_get_args();
+
+		return call_user_func_array(array($arr, 'select'), $args);
+	}
+
+	public function where($conditions, $conditions_args=null)
+	{
+		return $this->defer_to_actionrecord_query();
+	}
+
+	public function order($order)
+	{
+		return $this->defer_to_actionrecord_query();
 	}
 }

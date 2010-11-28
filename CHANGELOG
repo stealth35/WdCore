@@ -8,9 +8,14 @@ is found in the root of a module directory.
 [NEW] In order to standardize the event handling, the 'target' property is now used to associate an
 event with an object.
 
+[NEW] The "{self_and_related}" SQL statement placeholder can be used in select statements to query
+a table and all of its related tables.
+
 [NEW] Added the `db` getter for the "primary" database connection.
 
 [NEW] The 'Referer' HTTP header is set when the operation result location is changed.
+
+[NEW] The WdActiveRecordQuery class can be used to compose SQL queries.
 
 [CHG] When defined as an array, the `scope` option is now cascading, a translation is searched in
 the different scopes : array('users', 'delete', 'operation') can be used to search for a

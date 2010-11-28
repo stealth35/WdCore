@@ -86,7 +86,7 @@ class WdDatabase extends PDO
 	**
 	*/
 
-	public function resolveStatement($query)
+	public function resolve_statement($query)
 	{
 		return strtr
 		(
@@ -111,7 +111,7 @@ class WdDatabase extends PDO
 
 			if (empty($this->prepared[$key]))
 			{
-				$query = $this->resolveStatement($query);
+				$query = $this->resolve_statement($query);
 
 				try
 				{
@@ -141,7 +141,7 @@ class WdDatabase extends PDO
 		}
 		else
 		{
-			$query = $this->resolveStatement($query);
+			$query = $this->resolve_statement($query);
 
 			$statement = parent::prepare($query, $options);
 		}
@@ -184,7 +184,7 @@ class WdDatabase extends PDO
 
 	public function exec($statement)
 	{
-		$statement = $this->resolveStatement($statement);
+		$statement = $this->resolve_statement($statement);
 
 		try
 		{
