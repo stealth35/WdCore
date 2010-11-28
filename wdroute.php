@@ -125,7 +125,7 @@ class WdRoute
 							(
 								'title' => 'Nouveau',
 								'block' => 'edit',
-								'permission' => PERMISSION_CREATE,
+								'permission' => WdModule::PERMISSION_CREATE,
 								'visibility' => 'visible'
 							);
 						}
@@ -152,7 +152,7 @@ class WdRoute
 							(
 								'title' => 'Config.',
 								'block' => 'config',
-								'permission' => PERMISSION_ADMINISTER,
+								'permission' => WdModule::PERMISSION_ADMINISTER,
 								'visibility' => 'visible'
 							);
 						}

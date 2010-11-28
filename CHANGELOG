@@ -5,9 +5,18 @@
 [NEW] The "<flat_module_id>_WdHook" class is added to the autoload classes if the file "hooks.php"
 is found in the root of a module directory.
 
+[NEW] In order to standardize the event handling, the 'target' property is now used to associate an
+event with an object.
+
+[NEW] Added the `db` getter for the "primary" database connection.
+
+[NEW] The 'Referer' HTTP header is set when the operation result location is changed.
+
 [CHG] When defined as an array, the `scope` option is now cascading, a translation is searched in
 the different scopes : array('users', 'delete', 'operation') can be used to search for a
 translation in the 'users.delete.operation', 'delete.operaton' and 'operation' namespaces.
+
+[CHG] PERMISSION_+ Permissions are now const of the WdModule class.
 
 [CHG] Renamed the WdLocale class as WdI18n.
 

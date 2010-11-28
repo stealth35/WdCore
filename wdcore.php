@@ -178,7 +178,7 @@ class WdCore extends WdObject
 			(
 				array
 				(
-					WdFileCache::T_REPOSITORY => self::getConfig('repository.cache') . '/core',
+					WdFileCache::T_REPOSITORY => self::$config['repository.cache'] . '/core',
 					WdFileCache::T_SERIALIZE => true
 				)
 			);
@@ -679,6 +679,15 @@ class WdCore extends WdObject
 	}
 
 	/**
+	 * Getter for the "primary" database connection.
+	 */
+
+	protected function __get_db()
+	{
+		return $this->db();
+	}
+
+	/**
 	 * Display information about the core and its modules.
 	 *
 	 * The function is called during the special operation "core.aloha".
@@ -911,7 +920,7 @@ class WdConfig
 			(
 				array
 				(
-					WdFileCache::T_REPOSITORY => WdCore::getConfig('repository.cache') . '/core',
+					WdFileCache::T_REPOSITORY => WdCore::$config['repository.cache'] . '/core',
 					WdFileCache::T_SERIALIZE => true
 				)
 			);

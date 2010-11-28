@@ -15,14 +15,13 @@ class WdOperation
 	const NAME = '#operation';
 	const KEY = '#key';
 
+	const RESTFUL_BASE = '/api/';
+	const RESTFUL_BASE_LENGHT = 5;
+
 	/**
-	 * Encode an operation as an URL.
+	 * Encode an operation as a RESful URL :
 	 *
-	 * Three encoding types are available :
-	 *
-	 * 1. Simple : The URL is composed as '?do=<destination>.<method>&param1=...'
-	 * 2. Base64 (b) : The URL is encoded using base64
-	 * 3. RESTful : The URL is created as a RESTful resource : '/api/<destination>/(<key>/)?<method>?param1=...'
+	 * '/api/<destination>/(<key>/)?<method>?param1=...'
 	 *
 	 * TODO-20100615: reorder parameters as $destination, $operation, $key, $params, $type
 	 *
@@ -34,62 +33,21 @@ class WdOperation
 
 	static public function encode($destination, $name, array $params=array(), $encode=false, $key=null)
 	{
-		//if ($encode === 'r')
-		{
-			$query = http_build_query
-			(
-				$params, '', '&'
-			);
-
-			return '/api/' . $destination . '/' . ($key ? $key . '/' : '') . $name . ($query ? '?' . $query : '');
-		}
-
-		/*
-		#
-		#
-		#
-
 		$query = http_build_query
 		(
-			array
-			(
-				'do' => $destination . '.' . $name
-			)
-
-			+ $params,
-
-			'', '&'
+			$params, '', '&'
 		);
 
-		if ($encode === true || $encode == 'b')
-		{
-			$query = base64_encode($query);
-
-			#
-			# We need the '=' as a final character to recognize the query as encoded, if the base64
-			# encoding didn't need padding, we pad it anyway to get some '='.
-			#
-
-			if (substr($query, -1, 1) != '=')
-			{
-				$query .= '===';
-			}
-
-			$query = 'do=' . $query;
-		}
-
-		return '?' . $query;
-		*/
+		return self::RESTFUL_BASE . $destination . '/' . ($key !== null ? $key . '/' : '') . $name . ($query ? '?' . $query : '');
 	}
-
-	const RESTFUL_BASE = '/api/';
-	const RESTFUL_BASE_LENGHT = 5;
 
 	static public function decode($request)
 	{
 		$method = 'GET';
 		$destination = null;
 		$operation = null;
+
+		//DIRTY:COMPAT
 
 		if (isset($request['!do']))
 		{
@@ -111,6 +69,8 @@ class WdOperation
 
 			$uri = '/api/' + substr($uri, 4);
 		}
+
+		// /COMPAT
 
 		if (substr($uri, 0, self::RESTFUL_BASE_LENGHT) == self::RESTFUL_BASE)
 		{
@@ -180,6 +140,9 @@ class WdOperation
 				throw new WdException('Uknown operation: %operation', array('%operation' => substr($uri, 4)), array(404 => 'Unknow operation'));
 			}
 		}
+
+		// DIRTY:COMPAT
+
 		else if (isset($request['do']) && isset($request[self::NAME]))
 		{
 			throw new WdException('Ambiguous operation: both GET and POST methods are used.');
@@ -221,6 +184,9 @@ class WdOperation
 			$name = substr($do, $pos + 1);
 			$destination = substr($do, 0, $pos);
 		}
+
+		// /COMPAT
+
 		else if (isset($request[self::NAME]))
 		{
 			$method = 'POST';
@@ -308,16 +274,12 @@ class WdOperation
 		{
 			$module = $core->getModule($destination);
 
-			// TODO-20101104: use 'target' rather then 'module', this way, WdEvent would be able to
-			// use conditional filters.
-
 			$event = WdEvent::fire
 			(
 				'operation.' . $name . ':before', array
 				(
-					'operation' => $this,
 					'target' => $module,
-					'module' => $module
+					'operation' => $this
 				)
 			);
 
@@ -343,10 +305,9 @@ class WdOperation
 			(
 				'operation.' . $name, array
 				(
-					'rc' => &$this->response->rc,
-					'operation' => $this,
 					'target' => $module,
-					'module' => $module
+					'operation' => $this,
+					'rc' => &$this->response->rc
 				)
 			);
 		}
@@ -361,6 +322,8 @@ class WdOperation
 
 		$rc = null;
 		$rc_type = null;
+
+		// FIXME-20101117: using $_SERVER is too global, we have to use an object related property
 
 		if (isset($_SERVER['HTTP_ACCEPT']))
 		{
@@ -410,6 +373,7 @@ class WdOperation
 
 		if ($this->location)
 		{
+			header('Referer: ' . $_SERVER['REQUEST_URI']);
 			header('Location: ' . $this->location);
 
 			exit;

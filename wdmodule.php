@@ -26,15 +26,6 @@
  *
  */
 
-// TODO: Might not be the best place here...
-
-define('PERMISSION_NONE', 0);
-define('PERMISSION_ACCESS', 1);
-define('PERMISSION_CREATE', 2);
-define('PERMISSION_MAINTAIN', 3);
-define('PERMISSION_MANAGE', 4);
-define('PERMISSION_ADMINISTER', 5);
-
 class WdModule extends WdObject
 {
 	const T_CATEGORY = 'category';
@@ -48,6 +39,13 @@ class WdModule extends WdObject
 	const T_ROOT = 'root';
 	const T_STARTUP = 'startup';
 	const T_TITLE = 'title';
+
+	const PERMISSION_NONE = 0;
+	const PERMISSION_ACCESS = 1;
+	const PERMISSION_CREATE = 2;
+	const PERMISSION_MAINTAIN = 3;
+	const PERMISSION_MANAGE = 4;
+	const PERMISSION_ADMINISTER = 5;
 
 	protected $id;
 	protected $root;
@@ -271,13 +269,6 @@ class WdModule extends WdObject
 			//wd_log('create model \2 with tags: \1', array($tags, $this->id . '/' . $which));
 
 			$this->models[$which] = new $class($tags);
-
-			/* DIRTY
-			if ($this->id == 'press.releases')
-			{
-				var_dump($this->models[$which]);
-			}
-			*/
 		}
 
 		#
@@ -391,7 +382,7 @@ class WdModule extends WdObject
 						throw new WdException('Model %module/%model implements itself !', array('%module' => $this->id, '%model' => $which));
 					}
 
-					$module =  ($i_module == $this->id) ? $this : $core->getModule($i_module);
+					$module = ($i_module == $this->id) ? $this : $core->getModule($i_module);
 
 					$implement['table'] = $module->model($i_which);
 				}
@@ -502,20 +493,9 @@ class WdModule extends WdObject
 		return array
 		(
 			self::CONTROL_AUTHENTICATION => false,
-			self::CONTROL_PERMISSION => PERMISSION_NONE,
+			self::CONTROL_PERMISSION => self::PERMISSION_NONE,
 			self::CONTROL_ENTRY => false,
 			self::CONTROL_OWNERSHIP => false,
-			self::CONTROL_FORM => false,
-			self::CONTROL_VALIDATOR => true
-		);
-	}
-
-	protected function get_operation_delete_controls(WdOperation $operation)
-	{
-		return array
-		(
-			self::CONTROL_PERMISSION => PERMISSION_MANAGE,
-			self::CONTROL_OWNERSHIP => true,
 			self::CONTROL_FORM => false,
 			self::CONTROL_VALIDATOR => true
 		);
@@ -568,7 +548,7 @@ class WdModule extends WdObject
 		$controls += array
 		(
 			self::CONTROL_AUTHENTICATION => false,
-			self::CONTROL_PERMISSION => PERMISSION_NONE,
+			self::CONTROL_PERMISSION => self::PERMISSION_NONE,
 			self::CONTROL_ENTRY => false,
 			self::CONTROL_OWNERSHIP => false,
 			self::CONTROL_FORM => false,
@@ -625,7 +605,7 @@ class WdModule extends WdObject
 			{
 				throw new WdHTTPException
 				(
-					"You don't have permission to request the %operation operation on the %module module.", array
+					"You don't have permission to perform the requested operation on the %module module: %operation", array
 					(
 						'%operation' => $operation_name,
 						'%module' => $this->id
@@ -649,7 +629,7 @@ class WdModule extends WdObject
 			{
 				throw new WdHTTPException
 				(
-					"The requested entry %key could not be loaded from the %module module.", array
+					"The requested entry could not be loaded from the %module module: %key", array
 					(
 						'%key' => $key,
 						'%module' => $this->id
@@ -673,7 +653,7 @@ class WdModule extends WdObject
 			{
 				throw new WdHTTPException
 				(
-					"You don't have ownership of the entry %key.", array
+					"You don't have ownership of the entry: %key", array
 					(
 						'%key' => $operation->key
 					),
@@ -760,7 +740,7 @@ class WdModule extends WdObject
 			return false;
 		}
 
-		$entry = $this->model()->load($key);
+		$entry = $this->model->load($key);
 
 		if (!$entry)
 		{
@@ -878,7 +858,7 @@ class WdModule extends WdObject
 		return array
 		(
 			self::CONTROL_AUTHENTICATION => false,
-			self::CONTROL_PERMISSION => PERMISSION_CREATE,
+			self::CONTROL_PERMISSION => self::PERMISSION_CREATE,
 			self::CONTROL_OWNERSHIP => true,
 			self::CONTROL_FORM => true,
 			self::CONTROL_VALIDATOR => true
@@ -941,7 +921,25 @@ class WdModule extends WdObject
 	}
 
 	/**
-	 * Validates the 'delete' operation.
+	 * Returns controls for the "delete" operation.
+	 *
+	 * @param WdOperation $operation
+	 */
+
+	protected function get_operation_delete_controls(WdOperation $operation)
+	{
+		return array
+		(
+			self::CONTROL_PERMISSION => self::PERMISSION_MANAGE,
+			self::CONTROL_ENTRY => true,
+			self::CONTROL_OWNERSHIP => true,
+			self::CONTROL_FORM => false,
+			self::CONTROL_VALIDATOR => true
+		);
+	}
+
+	/**
+	 * Validates the "delete" operation.
 	 *
 	 * The operation is validated only if the operation key is defined.
 	 *
@@ -950,13 +948,20 @@ class WdModule extends WdObject
 
 	protected function validate_operation_delete(WdOperation $operation)
 	{
-		if (empty($operation->params[WdOperation::KEY]) && empty($operation->params[WdOperation::KEYS]))
+		if (!$operation->key && empty($operation->params[WdOperation::KEYS]))
 		{
 			return false;
 		}
 
 		return true;
 	}
+
+	/**
+	 * Performs the "delete" operation.
+	 *
+	 * @param WdOperation $operation
+	 * @throws WdException
+	 */
 
 	protected function operation_delete(WdOperation $operation)
 	{
@@ -1016,6 +1021,15 @@ class WdModule extends WdObject
 		$args = func_get_args();
 
 		array_shift($args);
+
+		$method_name = 'handle_block_' . $name;
+
+		if (method_exists($this, $method_name))
+		{
+			array_shift($args);
+
+			return call_user_func_array(array($this, $method_name), $args);
+		}
 
 		$callback = 'block_' . $name;
 
