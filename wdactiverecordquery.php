@@ -9,7 +9,7 @@
  * @license http://www.weirdog.com/wdcore/license/
  */
 
-class WdActiveRecordQuery implements Iterator
+class WdActiveRecordQuery extends WdObject implements Iterator
 {
 	protected $model;
 
@@ -243,6 +243,11 @@ class WdActiveRecordQuery implements Iterator
 		return call_user_func_array(array($statement, 'fetchAll'), $args);
 	}
 
+	protected function __volatile_get_all()
+	{
+		return $this->all();
+	}
+
 	public function one()
 	{
 		$statement = $this->query();
@@ -258,6 +263,11 @@ class WdActiveRecordQuery implements Iterator
 		}
 
 		return call_user_func_array(array($statement, 'fetchAndClose'), $args);
+	}
+
+	protected function __volatile_get_one()
+	{
+		return $this->one();
 	}
 
 	public function pairs()
@@ -279,11 +289,21 @@ class WdActiveRecordQuery implements Iterator
 		return $rc;
 	}
 
+	protected function __volatile_get_pairs()
+	{
+		return $this->pairs();
+	}
+
 	public function column()
 	{
 		$statement = $this->query();
 
 		return call_user_func_array(array($statement, 'fetchColumnAndClose'), array());
+	}
+
+	protected function __volatile_get_column()
+	{
+		return $this->column();
 	}
 
 	public function count($column=null)

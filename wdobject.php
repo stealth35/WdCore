@@ -80,54 +80,43 @@ class WdObject
 		return call_user_func_array($callback, $arguments);
 	}
 
-	public function has_property($property)
+	/**
+	 * Returns the value of an innaccessible property.
+	 *
+	 * Multiple callbacks are tried in order to retrieve the value of the property :
+	 *
+	 * 1. `__volatile_get_<property>`: Get and return the value of the property.The callback may
+	 * not be defined by the object's class, but one can extend the class using the mixin features
+	 * of the FObject class.
+	 * 2. `__get_<property>`: Get, set and return the value of the property. Because the property
+	 * is set, the callback is only called once. The callback may not be defined by the object's
+	 * class, but one can extend the class using the mixin features of the FObject class.
+	 * 3.Finaly, a `ar.property` event can be fired to try and retrieve the value of the
+	 * property.
+	 *
+	 * @param string $property
+	 * @return mixed The value of the innaccessible property. `null` is returned if the property
+	 * could not be retrieved, in that cas, an error is also triggered.
+	 */
+
+	public function __get($property)
 	{
-		if (property_exists($this, $property))
-		{
-			return true;
-		}
-
-		#
-		#
-		#
-
-		$getter = '__get_' . $property;
+		$getter = '__volatile_get_' . $property;
 
 		if (method_exists($this, $getter))
 		{
-			return true;
+			return $this->$getter();
 		}
-
-		#
-		# The object does not define any getter for the property, let's see if a getter is defined
-		# in the methods.
-		#
 
 		$getter = $this->get_method_callback($getter);
 
 		if ($getter)
 		{
-			return true;
+			return $this->$property = call_user_func($getter, $this, $property);
 		}
 
 		#
-		#
-		#
 
-		$rc = $this->__get_by_event($property, $success);
-
-		if ($success)
-		{
-			$this->$property = $rc;
-
-			return true;
-		}
-
-		return false;
-	}
-
-	public function __get($property)
-	{
 		$getter = '__get_' . $property;
 
 		if (method_exists($this, $getter))
@@ -147,30 +136,11 @@ class WdObject
 			return $this->$property = call_user_func($getter, $this, $property);
 		}
 
-
-
-
-
-
-
-
-
-
-
-
-
-		$getter = '__get_them_all';
-
-		if (method_exists($this, $getter))
-		{
-			return $this->$property = $this->$getter($property);
-		}
-
 		#
 		#
 		#
 
-		$rc = $this->__get_by_event($property, $success);
+		$rc = $this->__defer_get($property, $success);
 
 		if ($success)
 		{
@@ -188,7 +158,7 @@ class WdObject
 		);
 	}
 
-	protected function __get_by_event($property, &$success)
+	protected function __defer_get($property, &$success)
 	{
 		global $core;
 
@@ -216,9 +186,11 @@ class WdObject
 		return $event->value;
 	}
 
+	/**
+	 * Returns the callbacks associated with the object's class.
+	 */
 
-
-	public function get_methods()
+	protected function get_methods()
 	{
 		$class = get_class($this);
 
@@ -256,7 +228,7 @@ class WdObject
 	 * @param $method
 	 */
 
-	public function get_method_callback($method)
+	protected function get_method_callback($method)
 	{
 		$methods = $this->get_methods();
 

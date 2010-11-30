@@ -17,6 +17,9 @@ a table and all of its related tables.
 
 [NEW] The WdActiveRecordQuery class can be used to compose SQL queries.
 
+[NEW] Instances of WdObject can now define what we call "volatile getters", getters that return
+values but don't set properties. 
+
 [CHG] When defined as an array, the `scope` option is now cascading, a translation is searched in
 the different scopes : array('users', 'delete', 'operation') can be used to search for a
 translation in the 'users.delete.operation', 'delete.operaton' and 'operation' namespaces.
@@ -24,6 +27,9 @@ translation in the 'users.delete.operation', 'delete.operaton' and 'operation' n
 [CHG] PERMISSION_+ Permissions are now const of the WdModule class.
 
 [CHG] Renamed the WdLocale class as WdI18n.
+
+[DEL] WdObject: The `__get_them_all` method is deprecated, override the `__defer_get` method
+instead.
 
 
 
