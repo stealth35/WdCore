@@ -138,13 +138,13 @@ class WdDatabaseTable
 		# resolve inheritence and create a lovely _inner join_ string
 		#
 
-		$join = " as `{$this->alias}` ";
+		$join = " `{$this->alias}` ";
 
 		$parent = $this->parent;
 
 		while ($parent)
 		{
-			$join .= "inner join `{$parent->name}` as `{$parent->alias}` using(`{$this->primary}`) ";
+			$join .= "INNER JOIN `{$parent->name}` `{$parent->alias}` USING(`{$this->primary}`) ";
 
 			$parent = $parent->parent;
 		}
@@ -183,8 +183,8 @@ class WdDatabaseTable
 				$name = $table->name;
 				$primary = $table->primary;
 
-				$join .= empty($implement['loose']) ? 'inner' : 'left';
-				$join .= " join `$name` as i$i using(`$primary`) ";
+				$join .= empty($implement['loose']) ? 'INNER' : 'LEFT';
+				$join .= " JOIN `$name` as i$i USING(`$primary`) ";
 
 				$i++;
 			}
@@ -257,7 +257,7 @@ class WdDatabaseTable
 		);
 	}
 
-	protected function quote($string, $parameter_type=PDO::PARAM_STR)
+	public function quote($string, $parameter_type=PDO::PARAM_STR)
 	{
 		return $this->connection->quote($string, $parameter_type);
 	}

@@ -415,9 +415,14 @@ class WdOperation
 		return $this->response->rc;
 	}
 
-	public function handle_booleans(array $booleans)
+	public function handle_booleans($booleans)
 	{
 		$params = &$this->params;
+
+		if (!is_array($booleans))
+		{
+			$booleans = func_get_args();
+		}
 
 		foreach ($booleans as $identifier)
 		{

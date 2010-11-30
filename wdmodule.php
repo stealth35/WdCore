@@ -81,6 +81,10 @@ class WdModule extends WdObject
 		return strtr($this->id, '.', '_');
 	}
 
+	/**
+	 * Getter for the primary model.
+	 */
+
 	protected function __get_model()
 	{
 		return $this->model();
@@ -631,7 +635,7 @@ class WdModule extends WdObject
 				(
 					"The requested entry could not be loaded from the %module module: %key", array
 					(
-						'%key' => $key,
+						'%key' => $operation->key,
 						'%module' => $this->id
 					),
 
