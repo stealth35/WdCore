@@ -86,12 +86,13 @@ class WdActiveRecordQuery extends WdObject implements Iterator
 
 					$joined = substr($joined, 1);
 
-					$c .= ' AND `' . $column . '` IN(' . $joined . ')';
+					$c .= ' AND `' . ($column{0} == '!' ? substr($column, 1) . '` NOT' : $column . '`') . ' IN(' . $joined . ')';
 				}
 				else
 				{
-					$c .= ' AND `' . $column . '` = ?';
 					$conditions_args[] = $arg;
+
+					$c .= ' AND `' . ($column{0} == '!' ? substr($column, 1) . '` !' : $column . '` ') . '= ?';
 				}
 			}
 
@@ -327,6 +328,14 @@ class WdActiveRecordQuery extends WdObject implements Iterator
 
 		return $this->model->query($query, $this->conditions_args)->$method();
 	}
+
+	public function delete()
+	{
+		$query = 'DELETE FROM {self} ' . $this->build();
+
+		return $this->model->execute($query, $this->conditions_args);
+	}
+
 
 	/*
 	 * ITERATOR
