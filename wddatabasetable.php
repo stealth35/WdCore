@@ -9,9 +9,7 @@
  * @license http://www.weirdog.com/wdcore/license/
  */
 
-require_once 'wddatabase.php';
-
-class WdDatabaseTable
+class WdDatabaseTable extends WdObject
 {
 	const T_ALIAS = 'alias';
 	const T_CONNECTION = 'connection';
@@ -193,6 +191,16 @@ class WdDatabaseTable
 //		wd_log('join query for %name: <code>:join</code>', array('%name' => $this->name, ':join' => $join));
 
 		$this->select_join = $join;
+	}
+
+	protected function __volatile_get_connection()
+	{
+		return $this->connection;
+	}
+
+	protected function __set_connection()
+	{
+		throw new WdException('Connection cannot be set');
 	}
 
 	/*

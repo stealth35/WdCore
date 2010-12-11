@@ -186,6 +186,105 @@ class WdObject
 		return $event->value;
 	}
 
+	public function __set($property, $value)
+	{
+//		echo get_class($this) . '.set(' . $property . ')<br />';
+
+		$setter = '__volatile_set_' . $property;
+
+		if (method_exists($this, $setter))
+		{
+			return $this->$setter($value);
+		}
+
+		/*
+		$setter = $this->get_method_callback($setter);
+
+		if ($setter)
+		{
+			return $this->$property = call_user_func($setter, $this, $property, $value);
+		}
+		*/
+
+		$setter = '__set_' . $property;
+
+		if (method_exists($this, $setter))
+		{
+			return $this->$property = $this->$setter($value);
+		}
+
+		/*
+		$setter = $this->get_method_callback($setter);
+
+		if ($setter)
+		{
+			return $this->$property = call_user_func($setter, $this, $property, $value);
+		}
+		*/
+
+		$this->$property = $value;
+	}
+
+	/**
+	 * Checks wheter the object has the specified property.
+	 *
+	 * Unlike the property_exists() function, this method uses all the getters available to find
+	 * the property.
+	 *
+	 * @param bool Returns TRUE if the object has the property, FALSE otherwise.
+	 */
+
+	public function has_property($property)
+	{
+		if (property_exists($this, $property))
+		{
+			return true;
+		}
+
+		$getter = '__volatile_get_' . $property;
+
+		if (method_exists($this, $getter))
+		{
+			return true;
+		}
+
+		$getter = $this->get_method_callback($getter);
+
+		if ($getter)
+		{
+			return true;
+		}
+
+		$getter = '__get_' . $property;
+
+		if (method_exists($this, $getter))
+		{
+			return true;
+		}
+
+		$getter = $this->get_method_callback($getter);
+
+		if ($getter)
+		{
+			return true;
+		}
+
+		#
+		#
+		#
+
+		$rc = $this->__defer_get($property, $success);
+
+		if ($success)
+		{
+			$this->$property = $rc;
+
+			return true;
+		}
+
+		return false;
+	}
+
 	/**
 	 * Returns the callbacks associated with the object's class.
 	 */
