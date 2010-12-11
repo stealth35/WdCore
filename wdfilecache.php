@@ -20,19 +20,19 @@ if (!defined('WDCACHE_USE_APC'))
 
 class WdFileCache
 {
-	const _VERSION = '0.10.0';
-
 	const T_COMPRESS = 'compress';
 	const T_REPOSITORY = 'repository';
 	const T_REPOSITORY_DELETE_RATIO = 'repository_delete_ratio';
 	const T_REPOSITORY_SIZE = 'repository_size';
 	const T_SERIALIZE = 'serialize';
+	const T_MODIFIED_TIME = 'modified_time';
 
 	public $compress = false;
 	public $repository;
 	public $repository_delete_ratio = .25;
 	public $repository_size = 512;
 	public $serialize = false;
+	public $modified_time;
 
 	protected $root;
 
@@ -72,14 +72,14 @@ class WdFileCache
 	{
 		if (!is_dir($this->root))
 		{
-			throw new WdHTTPException('The repository %repository does not exists.', array('%repository' => $this->repository), 404);
+			throw new WdException('The repository %repository does not exists.', array('%repository' => $this->repository), 404);
 		}
 
 		$location = getcwd();
 
 		chdir($this->root);
 
-		if (!is_file($file))
+		if (!is_file($file) || ($this->modified_time && $this->modified_time > filemtime($file)))
 		{
 			$file = call_user_func($constructor, $this, $file, $userdata);
 		}
@@ -147,7 +147,7 @@ class WdFileCache
 
 		if (!is_dir($this->root))
 		{
-			throw new WdHTTPException('The repository %repository does not exists.', array('%repository' => $this->repository), 404);
+			throw new WdException('The repository %repository does not exists.', array('%repository' => $this->repository), 404);
 
 			return call_user_func($contructor, $userdata, $this, $key);
 		}
@@ -208,7 +208,7 @@ class WdFileCache
 
 		if (!is_writable($this->root))
 		{
-			throw new WdHTTPException('The repository %repository is not writable.', array('%repository' => $this->repository));
+			throw new WdException('The repository %repository is not writable.', array('%repository' => $this->repository));
 		}
 
 		$location = getcwd();

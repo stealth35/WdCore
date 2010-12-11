@@ -72,7 +72,7 @@ class WdRoute
 
 				$module_id = isset($route['module']) ? $route['module'] : $local_module_id;
 
-				if ($module_id && !$core->hasModule($module_id))
+				if ($module_id && !$core->has_module($module_id))
 				{
 					continue;
 				}

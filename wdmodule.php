@@ -31,6 +31,7 @@ class WdModule extends WdObject
 	const T_CATEGORY = 'category';
 	const T_DESCRIPTION = 'description';
 	const T_DISABLED = 'disabled';
+	const T_EXTENDS = 'extends';
 	const T_ID = 'id';
 	const T_REQUIRED = 'required';
 	const T_MODELS = 'models';
@@ -47,14 +48,31 @@ class WdModule extends WdObject
 	const PERMISSION_MANAGE = 4;
 	const PERMISSION_ADMINISTER = 5;
 
+	static public function is_extending($module_id, $extending_id)
+	{
+		global $core;
+
+		while ($module_id)
+		{
+			if ($module_id == $extending_id)
+			{
+				return true;
+			}
+
+			$descriptor = $core->descriptors[$module_id];
+
+			$module_id = isset($descriptor[self::T_EXTENDS]) ? $descriptor[self::T_EXTENDS] : null;
+		}
+
+		return false;
+	}
+
 	protected $id;
 	protected $root;
 	protected $tags;
 
 	public function __construct($tags)
 	{
-		global $core;
-
 		if (empty($tags[self::T_ID]))
 		{
 			throw new WdException
@@ -83,6 +101,8 @@ class WdModule extends WdObject
 
 	/**
 	 * Getter for the primary model.
+	 *
+	 * @return WdModel The _primary_ model for the module.
 	 */
 
 	protected function __get_model()
@@ -219,7 +239,7 @@ class WdModule extends WdObject
 	 * If the model has not been created yet, it is created on the fly.
 	 *
 	 * @param $which
-	 * @return unknown_type
+	 * @return WdModel The requested model.
 	 */
 
 	public function model($which='primary')
@@ -286,19 +306,10 @@ class WdModule extends WdObject
 	{
 		global $core;
 
-		//$ns = str_replace('_WdModule', '', get_class($this));
-
-		$ns = strtr($this->id, '.', '_');
+		$ns = $this->flat_id;
 
 		$has_model_class = file_exists($this->root . $which . '.model.php');
 		$has_ar_class = file_exists($this->root . $which . '.ar.php');
-
-		/*
-		$prefix = '_WdModule';
-		$prefix_length = strlen($prefix);
-
-		$table_name = substr(get_class($this), 0, -$prefix_length);
-		*/
 
 		$table_name = $ns;
 
@@ -476,7 +487,7 @@ class WdModule extends WdObject
 		#
 		# The operation access has been controled and validated, we can now call the operation
 		# callback method.
-	  	#
+		#
 
 		return $this->$callback($operation);
 	}

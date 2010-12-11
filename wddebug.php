@@ -92,7 +92,7 @@ class WdDebug
 		#
 		#
 
-		$rc = '<code>' . implode('<br />', $lines) . '</code><br />';
+		$rc = '<code class="wd-core-debug">' . implode('<br />', $lines) . '</code><br />';
 
 		self::report($rc);
 

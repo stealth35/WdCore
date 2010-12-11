@@ -30,12 +30,20 @@ class WdActiveRecordQuery extends WdObject implements Iterator
 		$this->model = $model;
 	}
 
+	/**
+	 * @return WdActiveRecordQuery
+	 */
+
 	public function select($expression)
 	{
 		$this->select = $expression;
 
 		return $this;
 	}
+
+	/**
+	 * @return WdActiveRecordQuery
+	 */
 
 	public function joins($expression)
 	{
@@ -52,6 +60,60 @@ class WdActiveRecordQuery extends WdObject implements Iterator
 
 		return $this;
 	}
+
+	/**
+	 * Add conditions to the SQL statement.
+	 *
+	 * Conditions can either be specified as string or array.
+	 *
+	 * 1. Pure string conditions
+	 *
+	 * If you'de like to add conditions to your statement, you could just specify them in there,
+	 * just like `$model->where('order_count = 2');`. This will find all the entries, where the
+	 * `order_count` field's value is 2.
+	 *
+	 * 2. Array conditions
+	 *
+	 * Now what if that number could vary, say as an argument from somewhere, or perhaps from the
+	 * user’s level status somewhere? The find then becomes something like:
+	 *
+	 * `$model->where('order_count = ?', 2);`
+	 *
+	 * or
+	 *
+	 * `$model->where(array('order_count' => 2));`
+	 *
+	 * Or if you want to specify two conditions, you can do it like:
+	 *
+	 * `$model->where('order_count = ? AND locked = ?', 2, false);`
+	 *
+	 * or
+	 *
+	 * `$model->where(array('order_count' => 2, 'locked' => false));`
+	 *
+	 * Or if you want to specify subset conditions:
+	 *
+	 * `$model->where(array('order_id' => array(123, 456, 789)));`
+	 *
+	 * This will return the orders with the `order_id` 123, 456 or 789.
+	 *
+	 * 3. Modifiers
+	 *
+	 * When using the "identifier" => "value" notation, you can switch the comparison method by
+	 * prefixing the identifier with a bang "!"
+	 *
+	 * `$model->where(array('!order_id' => array(123, 456, 789)));`
+	 *
+	 * This will return the orders with the `order_id` different than 123, 456 and 789.
+	 *
+	 * `$model->where(array('!order_count' => 2);`
+	 *
+	 * This will return the orders with the `order_count` different than 2.
+	 *
+	 * @param mixed $conditions
+	 * @param mixed $conditions_args
+	 * @return WdActiveRecordQuery
+	 */
 
 	public function where($conditions, $conditions_args=null)
 	{
@@ -109,12 +171,20 @@ class WdActiveRecordQuery extends WdObject implements Iterator
 		return $this;
 	}
 
+	/**
+	 * @return WdActiveRecordQuery
+	 */
+
 	public function order($order)
 	{
 		$this->order = $order;
 
 		return $this;
 	}
+
+	/**
+	 * @return WdActiveRecordQuery
+	 */
 
 	public function group($group)
 	{
@@ -123,12 +193,34 @@ class WdActiveRecordQuery extends WdObject implements Iterator
 		return $this;
 	}
 
+	/**
+	 * @return WdActiveRecordQuery
+	 */
+
 	public function offset($offset)
 	{
 		$this->offset = (int) $offset;
 
 		return $this;
 	}
+
+	/**
+	 * Apply the limit and/or offset to the SQL fired.
+	 *
+	 * You can use the limit to specify the number of records to be retrieved, ad use the offset to
+	 * specifythe number of records to skip before starting to return records:
+	 *
+	 * `$model->limit(10);`
+	 *
+	 * Will return a maximum of 10 clients and because ti specifies no offset it will return the
+	 * first 10 in the table.
+	 *
+	 * `$model->limit(5, 10);`
+	 *
+	 * Will return a maximum of 10 clients beginning with the 5th.
+	 *
+	 * @param unknown_type $limit
+	 */
 
 	public function limit($limit)
 	{
@@ -188,6 +280,11 @@ class WdActiveRecordQuery extends WdObject implements Iterator
 		return $query;
 	}
 
+	/**
+	 *
+	 *  @return WdDatabaseStatement
+	 */
+
 	public function query()
 	{
 		$query = 'SELECT ';
@@ -236,6 +333,12 @@ class WdActiveRecordQuery extends WdObject implements Iterator
 		return $args;
 	}
 
+	/**
+	 * Execute the query and return an array of record.
+	 *
+	 * @return array
+	 */
+
 	public function all()
 	{
 		$statement = $this->query();
@@ -270,6 +373,11 @@ class WdActiveRecordQuery extends WdObject implements Iterator
 	{
 		return $this->one();
 	}
+
+	/**
+	 * Execute que query and returns an array of key/value, where the key is the value of the first
+	 * column and the value of the key the value of the second column.
+	 */
 
 	public function pairs()
 	{
@@ -363,6 +471,16 @@ class WdActiveRecordQuery extends WdObject implements Iterator
 		return $this->model->query($query, $this->conditions_args)->$method();
 	}
 
+	protected function __volatile_get_count()
+	{
+		return $this->count();
+	}
+
+
+	/*
+	 * MORE
+	 */
+
 	public function delete()
 	{
 		$query = 'DELETE FROM {self} ' . $this->build();
@@ -382,25 +500,25 @@ class WdActiveRecordQuery extends WdObject implements Iterator
 	{
 		$this->position = 0;
 		$this->entries = $this->all();
-    }
+	}
 
-    function current()
-    {
-        return $this->entries[$this->position];
-    }
+	function current()
+	{
+		return $this->entries[$this->position];
+	}
 
-    function key()
-    {
-    	return $this->position;
-    }
+	function key()
+	{
+		return $this->position;
+	}
 
-    function next()
-    {
-        ++$this->position;
-    }
+	function next()
+	{
+		++$this->position;
+	}
 
-    function valid()
-    {
-    	return isset($this->entries[$this->position]);
-    }
+	function valid()
+	{
+		return isset($this->entries[$this->position]);
+	}
 }

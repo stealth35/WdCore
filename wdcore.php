@@ -411,7 +411,7 @@ class WdCore extends WdObject
 	 * @return boolean
 	 */
 
-	public function hasModule($id)
+	public function has_module($id)
 	{
 		if (empty($this->descriptors[$id]) || !empty($this->descriptors[$id][WdModule::T_DISABLED]))
 		{
@@ -430,7 +430,7 @@ class WdCore extends WdObject
 	/**
 	 * Gets a module object
 	 * @param $id
-	 * @return object The module object as a WdModule instance
+	 * @return WdModule The module object as a WdModule instance
 	 */
 
 	public function getModule($id)
@@ -595,7 +595,7 @@ class WdCore extends WdObject
 			# discard disabled modules
 			#
 
-			if (!$this->hasModule($m_id))
+			if (!$this->has_module($m_id))
 			{
 				continue;
 			}
@@ -633,7 +633,7 @@ class WdCore extends WdObject
 	 * Several connections may be defined.
 	 *
 	 * @param $name The name of the connection to get.
-	 * @return object The connection as a WdDatabase object.
+	 * @return WdDatabase The connection as a WdDatabase object.
 	 */
 
 	public function db($name='primary')
@@ -667,12 +667,16 @@ class WdCore extends WdObject
 
 			try
 			{
-				$this->connections[$name] = new WdDatabase($params['dsn'], $params['username'], $params['password'], $params['options']);
+				$connection = new WdDatabase($params['dsn'], $params['username'], $params['password'], $params['options']);
 			}
 			catch (PDOException $e)
 			{
 				throw new WdException($e->getMessage());
 			}
+
+//			$connection->optimize();
+
+			$this->connections[$name] = $connection;
 		}
 
 		return $this->connections[$name];
@@ -680,6 +684,8 @@ class WdCore extends WdObject
 
 	/**
 	 * Getter for the "primary" database connection.
+	 *
+	 * @return WdDatabase The "primary" database connection.
 	 */
 
 	protected function __get_db()

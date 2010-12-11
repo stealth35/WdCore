@@ -20,6 +20,11 @@ a table and all of its related tables.
 [NEW] Instances of WdObject can now define what we call "volatile getters", getters that return
 values but don't set properties.
 
+[NEW] Hypens in operations name are converted to underscores for RESTful operations.
+
+[NEW] WdFileCache: the T_MODIFIED_TIME tag specifies the time at which assets where modified. This
+time is used to keep the cache up to date.
+
 [NEW] The WdModel class implements the ArrayAccess interface.
 
 [CHG] When defined as an array, the `scope` option is now cascading, a translation is searched in

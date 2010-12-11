@@ -87,7 +87,7 @@ class WdI18n
 
 		if ($language != 'en')
 		{
-			$conventions = wd_array_merge_recursive($conventions, require dirname(__FILE__) . '/i18n/conv/en.php');
+			$conventions = wd_array_merge_recursive(require dirname(__FILE__) . '/i18n/conv/en.php', $conventions);
 		}
 
 		self::$conventions += $conventions;

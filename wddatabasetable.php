@@ -265,10 +265,11 @@ class WdDatabaseTable extends WdObject
 		);
 	}
 
-	public function quote($string, $parameter_type=PDO::PARAM_STR)
-	{
-		return $this->connection->quote($string, $parameter_type);
-	}
+	/**
+	 * Interface to the connection's prepare method.
+	 *
+	 * @return WdDatabaseStatement
+	 */
 
 	public function prepare($query, $options=array())
 	{
@@ -277,12 +278,29 @@ class WdDatabaseTable extends WdObject
 		return $this->connection->prepare($query, $options);
 	}
 
+	public function quote($string, $parameter_type=PDO::PARAM_STR)
+	{
+		return $this->connection->quote($string, $parameter_type);
+	}
+
 	public function execute($query, array $args=array(), array $options=array())
 	{
 		$statement = $this->prepare($query, $options);
 
 		return $statement->execute($args);
 	}
+
+	/**
+	 * Interface to the connection's query() method.
+	 *
+	 * The statement is resolved using the resolve_statement() method and prepared.
+	 *
+	 * @param string $query
+	 * @param array $args
+	 * @param array $options
+	 *
+	 * @return WdDatabaseStatement
+	 */
 
 	public function query($query, array $args=array(), array $options=array())
 	{

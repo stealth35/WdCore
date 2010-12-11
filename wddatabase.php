@@ -86,64 +86,25 @@ class WdDatabase extends PDO
 	**
 	*/
 
-	public function resolve_statement($query)
-	{
-		return strtr
-		(
-			$query,
-
-			array
-			(
-				'{prefix}' => $this->prefix,
-				'{charset}' => $this->charset,
-				'{collate}' => $this->collate
-			)
-		);
-	}
-
-	private $prepared = array();
-
 	public function prepare($query, $options=array())
 	{
-		if (empty($options['no-cache']))
+		$query = $this->resolve_statement($query);
+
+		try
 		{
-			$key = md5($query . json_encode($options));
-
-			if (empty($this->prepared[$key]))
-			{
-				$query = $this->resolve_statement($query);
-
-				try
-				{
-					$this->prepared[$key] = parent::prepare($query, $options);
-				}
-				catch (PDOException $e)
-				{
-					$er = array_pad($this->errorInfo(), 3, '');
-
-					throw new WdException
-					(
-						'SQL error: \1(\2) <code>\3</code> &mdash; <code>%query</code>', array
-						(
-							$er[0], $er[1], $er[2], '%query' => $query
-						)
-					);
-				}
-			}
-			/*
-			else
-			{
-				wd_log('statement from cache: \1', array($key));
-			}
-			*/
-
-			$statement = $this->prepared[$key];
-		}
-		else
-		{
-			$query = $this->resolve_statement($query);
-
 			$statement = parent::prepare($query, $options);
+		}
+		catch (PDOException $e)
+		{
+			$er = array_pad($this->errorInfo(), 3, '');
+
+			throw new WdException
+			(
+				'SQL error: \1(\2) <code>\3</code> &mdash; <code>%query</code>', array
+				(
+					$er[0], $er[1], $er[2], '%query' => $query
+				)
+			);
 		}
 
 		$statement->connection = $this;
@@ -169,6 +130,11 @@ class WdDatabase extends PDO
 		}
 
 		return $statement;
+	}
+
+	public function begin()
+	{
+		return $this->beginTransaction();
 	}
 
 	public function query($query, array $args=array(), array $options=array())
@@ -213,6 +179,21 @@ class WdDatabase extends PDO
 				)
 			);
 		}
+	}
+
+	public function resolve_statement($query)
+	{
+		return strtr
+		(
+			$query,
+
+			array
+			(
+				'{prefix}' => $this->prefix,
+				'{charset}' => $this->charset,
+				'{collate}' => $this->collate
+			)
+		);
 	}
 
 	/*
@@ -653,6 +634,22 @@ class WdDatabase extends PDO
 		//catch (Exception $e) {}
 
 		return false;
+	}
+
+	public function optimize()
+	{
+		if ($this->driver_name == 'sqlite')
+		{
+			$this->exec('VACUUM');
+		}
+		else if ($this->driver_name == 'mysql')
+		{
+			$tables = $this->query('SHOW TABLES')->fetchAll(self::FETCH_COLUMN);
+
+			$stmt = $this->query('OPTIMIZE TABLE ' . implode(', ', $tables));
+
+			$stmt->closeCursor();
+		}
 	}
 }
 

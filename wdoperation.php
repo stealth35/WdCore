@@ -127,11 +127,13 @@ class WdOperation
 			#
 			#
 
-			preg_match('#^([a-z\.]+)/(([^/]+)/)?([a-zA-Z0-9_]+)$#', substr($uri, self::RESTFUL_BASE_LENGHT), $matches);
+			preg_match('#^([a-z\.]+)/(([^/]+)/)?([a-zA-Z0-9_\-]+)$#', substr($uri, self::RESTFUL_BASE_LENGHT), $matches);
 
 			if ($matches)
 			{
 				list(, $destination, , $operation_key, $name) = $matches;
+
+				$name = strtr($name, '-', '_');
 
 				$request[self::KEY] = $matches[2] ? $operation_key : null;
 			}
@@ -371,7 +373,7 @@ class WdOperation
 		#
 		#
 
-		if ($this->location)
+		if ($this->location && !headers_sent())
 		{
 			header('Referer: ' . $_SERVER['REQUEST_URI']);
 			header('Location: ' . $this->location);
