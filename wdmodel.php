@@ -18,7 +18,7 @@ if (!defined('WDMODEL_USE_APC'))
 	define('WDMODEL_USE_APC', function_exists('apc_store'));
 }
 
-class WdModel extends WdDatabaseTable
+class WdModel extends WdDatabaseTable implements ArrayAccess
 {
 	const T_CLASS = 'class';
 	const T_ACTIVERECORD_CLASS = 'activerecord-class';
@@ -87,15 +87,6 @@ class WdModel extends WdDatabaseTable
 			}
 		}
 
-
-
-
-
-
-
-
-
-
 		parent::__construct($tags);
 
 		#
@@ -135,34 +126,85 @@ class WdModel extends WdDatabaseTable
 	}
 
 	/**
-	 * Overrides the WdDatabaseTable::load() method for the cache implementation.
+	 * Finds a record or a collection of records.
 	 *
-	 * @see $wd/wdcore/WdDatabaseTable#load($id)
+	 * @param mixed $key A key or an array of keys.
+	 * @throws WdMissingRecordException
 	 */
 
-	public function load($key)
+	public function find($key)
 	{
-		$entry = $this->retrieve($key);
-
-		if ($entry === null)
+		if (func_num_args() > 1)
 		{
-			$entry = parent::load($key);
-
-			$this->store($key, $entry);
+			$key = func_get_args();
 		}
 
-		return $entry;
-	}
+		if (is_array($key))
+		{
+			$records = array_combine($key, $key);
+			$missing = $records;
 
-	/**
-	 * Override to load objects instead of arrays
-	 *
-	 * @see support/wdcore/WdDatabaseTable#loadAll()
-	 */
+			foreach ($records as $key)
+			{
+				$record = $this->retrieve($key);
 
-	public function loadAll($completion=null, array $args=array(), array $options=array())
-	{
-		return parent::loadAll($completion, $args, $options + $this->loadall_options);
+				if (!$record)
+				{
+					continue;
+				}
+
+				$records[$key] = $record;
+				unset($missing[$key]);
+			}
+
+			if ($missing)
+			{
+				$query_records = $this->where(array($this->primary => $missing))->all;
+				$primary = $this->primary;
+
+				foreach ($query_records as $record)
+				{
+					$key = $record->$primary;
+					$records[$key] = $record;
+					unset($missing[$key]);
+
+					$this->store($key, $record);
+				}
+			}
+
+			if ($missing)
+			{
+				if (count($missing) > 1)
+				{
+					throw new WdMissingRecordException('Missing records with keys %keys', array('%keys' => array_keys($missing)));
+				}
+				else
+				{
+					$key = array_keys($missing);
+					$key = array_shift($key);
+
+					throw new WdMissingRecordException('Missing record with key %key', array('%key' => $key));
+				}
+			}
+
+			return $records;
+		}
+
+		$record = $this->retrieve($key);
+
+		if ($record === null)
+		{
+			$record = $this->where(array($this->primary => $key))->one;
+
+			if (!$record)
+			{
+				throw new WdMissingRecordException('Missing record with key %key', array('%key' => $key));
+			}
+
+			$this->store($key, $record);
+		}
+
+		return $record;
 	}
 
 	/**
@@ -287,38 +329,123 @@ class WdModel extends WdDatabaseTable
 		return (WDMODEL_USE_APC ? 'ar:' . $_SERVER['DOCUMENT_ROOT'] . '/' : '') . $this->connection->name . '/' . $this->name . '/' . $key;
 	}
 
-
-
-
+	/**
+	 * Delegation hub.
+	 *
+	 * @return mixed
+	 */
 
 	private function defer_to_actionrecord_query()
 	{
 		$trace = debug_backtrace(false);
-		$arr = new WdActiveRecordQuery($this);
+		$arq = new WdActiveRecordQuery($this);
 
-		return call_user_func_array(array($arr, $trace[1]['function']), $trace[1]['args']);
+		return call_user_func_array(array($arq, $trace[1]['function']), $trace[1]['args']);
 	}
+
+	/**
+	 * Delegation method for the WdActiveRecordQuery::joins method.
+	 *
+	 * @return WdActiveRecordQuery
+	 */
 
 	public function joins($expression)
 	{
 		return $this->defer_to_actionrecord_query();
 	}
 
-	public function _select($expression)
-	{
-		$arr = new WdActiveRecordQuery($this);
-		$args = func_get_args();
+	/**
+	 * Delegation method for the WdActiveRecordQuery::select method.
+	 *
+	 * @return WdActiveRecordQuery
+	 */
 
-		return call_user_func_array(array($arr, 'select'), $args);
+	public function select($expression)
+	{
+		return $this->defer_to_actionrecord_query();
 	}
+
+	/**
+	 * Delegation method for the WdActiveRecordQuery::where method.
+	 *
+	 * @return WdActiveRecordQuery
+	 */
 
 	public function where($conditions, $conditions_args=null)
 	{
 		return $this->defer_to_actionrecord_query();
 	}
 
+	/**
+	 * Delegation method for the WdActiveRecordQuery::order method.
+	 *
+	 * @return WdActiveRecordQuery
+	 */
+
 	public function order($order)
 	{
 		return $this->defer_to_actionrecord_query();
 	}
+
+	/**
+	 * Delegation method for the WdActiveRecordQuery::exists method.
+	 *
+	 * @return WdActiveRecordQuery
+	 */
+
+	public function exists($key=null)
+	{
+		return $this->defer_to_actionrecord_query();
+	}
+
+	/**
+	 * Delegation method for the WdActiveRecordQuery::all method.
+	 *
+	 * @return array An array of records.
+	 */
+
+	public function all()
+	{
+		return $this->defer_to_actionrecord_query();
+	}
+
+	/**
+	 * Delegation getter for the WdActiveRecordQuery::all getter.
+	 *
+	 * @return array An array of records.
+	 */
+
+	protected function __volatile_get_all()
+	{
+		return $this->all();
+	}
+
+	/*
+	 * ArrayAcces implementation
+	 */
+
+	public function offsetSet($key, $properties)
+	{
+		throw new WdException('Offsets are not settable: %key !properties', array('%key' => $key, '!properties' => $properties));
+    }
+
+    public function offsetExists($key)
+    {
+        return $this->exists($key);
+    }
+
+    public function offsetUnset($key)
+    {
+        $this->delete($key);
+    }
+
+    public function offsetGet($key)
+    {
+    	return $this->find($key);
+    }
+}
+
+class WdMissingRecordException extends WdException
+{
+
 }

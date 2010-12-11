@@ -744,14 +744,7 @@ class WdModule extends WdObject
 			return false;
 		}
 
-		$entry = $this->model->load($key);
-
-		if (!$entry)
-		{
-			return false;
-		}
-
-		$operation->entry = $entry;
+		$operation->entry = $this->model[$key];
 
 		return true;
 	}

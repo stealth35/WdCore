@@ -307,6 +307,40 @@ class WdActiveRecordQuery extends WdObject implements Iterator
 		return $this->column();
 	}
 
+	public function exists($key=null)
+	{
+		if ($key !== null)
+		{
+			if (func_get_args() > 1)
+			{
+				$key = func_get_args();
+			}
+
+			$this->where(array('{primary}' => $key));
+		}
+
+		$rc = $this->model->query('SELECT `{primary}` FROM {self_and_related}' . $this->build(), $this->conditions_args)->fetchAll(PDO::FETCH_COLUMN);
+
+		if (is_array($key))
+		{
+			if ($rc)
+			{
+				$rc = array_combine($rc, array_fill(0, count($rc), true)) + array_combine($key, array_fill(0, count($key), false));
+			}
+		}
+		else
+		{
+			$rc = !empty($rc);
+		}
+
+		return $rc;
+	}
+
+	protected function __volatile_get_exists()
+	{
+		return $this->exists();
+	}
+
 	public function count($column=null)
 	{
 		$query = 'SELECT ';
