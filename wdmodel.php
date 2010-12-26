@@ -176,14 +176,14 @@ class WdModel extends WdDatabaseTable implements ArrayAccess
 			{
 				if (count($missing) > 1)
 				{
-					throw new WdMissingRecordException('Missing records with keys %keys', array('%keys' => array_keys($missing)));
+					throw new WdMissingRecordException('Missing records from model %model: %keys', array('%model' => $this->name_unprefixed, '%keys' => implode(', ', array_keys($missing))), 404);
 				}
 				else
 				{
 					$key = array_keys($missing);
 					$key = array_shift($key);
 
-					throw new WdMissingRecordException('Missing record with key %key', array('%key' => $key));
+					throw new WdMissingRecordException('Missing record from model %model: %key', array('%model' => $this->name_unprefixed, '%key' => $key), 404);
 				}
 			}
 
@@ -198,7 +198,7 @@ class WdModel extends WdDatabaseTable implements ArrayAccess
 
 			if (!$record)
 			{
-				throw new WdMissingRecordException('Missing record with key %key', array('%key' => $key));
+				throw new WdMissingRecordException('Missing record from model %model: %key', array('%model' => $this->name_unprefixed, '%key' => $key), 404);
 			}
 
 			$this->store($key, $record);
@@ -396,6 +396,22 @@ class WdModel extends WdDatabaseTable implements ArrayAccess
 	public function exists($key=null)
 	{
 		return $this->defer_to_actionrecord_query();
+	}
+
+	/**
+	 * Delegation method for the WdActiveRecordQuery::count method.
+	 *
+	 * @return WdActiveRecordQuery
+	 */
+
+	public function count($column=null)
+	{
+		return $this->defer_to_actionrecord_query();
+	}
+
+	protected function __volatile_get_count()
+	{
+		return $this->count();
 	}
 
 	/**

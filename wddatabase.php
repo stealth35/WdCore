@@ -18,23 +18,16 @@ class WdDatabase extends PDO
 
 	public $driver_name;
 
-	#
-	#
-	#
+	static public $stats = array
+	(
+		'queries_by_connection' => array()
+	);
 
 	public function __construct($dsn, $username=null, $password=null, $options=array())
 	{
-		#
-		# extract driver name
-		#
-
 		list($driver_name) = explode(':', $dsn);
 
 		$this->driver_name = $driver_name;
-
-		#
-		#
-		#
 
 		foreach ($options as $option => $value)
 		{
@@ -47,26 +40,12 @@ class WdDatabase extends PDO
 			}
 		}
 
-		#
-		#
-		#
-
-		global $stats;
-
-		$stats['queries'][$this->name] = 0;
-
-		#
-		#
-		#
+		self::$stats['queries_by_connection'][$this->name] = 0;
 
 		parent::__construct($dsn, $username, $password, $options);
 
 		$this->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 		$this->setAttribute(PDO::ATTR_STATEMENT_CLASS, array('WdDatabaseStatement'));
-
-		#
-		# select charset
-		#
 
 		if ($this->driver_name == 'mysql')
 		{
@@ -154,9 +133,7 @@ class WdDatabase extends PDO
 
 		try
 		{
-			global $stats;
-
-			$stats['queries'][$this->name]++;
+			WdDatabase::$stats['queries_by_connection'][$this->name]++;
 
 			$rc = parent::exec($statement);
 
@@ -657,9 +634,7 @@ class WdDatabaseStatement extends PDOStatement
 {
 	public function execute($args=array())
 	{
-		global $stats;
-
-		$stats['queries'][$this->connection->name]++;
+		WdDatabase::$stats['queries_by_connection'][$this->connection->name]++;
 
 		try
 		{

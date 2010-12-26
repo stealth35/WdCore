@@ -29,6 +29,8 @@ return array
 	'@gender.miss' => 'Mademoiselle',
 	'@gender.mister' => 'Monsieur',
 
+	'label.salutation' => 'Civilité',
+
 	'salutation' => array
 	(
 		'misses' => 'Madame',
@@ -64,7 +66,7 @@ return array
 
 		// TODO-20100721: not sure about those two: "feedback" and "structure"
 
-		'feedback' => 'Interactions',
+		'feedback' => 'Intéractions',
 		'structure' => 'Structure'
 	),
 

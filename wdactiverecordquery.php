@@ -25,6 +25,8 @@ class WdActiveRecordQuery extends WdObject implements Iterator
 	protected $offset;
 	protected $limit;
 
+	protected $mode;
+
 	public function __construct($model)
 	{
 		$this->model = $model;
@@ -238,6 +240,11 @@ class WdActiveRecordQuery extends WdObject implements Iterator
 		return $this;
 	}
 
+	public function mode($mode)
+	{
+		$this->mode = func_get_args();
+	}
+
 	protected function build()
 	{
 		$query = '';
@@ -317,6 +324,10 @@ class WdActiveRecordQuery extends WdObject implements Iterator
 		{
 			$args = $trace[1]['args'];
 		}
+		else if ($this->mode)
+		{
+			$args = $this->mode;
+		}
 		else if ($this->select)
 		{
 			$args = array(PDO::FETCH_ASSOC);
@@ -352,6 +363,13 @@ class WdActiveRecordQuery extends WdObject implements Iterator
 		return $this->all();
 	}
 
+	/**
+	 * Returns the first result of the query and close the cursor.
+	 *
+	 * @return mixed The return value of this function on success depends on the fetch mode. In
+	 * all cases, FALSE is returned on failure.
+	 */
+
 	public function one()
 	{
 		$statement = $this->query();
@@ -375,8 +393,8 @@ class WdActiveRecordQuery extends WdObject implements Iterator
 	}
 
 	/**
-	 * Execute que query and returns an array of key/value, where the key is the value of the first
-	 * column and the value of the key the value of the second column.
+	 * Execute que query and returns an array of key/value pairs, where the key is the value of
+	 * the first column and the value of the key the value of the second column.
 	 */
 
 	public function pairs()

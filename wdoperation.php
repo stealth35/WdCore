@@ -274,7 +274,7 @@ class WdOperation
 		}
 		else
 		{
-			$module = $core->getModule($destination);
+			$module = $core->module($destination);
 
 			$event = WdEvent::fire
 			(

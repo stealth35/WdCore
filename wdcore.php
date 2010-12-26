@@ -12,27 +12,16 @@
 defined('WDCORE_CHECK_CIRCULAR_DEPENDENCIES') or define('WDCORE_CHECK_CIRCULAR_DEPENDENCIES', false);
 defined('WDCORE_VERBOSE_MAGIC_QUOTES') or define('WDCORE_VERBOSE_MAGIC_QUOTES', false);
 
-#
-# includes
-#
-
 require_once 'helpers/utils.php';
 require_once 'helpers/debug.php';
 require_once 'wdobject.php';
 
-#
-#
-#
-
-$stats = array();
-
 class WdCore extends WdObject
 {
-	const VERSION = '0.8.2-dev';
+	const VERSION = '0.9.0-dev';
 
 	static public $config = array();
 
-	public $locale;
 	public $descriptors = array();
 	public $models;
 
@@ -103,6 +92,32 @@ class WdCore extends WdObject
 		die($exception);
 	}
 
+	/**
+	 * Loads the file defining the specified class.
+	 *
+	 * The 'autoload' config property is used to define an array of 'class_name => file_path' pairs
+	 * used to find the file required by the class.
+	 *
+	 * Class alias
+	 * -----------
+	 *
+	 * Using the 'classes aliases' config property, one can specify aliases for classes. The
+	 * 'classes aliases' config property is an array where the key is the alias name and the value
+	 * the class name.
+	 *
+	 * When needed, a final class is created for the alias by extending the real class. The class
+	 * is made final so that it cannot be subclassed.
+	 *
+	 * Class initializer
+	 * -----------------
+	 *
+	 * If the loaded class defines the '__static_construct' method, the method is invoked to
+	 * initialize the class.
+	 *
+	 * @param string $name The name of the class
+	 * @return boolean Whether or not the required file could be found.
+	 */
+
 	static private function autoload_handler($name)
 	{
 		if ($name == 'parent')
@@ -110,19 +125,11 @@ class WdCore extends WdObject
 			return false;
 		}
 
-		#
-		# the autoload list is made for `classname => required file` pairs
-		#
-
 		$list = self::$config['autoload'];
 
 		if (isset($list[$name]))
 		{
 			require_once $list[$name];
-
-			#
-			# static construct
-			#
 
 			if (method_exists($name, '__static_construct'))
 			{
@@ -132,17 +139,11 @@ class WdCore extends WdObject
 			return true;
 		}
 
-		#
-		# try aliases
-		#
-
 		$list = self::$config['classes aliases'];
 
 		if (isset($list[$name]))
 		{
-			$original = $list[$name];
-
-			eval('final class ' . $name . ' extends ' . $original . ' {}');
+			eval('final class ' . $name . ' extends ' . $list[$name] . ' {}');
 
 			return true;
 		}
@@ -150,25 +151,12 @@ class WdCore extends WdObject
 		return false;
 	}
 
-	/*
-	**
-
-	MODULES
-
-	**
-	*/
-
-	public function read_modules()
+	protected function index_modules()
 	{
 		if (empty(self::$config['modules']))
 		{
 			return;
 		}
-
-		#
-		# the cache object is created even if modules are not cached, allowing
-		# subclasses to use the object, to clear the cache for example
-		#
 
 //		wd_log_time('cache modules start');
 
@@ -183,20 +171,20 @@ class WdCore extends WdObject
 				)
 			);
 
-			$aggregate = $cache->load('modules', array($this, 'read_modules_construct'));
+			$index = $cache->load('modules', array($this, 'index_modules_construct'));
 		}
 		else
 		{
-			$aggregate = $this->read_modules_construct();
+			$index = $this->index_modules_construct();
 		}
 
 //		wd_log_time('cache modules done');
 
-		$this->descriptors = $aggregate['descriptors'];
+		$this->descriptors = $index['descriptors'];
 
-		WdI18n::$load_paths = array_merge(WdI18n::$load_paths, $aggregate['catalogs']);
+		WdI18n::$load_paths = array_merge(WdI18n::$load_paths, $index['catalogs']);
 
-		WdConfig::add($aggregate['configs'], 5);
+		WdConfig::add($index['configs'], 5);
 
 //		wd_log_time('path added');
 
@@ -208,9 +196,10 @@ class WdCore extends WdObject
 
 //		wd_log_time('get constructed');
 
-		self::$config = wd_array_merge_recursive($config, self::$config);
+		//self::$config = wd_array_merge_recursive($config, self::$config); // this shouldn't be needed anymore since we reintroduced config weight
 
-		self::$config['autoload'] =  $aggregate['autoload'] + self::$config['autoload'];
+		self::$config = $config;
+		self::$config['autoload'] = $index['autoload'] + self::$config['autoload'];
 
 //		wd_log_time('merge done');
 	}
@@ -221,7 +210,7 @@ class WdCore extends WdObject
 	 * @return array
 	 */
 
-	public function read_modules_construct()
+	public function index_modules_construct()
 	{
 		$aggregate = array
 		(
@@ -258,7 +247,7 @@ class WdCore extends WdObject
 				}
 
 				$module_root = $root . DIRECTORY_SEPARATOR . $file;
-				$read = $this->get_module_infos($file, $module_root . DIRECTORY_SEPARATOR);
+				$read = $this->read_module_infos($file, $module_root . DIRECTORY_SEPARATOR);
 
 				if ($read)
 				{
@@ -289,9 +278,31 @@ class WdCore extends WdObject
 		return $aggregate;
 	}
 
-	protected function get_module_infos($module_id, $module_root)
+	/**
+	 * Reads the informations about the module.
+	 *
+	 * The function returns the descriptor for the module and an array of autoload references
+	 * automatically generated based on the files available and the module's descriptor:
+	 *
+	 * The module's descriptor is altered by adding the module's dir (T_ROOT) and the module's
+	 * identifier (T_ID).
+	 *
+	 * Autoload references are generated depending on the files available and the module's
+	 * descriptor:
+	 *
+	 * If a 'hooks.php' file exists, the "<module_flat_id>_WdHooks" reference is added to the
+	 * autoload array.
+	 *
+	 * Autoload references are also created for each model and their activerecord depending on
+	 * the T_MODELS tag and the exsitance of the corresponding files.
+	 *
+	 * @param string $module_id The module's identifier
+	 * @param string $module_dir The module's directory
+	 */
+
+	protected function read_module_infos($module_id, $module_dir)
 	{
-		$descriptor_path = $module_root . 'descriptor.php';
+		$descriptor_path = $module_dir . 'descriptor.php';
 		$descriptor = require $descriptor_path;
 
 		if (!is_array($descriptor))
@@ -307,40 +318,21 @@ class WdCore extends WdObject
 			);
 		}
 
-		#
-		# add the module's root to the descriptor
-		#
-
-		$descriptor[WdModule::T_ROOT] = $module_root;
+		$descriptor[WdModule::T_ROOT] = $module_dir;
 		$descriptor[WdModule::T_ID] = $module_id;
-
-		#
-		# autoloads for the module
-		#
 
 		$flat_module_id = strtr($module_id, '.', '_');
 
 		$autoload = array
 		(
-			$flat_module_id . '_WdModule' => $module_root . 'module.php'
+			$flat_module_id . '_WdModule' => $module_dir . 'module.php'
 		);
 
-		$autoload_root = $module_root . 'autoload' . DIRECTORY_SEPARATOR;
+		$autoload_root = $module_dir . 'autoload' . DIRECTORY_SEPARATOR;
 
 		if (is_dir($autoload_root))
 		{
 			$dh = opendir($autoload_root);
-
-			if (!$dh)
-			{
-				throw new WdException
-				(
-					'Unable to open direcotry %root', array
-					(
-						'%root' => $autoload_root
-					)
-				);
-			}
 
 			while (($file = readdir($dh)) !== false)
 			{
@@ -362,25 +354,17 @@ class WdCore extends WdObject
 			closedir($dh);
 		}
 
-		#
-		#
-		#
-
-		if (file_exists($module_root . 'hooks.php'))
+		if (file_exists($module_dir . 'hooks.php'))
 		{
-			$autoload[$flat_module_id . '_WdHooks'] = $module_root . 'hooks.php';
+			$autoload[$flat_module_id . '_WdHooks'] = $module_dir . 'hooks.php';
 		}
-
-		#
-		# autoloads for models and activerecords
-		#
 
 		if (isset($descriptor[WdModule::T_MODELS]))
 		{
 			foreach ($descriptor[WdModule::T_MODELS] as $model => $dummy)
 			{
 				$class_base = $flat_module_id . ($model == 'primary' ? '' : '_' . $model);
-				$file_base = $module_root . $model;
+				$file_base = $module_dir . $model;
 
 				if (file_exists($file_base . '.model.php'))
 				{
@@ -394,10 +378,6 @@ class WdCore extends WdObject
 			}
 		}
 
-		#
-		# return what we've collected
-		#
-
 		return array
 		(
 			'descriptor' => $descriptor,
@@ -406,14 +386,20 @@ class WdCore extends WdObject
 	}
 
 	/**
-	 * Checks the availability of a module
+	 * Checks the availability of a module.
+	 *
+	 * A module is considered available when its descriptor is defined, and the T_DISABLED tag of
+	 * its descriptor is empty.
+	 *
 	 * @param $id
 	 * @return boolean
 	 */
 
 	public function has_module($id)
 	{
-		if (empty($this->descriptors[$id]) || !empty($this->descriptors[$id][WdModule::T_DISABLED]))
+		$descriptors = $this->descriptors;
+
+		if (empty($descriptors[$id]) || !empty($descriptors[$id][WdModule::T_DISABLED]))
 		{
 			return false;
 		}
@@ -422,122 +408,45 @@ class WdCore extends WdObject
 	}
 
 	/**
-	 * @var array Used to cache loaded modules.
+	 * @var array Array of loaded modules.
 	 */
 
 	protected $loaded_modules = array();
 
 	/**
-	 * Gets a module object
-	 * @param $id
-	 * @return WdModule The module object as a WdModule instance
-	 */
-
-	public function getModule($id)
-	{
-		#
-		# Modules are cached in the loaded_modules property. If the module is not defined
-		# we need to create it.
-		#
-
-		if (empty($this->loaded_modules[$id]))
-		{
-			#
-			# is the module described ?
-			#
-
-			if (empty($this->descriptors[$id]))
-			{
-				throw new WdException
-				(
-					'The module %id does not exists ! (available modules are: :list)', array
-					(
-						'%id' => $id,
-						':list' => implode(', ', array_keys($this->descriptors))
-					),
-
-					404
-				);
-			}
-
-			$descriptor = $this->descriptors[$id];
-
-			#
-			# if the module is disabled we throw an exception
-			#
-
-			if (!empty($descriptor[WdModule::T_DISABLED]))
-			{
-				throw new WdException
-				(
-					'The module %id is disabled', array('%id' => $id), 404
-				);
-			}
-
-			#
-			# The module object is saved in the cache before running the module
-			# to avoid double loading which might happen if the module get himself
-			# during the run process.
-			#
-
-			$this->loaded_modules[$id] = $module = $this->loadModule($id, $descriptor);
-
-			#
-			# if the core is running, we start the module
-			#
-
-			if (self::$is_running)
-			{
-				if (method_exists($module, 'startup'))
-				{
-					WdDebug::trigger
-					(
-						'Module %module still defines the startup() method instead of the run() method', array
-						(
-							'%module' => (string) $module
-						)
-					);
-				}
-
-				$module->run();
-			}
-		}
-
-		return $this->loaded_modules[$id];
-	}
-
-	/**
-	 * Load a module.
+	 * Loads a module.
 	 *
-	 * Note: Because the function is used during the installation process to load module without starting them,
-	 * until we find a better solution, the function needs to remain public.
+	 * Note: Because the function is used during the installation process to load module without
+	 * starting them, the function needs to remain public until we find a better solution.
 	 *
 	 * @param $id
-	 * @return WdModule A module object
+	 * @return WdModule The requested module object.
+	 * @throws WdException When the module requested is not defined.
+	 * @throws WdException When the class for the module is not defined.
 	 */
 
-	public function loadModule($id)
+	public function load_module($id)
 	{
-		if (empty($this->descriptors[$id]))
+		$descriptors = $this->descriptors;
+
+		if (empty($descriptors[$id]))
 		{
 			throw new WdException
 			(
 				'The module %id does not exists ! (available modules are: :list)', array
 				(
 					'%id' => $id,
-					':list' => implode(', ', array_keys($this->descriptors))
+					':list' => implode(', ', array_keys($descriptors))
 				)
 			);
 		}
 
-		$descriptor = $this->descriptors[$id];
-
-		#
-		# because we rely on class autoloading, we need to check whether the class
-		# has been defined or not
-		#
-
 		$class = strtr($id, '.', '_') . '_WdModule';
+
+		#
+		# Because we rely on class autoloading, we need to check whether the class
+		# has been defined or not.
+		#
 
 		if (empty(self::$config['autoload'][$class]))
 		{
@@ -551,7 +460,63 @@ class WdCore extends WdObject
 			);
 		}
 
-		return new $class($descriptor);
+		$this->loaded_modules[$id] = $module = new $class($descriptors[$id]);
+
+		return $module;
+	}
+
+	/**
+	 * Gets a module object.
+	 *
+	 * If the core is running, the 'run' method of the module is invoked upon the module's first
+	 * loading.
+	 *
+	 * @param string $id The module's id.
+	 * @throws WdException If the module's descriptor is not defined, or the module is disabled.
+	 * @return WdModule The module object.
+	 */
+
+	public function module($id)
+	{
+		if (!empty($this->loaded_modules[$id]))
+		{
+			return $this->loaded_modules[$id];
+		}
+
+		$descriptors = $this->descriptors;
+
+		if (empty($descriptors[$id]))
+		{
+			throw new WdException
+			(
+				'The module %id does not exists ! (available modules are: :list)', array
+				(
+					'%id' => $id,
+					':list' => implode(', ', array_keys($descriptors))
+				),
+
+				404
+			);
+		}
+
+		$descriptor = $descriptors[$id];
+
+		if (!empty($descriptor[WdModule::T_DISABLED]))
+		{
+			throw new WdException
+			(
+				'The module is disabled: %id', array('%id' => $id), 404
+			);
+		}
+
+		$module = $this->load_module($id);
+
+		if (self::$is_running)
+		{
+			$module->run();
+		}
+
+		return $module;
 	}
 
 	/**
@@ -564,17 +529,13 @@ class WdCore extends WdObject
 	 *
 	 */
 
-	protected function runModules()
+	protected function run_modules()
 	{
-		#
-		# list module ids by their T_STARTUP priority
-		#
-
 		$list = array();
 
 		foreach ($this->descriptors as $module_id => $descriptor)
 		{
-			if (!isset($descriptor[WdModule::T_STARTUP]))
+			if (!isset($descriptor[WdModule::T_STARTUP]) || !$this->has_module($module_id))
 			{
 				continue;
 			}
@@ -589,26 +550,11 @@ class WdCore extends WdObject
 		# are run first.
 		#
 
-		foreach ($list as $m_id => $priority)
+		foreach ($list as $module_id => $priority)
 		{
-			#
-			# discard disabled modules
-			#
-
-			if (!$this->has_module($m_id))
-			{
-				continue;
-			}
-
-			#
-			# note: we don't have to start the module ourselves, this is
-			# done automatically when the module is loaded with the @getModule() method.
-			# Thus we only need to _get_ the module.
-			#
-
 //			wd_log_time(" run module $m_id - start");
 
-			$this->getModule($m_id);
+			$this->module($module_id);
 
 //			wd_log_time(" run module $m_id - finish");
 		}
@@ -732,7 +678,7 @@ class WdCore extends WdObject
 //		wd_log_time('run core');
 
 		#
-		# `is_running` is used by getModule() to automatically start module as they are loaded
+		# `is_running` is used by module() to automatically start module as they are loaded
 		#
 
 		self::$is_running = true;
@@ -742,7 +688,7 @@ class WdCore extends WdObject
 		#
 
 //		wd_log_time('read modules start');
-		$this->read_modules();
+		$this->index_modules();
 //		wd_log_time('read modules finish');
 
 		#
@@ -750,7 +696,7 @@ class WdCore extends WdObject
 		#
 
 //		wd_log_time('run modules start');
-		$this->runModules();
+		$this->run_modules();
 //		wd_log_time('run modules finish');
 
 //		wd_log_time('core is running');
@@ -836,7 +782,7 @@ class WdCoreModelsArrayAccess implements ArrayAccess
 
     		list($module_id, $model_id) = explode('/', $offset) + array(1 => 'primary');
 
-			$this->models[$offset] = $core->getModule($module_id)->model($model_id);
+			$this->models[$offset] = $core->module($module_id)->model($model_id);
     	}
 
     	return $this->models[$offset];

@@ -29,14 +29,14 @@ class WdEvent
 	{
 		$listeners = array();
 
-		foreach ($fragments as $config)
+		foreach ($fragments as $fragment)
 		{
-			if (empty($config['events']))
+			if (empty($fragment['events']))
 			{
 				continue;
 			}
 
-			foreach ($config['events'] as $pattern => $definition)
+			foreach ($fragment['events'] as $pattern => $definition)
 			{
 				$listeners[self::translateRegEx($pattern)][] = $definition;
 			}
@@ -153,7 +153,7 @@ class WdEvent
 						continue;
 					}
 
-					$callback[0] = $core->getModule($module_id);
+					$callback[0] = $core->module($module_id);
 				}
 
 				call_user_func($callback, $event);

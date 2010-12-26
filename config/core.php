@@ -30,6 +30,7 @@ return array
 
 	'cache configs' => false,
 	'cache modules' => false,
+	'cache catalogs' => false,
 
 	'classes aliases' => array
 	(

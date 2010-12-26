@@ -60,7 +60,7 @@ class WdI18n
 
 		setlocale(LC_ALL, "{$language}_{$country}.UTF-8");
 
-		self::load_conv($language, $country);
+		self::load_conventions($language, $country);
 	}
 
 	static public function setTimezone($timezone)
@@ -79,7 +79,7 @@ class WdI18n
 		date_default_timezone_set($timezone);
 	}
 
-	static protected function load_conv($language, $country=null)
+	static protected function load_conventions($language, $country=null)
 	{
 		self::$conventions = localeconv();
 
@@ -93,10 +93,33 @@ class WdI18n
 		self::$conventions += $conventions;
 	}
 
-	static protected function load_catalog($root, array $options=array())
+	static protected function load_catalog($language, $root)
 	{
-		//echo "loadCatalog: $root<br />";
+		static $loaded_catalogs;
 
+		// TODO-20101224: reimplement country code: fr-FR AND fr
+
+		$filename = $root . '/i18n/' . $language . '.php';
+
+		if (isset($loaded_catalogs[$filename]))
+		{
+			return $loaded_catalogs[$filename];
+		}
+
+		if (!file_exists($filename))
+		{
+			$loaded_catalogs[$filename] = false;
+
+			return;
+		}
+
+		$messages = wd_array_flatten(require $filename);
+
+		$loaded_catalogs[$filename] = $messages;
+
+		return $messages;
+
+		/*
 		$codes = array('en-US', 'en');
 
 		if (self::$language != 'en' && self::$language != 'en-US')
@@ -110,10 +133,6 @@ class WdI18n
 				array_unshift($codes, self::$language);
 			}
 		}
-
-		#
-		# load all catalogs
-		#
 
 		$messages = array();
 
@@ -136,21 +155,8 @@ class WdI18n
 		chdir($location);
 
 		return $messages;
+		*/
 	}
-
-	/*
-	static public function addPath($root)
-	{
-		if (is_array($root))
-		{
-			self::$load_paths = array_merge(self::$load_paths, $root);
-
-			return;
-		}
-
-		self::$load_paths[] = $root;
-	}
-	*/
 
 	static protected $cache;
 
@@ -173,29 +179,36 @@ class WdI18n
 	}
 
 	/**
-	 * The `loading` static variable is used to break inifite loop while loading pending catalogs
+	 * The `loading` static variable is used to break inifite recursion while loading pending catalogs
 	 * which might happen if the loading process triggers and error (or an exception) which in
 	 * turn requests a translation, which in turn try to load pending catalogs...
+	 *
+	 * Recursion is prevented on a language basis.
 	 */
 
-	static protected $loading;
+	static private $loading = array();
 
-	static protected function load_catalogs()
+	static protected function load_catalogs($language=null)
 	{
-		if (self::$loading)
+		if (!$language)
+		{
+			$language = self::$language;
+		}
+
+		if (!empty(self::$loading[$language]))
 		{
 			return;
 		}
 
-		self::$loading = true;
+		self::$loading[$language] = true;
 
-		if (self::$messages)
+		if (!empty(self::$messages[$language]))
 		{
-			$messages = self::load_catalogs_construct();
+			$messages = self::load_catalogs_construct($language);
 		}
 		else
 		{
-			if (self::$config['cache catalogs'])
+			if (WdCore::$config['cache catalogs'])
 			{
 				$cache = self::getCache();
 
@@ -204,36 +217,43 @@ class WdI18n
 				# the cache.
 				#
 
-				$messages = $cache->load('i18n_' . self::$language, array(__CLASS__, __FUNCTION__ . '_construct'));
+				$messages = $cache->load('i18n_' . $language, array(__CLASS__, __FUNCTION__ . '_construct'), $language);
 			}
 			else
 			{
-				$messages = self::load_catalogs_construct();
+				$messages = self::load_catalogs_construct($language);
 			}
 		}
 
-		self::$messages = $messages + self::$messages;
+		if ($language != 'en')
+		{
+			$native_messages = self::load_catalogs('en');
 
-//		var_dump(self::$messages);
+			$messages += $native_messages;
+		}
+
+		self::$messages[$language] = empty(self::$messages[$language]) ? $messages : $messages + self::$messages[$language];
 
 		if (0)
 		{
-			ksort(self::$messages);
+			ksort(self::$messages[$language]);
 
-			echo 'load_catalogs: ' . wd_dump(self::$load_paths) . wd_dump(self::$messages);
+			echo 'load_catalogs: ' . wd_dump(self::$load_paths) . wd_dump(self::$messages[$language]);
 		}
 
-		self::$load_paths = array();
-		self::$loading = false;
+//		self::$load_paths = array();
+		self::$loading[$language] = false;
+
+		return self::$messages[$language];
 	}
 
-	static public function load_catalogs_construct()
+	static public function load_catalogs_construct($language)
 	{
 		$rc = array();
 
 		foreach (self::$load_paths as $root)
 		{
-			$messages = self::load_catalog($root);
+			$messages = self::load_catalog($language, $root);
 
 			if (!$messages)
 			{
@@ -246,12 +266,14 @@ class WdI18n
 		return $rc;
 	}
 
+	static private $loaded_languages = array();
+
 	/**
-	 * Get the contents of a localized file.
+	 * Translates a string.
 	 *
-	 * @param $file
-	 * @param $root
-	 * @return unknown_type
+	 * @param string $str
+	 * @param array $args
+	 * @param array $options
 	 */
 
 	static public function translate($str, array $args=array(), array $options=array())
@@ -261,15 +283,19 @@ class WdI18n
 			return $str;
 		}
 
-		if (self::$load_paths)
+		$language = empty($options['language']) ? self::$language : $options['language'];
+
+		if (empty(self::$loaded_languages[$language]))
 		{
 			self::load_catalogs();
+
+			self::$loaded_languages[$language] = true;
 		}
 
-		$catalog = self::$messages;
+		$messages = self::$messages[$language];
 		$suffix = null;
 
-		if (array_key_exists(':count', $args))
+		if ($args && array_key_exists(':count', $args))
 		{
 			$count = $args[':count'];
 
@@ -299,7 +325,7 @@ class WdI18n
 
 					array_shift($scope);
 
-					if (isset($catalog[$try . $suffix]))
+					if (isset($messages[$try . $suffix]))
 					{
 						$str = $try;
 
@@ -307,15 +333,15 @@ class WdI18n
 					}
 				}
 			}
-			else if (isset($catalog[$scope . '.' . $str . $suffix]))
+			else if (isset($messages[$scope . '.' . $str . $suffix]))
 			{
 				$str = $scope . '.' . $str;
 			}
 		}
 
-		if (isset($catalog[$str . $suffix]))
+		if (isset($messages[$str . $suffix]))
 		{
-			$str = $catalog[$str . $suffix];
+			$str = $messages[$str . $suffix];
 		}
 		else if (isset($options['default']))
 		{
@@ -323,9 +349,9 @@ class WdI18n
 
 			foreach ($default as $str)
 			{
-				if (isset($catalog[$str . $suffix]))
+				if (isset($messages[$str . $suffix]))
 				{
-					$str = $catalog[$str . $suffix];
+					$str = $messages[$str . $suffix];
 
 					break;
 				}
@@ -387,13 +413,9 @@ class WdI18n
 	{
 		$translation = wd_array_flatten($translation);
 
-		self::$messages = $translation + self::$messages;
+		self::$messages[$language] = empty(self::$messages[$language]) ? $translation : $translation + self::$messages[$language];
 	}
 }
-
-/*
- * HELPERS
- */
 
 function t($str, array $args=array(), array $options=array())
 {
@@ -427,6 +449,13 @@ function wd_format_size($size)
 	$size = number_format($size, ($size - floor($size) < .009) ? 0 : 2, $conv['decimal_point'], $conv['thousands_sep']);
 
 	return t($str, array(':size' => $size));
+}
+
+function wd_format_number($number)
+{
+	$conv = WdI18n::$conventions;
+
+	return number_format($number, ($number - floor($number) < .009) ? 0 : 2, $conv['decimal_point'], $conv['thousands_sep']);
 }
 
 function wd_format_time($time, $format='default')

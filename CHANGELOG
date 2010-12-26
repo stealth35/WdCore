@@ -1,4 +1,4 @@
-2010-12-09 # 0.8.2-dev
+2010-12-26 # 0.9.0-dev
 
 [NEW] Events are now defined in the "events" namespace of the "hooks" config.
 
@@ -15,7 +15,7 @@ a table and all of its related tables.
 
 [NEW] The 'Referer' HTTP header is set when the operation result location is changed.
 
-[NEW] The WdActiveRecordQuery class can be used to compose SQL queries.
+[NEW] The new WdActiveRecordQuery class is now used troughout the framework to compose SQL queries.
 
 [NEW] Instances of WdObject can now define what we call "volatile getters", getters that return
 values but don't set properties.
@@ -27,6 +27,8 @@ time is used to keep the cache up to date.
 
 [NEW] The WdModel class implements the ArrayAccess interface.
 
+[NEW] Route segments can now be defined as ':identifier' e.g. ':slug' instead of '<slug:[^/]+>'. 
+
 [CHG] When defined as an array, the `scope` option is now cascading, a translation is searched in
 the different scopes : array('users', 'delete', 'operation') can be used to search for a
 translation in the 'users.delete.operation', 'delete.operaton' and 'operation' namespaces.
@@ -34,6 +36,10 @@ translation in the 'users.delete.operation', 'delete.operaton' and 'operation' n
 [CHG] PERMISSION_+ Permissions are now const of the WdModule class.
 
 [CHG] Renamed the WdLocale class as WdI18n.
+
+[CHG] Renamed WdCore::getModule as "module", WdCore::readModules as "index_modules".
+
+[CHG] Moved to 'cache catalogs' config options from 'i18n' to 'core'.
 
 [DEL] WdObject: The `__get_them_all` method is deprecated, override the `__defer_get` method
 instead.

@@ -147,7 +147,7 @@ class WdObject
 			return $this->$property = $rc;
 		}
 
-		WdDebug::trigger
+		throw new WdException
 		(
 			'Unknow property %property for object of class %class (available properties: :list)', array
 			(
@@ -339,7 +339,7 @@ class WdObject
 			{
 				global $core;
 
-				$callback[0] = $core->getModule(substr($callback[0], 2));
+				$callback[0] = $core->module(substr($callback[0], 2));
 
 				// TODO-20100809: replace method definition
 			}

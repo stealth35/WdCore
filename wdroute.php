@@ -193,79 +193,42 @@ class WdRoute
 		$params = array();
 		$n = 0;
 
-		if (0)
+		for ($i = 0, $j = count($parts); $i < $j ;)
 		{
-			$parts = preg_split('#<(\w+)?(:?)(.*?)?>#', $pattern, -1, PREG_SPLIT_DELIM_CAPTURE);
+			$part = $parts[$i];
 
-			var_dump($parts);
+			var_dump($part);
 
-			$key = null;
-			$y = count($parts);
+			$regex .= $part;
+			$interleave[] = $part;
 
-			for ($i = 0 ; $i < $y ; $i++)
+			$i++;
+
+			if ($i == $j)
+			{
+				break;
+			}
+
+			$part = $parts[$i++];
+
+			if ($part)
+			{
+				if ($part{0} == ':')
+				{
+					$regex .= '([^/]+)';
+					$params[] = substr($part, 1);
+
+					continue;
+				}
+			}
+			else
 			{
 				$part = $parts[$i];
 
-				switch ($i % 4)
-				{
-					case 0:
-					{
-						$regex .= $part;
-						$interleave[] = $part;
-					}
-					break;
+				$regex .= '(' . $parts[$i + 1] . ')';
+				$params[] = $part;
 
-					case 1:
-					{
-						echo t('start: "\1", "\2", "\3"<br />', array($parts[$i], $parts[$i+1], $parts[$i+2]));
-
-						$i += 2;
-					}
-					break;
-
-					default:
-					{
-						echo "I shouldn't be here: " . wd_entities($i . '::' . $part) . '<br />';
-					}
-					break;
-				}
-			}
-		}
-		else
-		{
-			$parts = preg_split('#<((\w+):)?(.*?)?>#', $pattern, -1, PREG_SPLIT_DELIM_CAPTURE);
-
-	//		var_dump($parts);
-
-			foreach ($parts as $i => $part)
-			{
-				switch ($i % 4)
-				{
-					case 0:
-					{
-						$regex .= $part;
-						$interleave[] = $part;
-					}
-					break;
-
-					case 2:
-					{
-						if (!$part)
-						{
-							$part = $n++;
-						}
-
-						$interleave[] = array($part, $parts[$i + 1]);
-						$params[] = $part;
-					}
-					break;
-
-					case 3:
-					{
-						$regex .= '(' . $part . ')';
-					}
-					break;
-				}
+				$i += 2;
 			}
 		}
 
@@ -337,19 +300,5 @@ class WdRoute
 		}
 
 		return $url;
-	}
-
-	// TODO-20100629: this method should die in favour of the format() method.
-
-	static public function encode($route, array $params=array())
-	{
-		if ($params)
-		{
-			WdDebug::trigger('params are not implemented');
-		}
-
-		//return $_SERVER['SCRIPT_NAME'] . $route;
-
-		return '/admin' . $route;
 	}
 }

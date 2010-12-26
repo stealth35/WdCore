@@ -397,7 +397,7 @@ class WdModule extends WdObject
 						throw new WdException('Model %module/%model implements itself !', array('%module' => $this->id, '%model' => $which));
 					}
 
-					$module = ($i_module == $this->id) ? $this : $core->getModule($i_module);
+					$module = ($i_module == $this->id) ? $this : $core->module($i_module);
 
 					$implement['table'] = $module->model($i_which);
 				}
@@ -822,14 +822,19 @@ class WdModule extends WdObject
 	{
 		$params = &$operation->params;
 
-		$form = isset($operation->form) ? $operation->form : WdForm::load($params);
+		if (isset($operation->form))
+		{
+			$form = $operation->form;
+		}
+		else
+		{
+			$form = $operation->form = WdForm::load($params);
+		}
 
 		if (!$form || !$form->validate($params))
 		{
 			return false;
 		}
-
-		$operation->form = $form;
 
 		return true;
 	}
