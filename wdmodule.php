@@ -5,25 +5,8 @@
  *
  * @author Olivier Laviale <olivier.laviale@gmail.com>
  * @link http://www.weirdog.com/wdcore/
- * @copyright Copyright (c) 2007-2010 Olivier Laviale
+ * @copyright Copyright (c) 2007-2011 Olivier Laviale
  * @license http://www.weirdog.com/wdcore/license/
- */
-
-/*
- * PERMISSIONS
- *
- * NONE: Well, you can't do anything
- *
- * ACCESS: You can acces the module and view its resources
- *
- * CREATE: You can create new entry
- *
- * MAINTAIN: You can edit the entries you created
- *
- * MANAGE: You can delete the entries you created
- *
- * ADMINISTER: You have complete control over the module
- *
  */
 
 class WdModule extends WdObject
@@ -40,6 +23,23 @@ class WdModule extends WdObject
 	const T_ROOT = 'root';
 	const T_STARTUP = 'startup';
 	const T_TITLE = 'title';
+
+	/*
+	 * PERMISSIONS
+	 *
+	 * NONE: Well, you can't do anything
+	 *
+	 * ACCESS: You can acces the module and view its records
+	 *
+	 * CREATE: You can create new records
+	 *
+	 * MAINTAIN: You can edit the records you created
+	 *
+	 * MANAGE: You can delete the records you created
+	 *
+	 * ADMINISTER: You have complete control over the module
+	 *
+	 */
 
 	const PERMISSION_NONE = 0;
 	const PERMISSION_ACCESS = 1;
@@ -145,7 +145,7 @@ class WdModule extends WdObject
 	 *
 	 * One may override the method to extend the installation.
 	 *
-	 * @return mixed TRUE if the module has succeffuly been installed. FALSE if the
+	 * @return mixed TRUE if the module has successfully been installed. FALSE if the
 	 * module (or parts of the module) fails to install. NULL if the module has
 	 * not installation process.
 	 *
@@ -442,15 +442,41 @@ class WdModule extends WdObject
 	}
 
 	/*
-	**
+	 * OPERATIONS
+	 */
 
-	OPERATIONS
-
-	**
-	*/
-
-	const OPERATION_SAVE = 'save';
-	const OPERATION_DELETE = 'delete';
+	/**
+	 * Handles a specified operation.
+	 *
+	 * This function has three purpose: Checking if the specified operation is actualy implemented
+	 * by the module, controling the validity of the operation, and finaly processing the
+	 * operation.
+	 *
+	 * 1. Checking the operation's implementation
+	 *
+	 * A method callback is required for any operation to be processed. The name of the callback
+	 * must follow the pattern "operation_<name>", where "<name>" is the name of the operation. A
+	 * module is considered being capable of handling an operation if its associated method
+	 * callback is implemented.
+	 *
+	 * If the required callback is not implemented by the module's class, an exception with code
+	 * 404 is thrown.
+	 *
+	 * 2. Controlling the validity of an operation
+	 *
+	 * A chain of controls, often specific to the operation, must be passed for an operation to be
+	 * processed. Control is handled by the handle_operation_control(), and failure often result in
+	 * a thrown exception.
+	 *
+	 * 3. Processing the operation
+	 *
+	 * Once the controls have been successfully passed, the operation is processed by invoking the
+	 * method callback found in step 1.
+	 *
+	 * @param WdOperation $operation The operation object to handle.
+	 *
+	 * @throws WdHTTPException
+	 */
 
 	public function handle_operation(WdOperation $operation)
 	{
@@ -467,8 +493,7 @@ class WdModule extends WdObject
 			(
 				'Unknown operation %operation for the %module module.', array
 				(
-					'%operation' => $name,
-					'%module' => $this->id
+					'%operation' => $name, '%module' => $this->id
 				),
 
 				404
@@ -492,93 +517,131 @@ class WdModule extends WdObject
 		return $this->$callback($operation);
 	}
 
-	/*
-	 *
-	 */
-
 	const CONTROL_AUTHENTICATION = 101;
 	const CONTROL_PERMISSION = 102;
-	const CONTROL_ENTRY = 103;
+	const CONTROL_RECORD = 103;
 	const CONTROL_OWNERSHIP = 104;
 	const CONTROL_FORM = 105;
 	const CONTROL_VALIDATOR = 106;
+	const CONTROL_PROPERTIES = 107;
 
-	protected function get_operation_controls(WdOperation $operation)
+	/**
+	 * Returns the default controls for any operation.
+	 *
+	 * By default, only the _validator_ control is requested.
+	 *
+	 * @param WdOperation $operation
+	 */
+
+	protected function controls_for_operation(WdOperation $operation)
 	{
 		return array
 		(
 			self::CONTROL_AUTHENTICATION => false,
 			self::CONTROL_PERMISSION => self::PERMISSION_NONE,
-			self::CONTROL_ENTRY => false,
+			self::CONTROL_RECORD => false,
 			self::CONTROL_OWNERSHIP => false,
 			self::CONTROL_FORM => false,
-			self::CONTROL_VALIDATOR => true
+			self::CONTROL_VALIDATOR => true,
+			self::CONTROL_PROPERTIES => false
 		);
 	}
+
+	/**
+	 * Handles the operation control.
+	 *
+	 * Controls for the operation are retrieved by invoking the "controls_for_operation[_<name>]"
+	 * method. The controls chain is processed by invoking the "control_operation[_<name>]" method.
+	 *
+	 * @param WdOperation $operation
+	 * @return boolean Wheter or not the controls were successfully passed.
+	 */
 
 	protected function handle_operation_control(WdOperation $operation)
 	{
 		$operation_name = $operation->name;
 
-		#
-		# Get the controls for the operation using the appropriate callback.
-		#
-
-		$callback = 'get_operation_' . $operation_name . '_controls';
+		$fallback = 'controls_for_operation';
+		$callback = $fallback . '_' . $operation_name;
 
 		if (!method_exists($this, $callback))
 		{
-			$callback = 'get_operation_controls';
+			$callback = $fallback;
 		}
 
-		$controls = $this->$callback($operation);
-
-		#
-		# Add some controls for the ownership control. The controls are added using a union so that
-		# they won't override user defined controls.
-		#
+		$controls = $this->$callback($operation) + $this->controls_for_operation($operation);
 
 		if (!empty($controls[self::CONTROL_OWNERSHIP]))
 		{
-			$controls += array
-			(
-//				self::CONTROL_AUTHENTICATION => true,
-				self::CONTROL_ENTRY => true
-			);
+			$controls[self::CONTROL_RECORD] = true;
 		}
 
-		/*
-
-		NOTE: CONTROL_AUTHENTICATION cannot be required while creating/updating entries,
-		a guest user may well have the permission to create entries e.g. comments.
-
-		CONTROL_ENTRY is successful if there is no entry to check (operation key is not defined).
-
-		*/
-
-		#
-		# Fill in with defaults
-		#
-
-		$controls += array
-		(
-			self::CONTROL_AUTHENTICATION => false,
-			self::CONTROL_PERMISSION => self::PERMISSION_NONE,
-			self::CONTROL_ENTRY => false,
-			self::CONTROL_OWNERSHIP => false,
-			self::CONTROL_FORM => false,
-			self::CONTROL_VALIDATOR => true
-		);
-
-		$callback = 'control_operation_' . $operation->name;
+		$fallback = 'control_operation';
+		$callback = $fallback . '_' . $operation->name;
 
 		if (!method_exists($this, $callback))
 		{
-			$callback = 'control_operation';
+			$callback = $fallback;
 		}
 
 		return $this->$callback($operation, $controls);
 	}
+
+	/**
+	 * Controls the operation.
+	 *
+	 * A number of controls to pass may be requested before an operation is processed. This
+	 * function tries the specified controls (or operation specific controls if they are defined).
+	 * If all the specified controls are passed, the operation control is considered sucessful.
+	 *
+	 * Controls are passed in the following order:
+	 *
+	 * 1. CONTROL_AUTHENTICATION
+	 *
+	 * Controls the authentication of the user. The"control_authentication_for_operation[_<name>]"
+	 * callback method is invoked for this control. An exception with the code 401 is thrown if
+	 * the control fails.
+	 *
+	 * 2. CONTROL_PERMISSION
+	 *
+	 * Controls the permission of the guest or user. The
+	 * "control_permission_for_operation[_<name>]" callback method is invoked for this control. An
+	 * exception with code 401 is thrown if the control fails.
+	 *
+	 * 3. CONTROL_RECORD
+	 *
+	 * Controls the existence of the record specified by the operation's key. The
+	 * "control_record_for_operation[_<name>]" callback method is invoked for this control. An
+	 * exception with code 404 is thrown if the control fails.
+	 *
+	 * 4. CONTROL_OWNERSHIP
+	 *
+	 * Controls the ownership of the user over the record found during the CONTROL_RECORD step. The
+	 * "control_ownership_for_operation[_<name>]" callback method is invoked for the control. An
+	 * exception with code 401 is thrown if the control fails.
+	 *
+	 * 5. CONTROL_FORM
+	 *
+	 * Controls the form associated with the operation by checking its existence and validity.
+	 * The "control_form_for_operation[_<name>]" callback method is invoked for this control.
+	 * Failing the control won't throw an exception, but a message will be logged to the debug log.
+	 *
+	 * 6. CONTROL_PROPERTIES
+	 *
+	 * Controls the operation's params and process them to create properties suitable for the
+	 * module's primary model. The "control_properties_for_operation[_<name>]" callback method is
+	 * invoked for this control. Failing the control won't throw an exception, but a message will
+	 * be logged to the debug log.
+	 *
+	 * 7. CONTROL_VALIDATOR
+	 *
+	 * Validate the operation using the "validate_operation[_<name>]" callback method. Failing the
+	 * control won't throw an exception, but a message will be logged to the debug log.
+	 *
+	 * @param WdOperation $operation The operation object.
+	 * @param array $controls The controls to pass for the operation to be processed.
+	 * @return boolean Wheter or not the controls where passed.
+	 */
 
 	protected function control_operation(WdOperation $operation, array $controls)
 	{
@@ -586,11 +649,12 @@ class WdModule extends WdObject
 
 		if ($controls[self::CONTROL_AUTHENTICATION])
 		{
-			$callback = 'control_operation_' . $operation_name . '_authentication';
+			$fallback = 'control_authentication_for_operation';
+			$callback = $fallback . '_' . $operation_name;
 
 			if (!method_exists($this, $callback))
 			{
-				$callback = 'control_operation_authentication';
+				$callback = $fallback;
 			}
 
 			if (!$this->$callback($operation))
@@ -609,11 +673,12 @@ class WdModule extends WdObject
 
 		if ($controls[self::CONTROL_PERMISSION])
 		{
-			$callback = 'control_operation_' . $operation_name . '_permission';
+			$fallback = 'control_permission_for_operation';
+			$callback = $fallback . '_' . $operation_name;
 
 			if (!method_exists($this, $callback))
 			{
-				$callback = 'control_operation_permission';
+				$callback = $fallback;
 			}
 
 			if (!$this->$callback($operation, $controls[self::CONTROL_PERMISSION]))
@@ -631,20 +696,21 @@ class WdModule extends WdObject
 			}
 		}
 
-		if ($controls[self::CONTROL_ENTRY])
+		if ($controls[self::CONTROL_RECORD])
 		{
-			$callback = 'control_operation_' . $operation_name . '_entry';
+			$fallback = 'control_record_for_operation';
+			$callback = $fallback . '_' . $operation_name;
 
 			if (!method_exists($this, $callback))
 			{
-				$callback = 'control_operation_entry';
+				$callback = $fallback;
 			}
 
 			if (!$this->$callback($operation))
 			{
 				throw new WdHTTPException
 				(
-					"The requested entry could not be loaded from the %module module: %key", array
+					"The requested record could not be loaded from the %module module: %key", array
 					(
 						'%key' => $operation->key,
 						'%module' => $this->id
@@ -657,18 +723,19 @@ class WdModule extends WdObject
 
 		if ($controls[self::CONTROL_OWNERSHIP])
 		{
-			$callback = 'control_operation_' . $operation_name . '_ownership';
+			$fallback = 'control_ownership_for_operation';
+			$callback = $fallback . '_' . $operation_name;
 
 			if (!method_exists($this, $callback))
 			{
-				$callback = 'control_operation_ownership';
+				$callback = $fallback;
 			}
 
 			if (!$this->$callback($operation))
 			{
 				throw new WdHTTPException
 				(
-					"You don't have ownership of the entry: %key", array
+					"You don't have ownership of the record: %key", array
 					(
 						'%key' => $operation->key
 					),
@@ -680,11 +747,12 @@ class WdModule extends WdObject
 
 		if ($controls[self::CONTROL_FORM])
 		{
-			$callback = 'control_operation_' . $operation_name . '_form';
+			$fallback = 'control_form_for_operation';
+			$callback = $fallback . '_' . $operation_name;
 
 			if (!method_exists($this, $callback))
 			{
-				$callback = 'control_operation_form';
+				$callback = $fallback;
 			}
 
 			if (!$this->$callback($operation))
@@ -695,18 +763,43 @@ class WdModule extends WdObject
 			}
 		}
 
-		if ($controls[self::CONTROL_VALIDATOR])
+		if ($controls[self::CONTROL_PROPERTIES])
 		{
-			$callback = 'validate_operation_' . $operation_name;
+			$fallback = 'control_properties_for_operation';
+			$callback = $fallback . '_' . $operation_name;
 
 			if (!method_exists($this, $callback))
 			{
-				$callback = 'validate_operation';
+				$callback = $fallback;
 			}
 
 			if (!$this->$callback($operation))
 			{
-				wd_log('Control down on validator. Module: %module, operation: %operation', array('%module' => $this->id, '%operation' => $operation_name));
+				wd_log
+				(
+					"Control %control failed for operation %operation on module %module.", array
+					(
+						'%control' => 'properties', '%module' => $this->id, '%operation' => $operation_name
+					)
+				);
+
+				return false;
+			}
+		}
+
+		if ($controls[self::CONTROL_VALIDATOR])
+		{
+			$fallback = 'validate_operation';
+			$callback = $fallback . '_' . $operation_name;
+
+			if (!method_exists($this, $callback))
+			{
+				$callback = $fallback;
+			}
+
+			if (!$this->$callback($operation))
+			{
+				wd_log('Control failed on validator. Module: %module, operation: %operation', array('%module' => $this->id, '%operation' => $operation_name));
 
 				return false;
 			}
@@ -715,95 +808,125 @@ class WdModule extends WdObject
 		return true;
 	}
 
-	protected function control_operation_authentication(WdOperation $operation)
+	/**
+	 * Controls the authentication of the user for the operation.
+	 *
+	 * @param WdOperation $operation
+	 */
+
+	protected function control_authentication_for_operation(WdOperation $operation)
 	{
 		global $core;
 
 		return ($core->user_id != 0);
 	}
 
-	protected function control_operation_permission(WdOperation $operation, $permission)
+	/**
+	 * Controls the permission of the user for the operation.
+	 *
+	 * @param WdOperation $operation The operation object.
+	 * @param mixed $permission The required permission.
+	 */
+
+	protected function control_permission_for_operation(WdOperation $operation, $permission)
 	{
 		global $core;
 
-		if (!$core->user->has_permission($permission, $this))
-		{
-			return false;
-		}
-
-		return true;
+		return $core->user->has_permission($permission, $this);
 	}
 
 	/**
-	 * Control the existence of the entry the operation is to be applied to.
+	 * Controls the properties for the operation.
 	 *
-	 * The operation's key is used to load the entry from the primary model of the module. If the
-	 * loading fails, the method returns false. Otherwise, the loaded entry is added to the
-	 * operation object under the `entry` property and the method returns true.
+	 * The method filters out the operation's parameters which are not defined as fields by the
+	 * primary model of the module, and take care of resolving properties defined as booleans.
 	 *
-	 * @param $operation The operation object.
+	 * The resulting properties are stored in the 'properties' property of the operation's object.
+	 *
+	 * @param WdOperation $operation
 	 */
 
-	protected function control_operation_entry(WdOperation $operation)
+	protected function control_properties_for_operation(WdOperation $operation)
 	{
-		$key = $operation->key;
+		$schema = $this->model->getExtendedSchema();
+		$fields = $schema['fields'];
+		$booleans = array();
 
-		if (!$key)
+		foreach ($fields as $identifier => $definition)
 		{
-			$operation->entry = null;
-
-			return false;
+			if ($definition['type'] == 'boolean')
+			{
+				$booleans[] = $identifier;
+			}
 		}
 
-		$operation->entry = $this->model[$key];
+		$operation->handle_booleans($booleans);
+		$operation->properties = array_intersect_key($operation->params, $fields);
+
+//		wd_log('properties: \1', array($operation->properties));
 
 		return true;
 	}
 
 	/**
-	 * Control the ownership of the user over the operation destination entry.
+	 * Control the existence of the record the operation is to be applied to.
 	 *
-	 * The control is considered sucessful if the entry can be loaded and the ownership of the
-	 * user confirmed. The `user` and `entry` properties are added to the operation object.
+	 * The operation's key is used to find the record in the module's primary model. The found
+	 * record is stored in the 'record' property of the operation object.
 	 *
-	 * Note that the control is considered sucessful if the operation has no key, in which case
-	 * the `user` and `entry` properties added to the operation object are null.
+	 * @param $operation The operation object.
+	 * @throws WdException when the record cannot be found in the model.
+	 */
+
+	protected function control_record_for_operation(WdOperation $operation)
+	{
+		$operation->record = $this->model[$operation->key];
+
+		return true;
+	}
+
+	/**
+	 * Override the record control for the "save" operation in order for the control to succeed
+	 * if the operation has no key, which is the case when creating new records.
 	 *
-	 * Note: This is not control_operation_entry(). If the operation's key is not defined the control will
-	 * still return TRUE.
+	 * @param WdOperation $operation
+	 */
+
+	protected function control_record_for_operation_save(WdOperation $operation)
+	{
+		$operation->record = false;
+
+		return $operation->key ? $this->control_record_for_operation($operation) : true;
+	}
+
+	/**
+	 * Controls the ownership of the user over the operation's record.
+	 *
+	 * The control is failed if a record was found but the user has no ownership on that record.
+	 *
+	 * The control is sucessful if there is no record in the operation object, or there is a record
+	 * and the user has ownership on that record.
 	 *
 	 * @param WdOperation $operation
 	 * @return bool
 	 */
 
-	protected function control_operation_ownership(WdOperation $operation)
+	protected function control_ownership_for_operation(WdOperation $operation)
 	{
-		$key = $operation->key;
+		global $core;
 
-		if (!$key)
+		$record = $operation->record;
+
+		if ($record && !$core->user->has_ownership($this, $record))
 		{
-			return true;
-		}
-
-		$entry = $operation->entry;
-
-		if ($entry)
-		{
-			global $core;
-
-			if (!$core->user->has_ownership($this, $entry))
-			{
-				return false;
-			}
+			return false;
 		}
 
 		return true;
 	}
 
 	/**
-	 * Control the form associated with the operation.
-	 *
-	 * This is the default method callback for the `form` control.
+	 * Control the form for the operation.
 	 *
 	 * The function assumes the form was saved in the user's session.
 	 *
@@ -818,18 +941,16 @@ class WdModule extends WdObject
 	 * @return bool
 	 */
 
-	protected function control_operation_form(WdOperation $operation)
+	protected function control_form_for_operation(WdOperation $operation)
 	{
 		$params = &$operation->params;
 
-		if (isset($operation->form))
+		if (empty($operation->form))
 		{
-			$form = $operation->form;
+			$operation->form = WdForm::load($params);
 		}
-		else
-		{
-			$form = $operation->form = WdForm::load($params);
-		}
+
+		$form = $operation->form;
 
 		if (!$form || !$form->validate($params))
 		{
@@ -859,6 +980,8 @@ class WdModule extends WdObject
 		);
 	}
 
+	const OPERATION_SAVE = 'save';
+
 	/**
 	 * Returns the controls for the "save" operation.
 	 *
@@ -866,7 +989,7 @@ class WdModule extends WdObject
 	 * @return array The controls of the operation.
 	 */
 
-	protected function get_operation_save_controls(WdOperation $operation)
+	protected function controls_for_operation_save(WdOperation $operation)
 	{
 		return array
 		(
@@ -874,28 +997,9 @@ class WdModule extends WdObject
 			self::CONTROL_PERMISSION => self::PERMISSION_CREATE,
 			self::CONTROL_OWNERSHIP => true,
 			self::CONTROL_FORM => true,
-			self::CONTROL_VALIDATOR => true
+			self::CONTROL_VALIDATOR => true,
+			self::CONTROL_PROPERTIES => true
 		);
-	}
-
-	/**
-	 * Override the `control_operation_entry` to pass empty entries as valid if the operation has
-	 * no key, allowing new entries to be created.
-	 *
-	 * @param WdOperation $operation
-	 * @return boolean
-	 */
-
-	protected function control_operation_save_entry(WdOperation $operation)
-	{
-		if (!$operation->key)
-		{
-			$operation->entry = null;
-
-			return true;
-		}
-
-		return $this->control_operation_entry($operation);
 	}
 
 	/**
@@ -908,7 +1012,7 @@ class WdModule extends WdObject
 	protected function operation_save(WdOperation $operation)
 	{
 		$operation_key = $operation->key;
-		$key = $this->model()->save($operation->params, $operation_key);
+		$key = $this->model->save($operation->params, $operation_key);
 		$log_params = array('%key' => $operation_key, '%module' => $this->id);
 
 		if (!$key)
@@ -933,18 +1037,20 @@ class WdModule extends WdObject
 		);
 	}
 
+	const OPERATION_DELETE = 'delete';
+
 	/**
 	 * Returns controls for the "delete" operation.
 	 *
 	 * @param WdOperation $operation
 	 */
 
-	protected function get_operation_delete_controls(WdOperation $operation)
+	protected function controls_for_operation_delete(WdOperation $operation)
 	{
 		return array
 		(
 			self::CONTROL_PERMISSION => self::PERMISSION_MANAGE,
-			self::CONTROL_ENTRY => true,
+			self::CONTROL_RECORD => true,
 			self::CONTROL_OWNERSHIP => true,
 			self::CONTROL_FORM => false,
 			self::CONTROL_VALIDATOR => true
@@ -986,7 +1092,7 @@ class WdModule extends WdObject
 
 			foreach ($keys as $key => $dummy)
 			{
-				if ($this->model()->delete($key))
+				if ($this->model->delete($key))
 				{
 					wd_log_done('The entry %key has been delete from %module.', array('%key' => $key, '%module' => $this->id));
 
@@ -1000,7 +1106,7 @@ class WdModule extends WdObject
 		{
 			$key = $operation->key;
 
-			if ($this->model()->delete($key))
+			if ($this->model->delete($key))
 			{
 				wd_log_done('The entry %key has been delete from %module.', array('%key' => $key, '%module' => $this->id));
 
