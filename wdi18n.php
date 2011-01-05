@@ -5,7 +5,7 @@
  *
  * @author Olivier Laviale <olivier.laviale@gmail.com>
  * @link http://www.weirdog.com/wdcore/
- * @copyright Copyright (c) 2007-2010 Olivier Laviale
+ * @copyright Copyright (c) 2007-2011 Olivier Laviale
  * @license http://www.weirdog.com/wdcore/license/
  */
 
@@ -225,14 +225,12 @@ class WdI18n
 			}
 		}
 
+		self::$messages[$language] = empty(self::$messages[$language]) ? $messages : $messages + self::$messages[$language];
+
 		if ($language != 'en')
 		{
-			$native_messages = self::load_catalogs('en');
-
-			$messages += $native_messages;
+			self::$messages[$language] += self::load_catalogs('en');
 		}
-
-		self::$messages[$language] = empty(self::$messages[$language]) ? $messages : $messages + self::$messages[$language];
 
 		if (0)
 		{
@@ -241,7 +239,6 @@ class WdI18n
 			echo 'load_catalogs: ' . wd_dump(self::$load_paths) . wd_dump(self::$messages[$language]);
 		}
 
-//		self::$load_paths = array();
 		self::$loading[$language] = false;
 
 		return self::$messages[$language];
