@@ -20,7 +20,7 @@ class WdModule extends WdObject
 	const T_MODELS = 'models';
 	const T_PERMISSION = 'permission';
 	const T_PERMISSIONS = 'permissions';
-	const T_ROOT = 'root';
+	const T_PATH = 'path';
 	const T_STARTUP = 'startup';
 	const T_TITLE = 'title';
 
@@ -68,7 +68,7 @@ class WdModule extends WdObject
 	}
 
 	protected $id;
-	protected $root;
+	protected $path;
 	protected $tags;
 
 	public function __construct($tags)
@@ -86,7 +86,7 @@ class WdModule extends WdObject
 
 		$this->tags = $tags;
 		$this->id = $tags[self::T_ID];
-		$this->root = $tags[self::T_ROOT];
+		$this->path = $tags[self::T_PATH];
 	}
 
 	public function __toString()
@@ -308,8 +308,8 @@ class WdModule extends WdObject
 
 		$ns = $this->flat_id;
 
-		$has_model_class = file_exists($this->root . $which . '.model.php');
-		$has_ar_class = file_exists($this->root . $which . '.ar.php');
+		$has_model_class = file_exists($this->path . $which . '.model.php');
+		$has_ar_class = file_exists($this->path . $which . '.ar.php');
 
 		$table_name = $ns;
 
