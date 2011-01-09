@@ -25,7 +25,7 @@ class WdDatabase extends PDO
 
 	public function __construct($dsn, $username=null, $password=null, $options=array())
 	{
-		list($driver_name) = explode(':', $dsn);
+		list($driver_name) = explode(':', $dsn, 2);
 
 		$this->driver_name = $driver_name;
 
@@ -42,16 +42,20 @@ class WdDatabase extends PDO
 
 		self::$stats['queries_by_connection'][$this->name] = 0;
 
+		if ($driver_name == 'mysql')
+		{
+			$options += array
+			(
+				self::MYSQL_ATTR_INIT_COMMAND => 'SET NAMES ' . $this->charset
+			);
+		}
+
 		parent::__construct($dsn, $username, $password, $options);
 
 		$this->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 		$this->setAttribute(PDO::ATTR_STATEMENT_CLASS, array('WdDatabaseStatement'));
 
-		if ($this->driver_name == 'mysql')
-		{
-			$this->exec('set names ' . $this->charset);
-		}
-		else if ($this->driver_name == 'oci')
+		if ($driver_name == 'oci')
 		{
 			$this->exec("ALTER SESSION SET NLS_DATE_FORMAT = 'YYYY-MM-DD'");
 		}
