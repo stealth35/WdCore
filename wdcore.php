@@ -669,10 +669,25 @@ class WdCore extends WdObject
 		$this->index_modules();
 //		wd_log_time('read modules finish');
 
+		$this->run_context();
+
 //		wd_log_time('run operation start');
 		$this->run_operation();
 //		wd_log_time('run operation start');
 	}
+
+	/**
+	 * One can override this method to provide a context for the application.
+	 */
+
+	protected function run_context()
+	{
+
+	}
+
+	/**
+	 * Dispatch the operation associated with the current request, if any.
+	 */
 
 	protected function run_operation()
 	{
