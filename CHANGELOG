@@ -39,6 +39,8 @@ translation in the 'users.delete.operation', 'delete.operaton' and 'operation' n
 
 [CHG] Renamed the WdLocale class as WdI18n.
 
+[CHG] The '/api/core/aloha' and 'api/core/ping' operations are now defined like any other operation.
+
 [CHG] Renamed WdCore::getModule as "module", WdCore::readModules as "index_modules".
 
 [CHG] Moved to 'cache catalogs' config options from 'i18n' to 'core'.

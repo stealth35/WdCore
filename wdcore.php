@@ -5,7 +5,7 @@
  *
  * @author Olivier Laviale <olivier.laviale@gmail.com>
  * @link http://www.weirdog.com/wdcore/
- * @copyright Copyright (c) 2007-2010 Olivier Laviale
+ * @copyright Copyright (c) 2007-2011 Olivier Laviale
  * @license http://www.weirdog.com/wdcore/license/
  */
 
@@ -87,7 +87,13 @@ class WdCore extends WdObject
 		$this->models = new WdCoreModelsArrayAccess();
 	}
 
-	public static function exception_handler($exception)
+	/**
+	 * Echos the exception and kills PHP.
+	 *
+	 * @param Exception $exception
+	 */
+
+	public static function exception_handler(Exception $exception)
 	{
 		die($exception);
 	}
@@ -608,7 +614,7 @@ class WdCore extends WdObject
 
 			#
 			# we catch connection exceptions and rethrow them in order to avoid the
-			# display of sensible information such as the user's password.
+			# display of sensible information such as the user's identifier or password.
 			#
 
 			try
@@ -640,30 +646,12 @@ class WdCore extends WdObject
 	}
 
 	/**
-	 * Display information about the core and its modules.
+	 * Whether or not the core is running.
 	 *
-	 * The function is called during the special operation "core.aloha".
-	 *
+	 * @var boolean
 	 */
 
-	protected function aloha()
-	{
-		$modules = array_keys($this->descriptors);
-
-		sort($modules);
-
-		header('Content-Type: text/plain; charset=utf-8');
-
-		echo 'WdCore version ' . self::VERSION . ' is running here with:' . PHP_EOL . PHP_EOL;
-		echo implode(PHP_EOL, $modules);
-
-		echo PHP_EOL . PHP_EOL;
-		echo strip_tags(implode(PHP_EOL, WdDebug::fetchMessages('debug')));
-
-		exit;
-	}
-
-	static protected $is_running = false;
+	static public $is_running = false;
 
 	/**
 	 * Run the core object.
@@ -675,83 +663,77 @@ class WdCore extends WdObject
 
 	public function run()
 	{
-//		wd_log_time('run core');
-
-		#
-		# `is_running` is used by module() to automatically start module as they are loaded
-		#
-
 		self::$is_running = true;
-
-		#
-		# load and run modules
-		#
 
 //		wd_log_time('read modules start');
 		$this->index_modules();
 //		wd_log_time('read modules finish');
 
-		#
-		#
-		#
+//		wd_log_time('run operation start');
+		$this->run_operation();
+//		wd_log_time('run operation start');
+	}
 
-//		wd_log_time('run modules start');
-		$this->run_modules();
-//		wd_log_time('run modules finish');
-
-//		wd_log_time('core is running');
-
-		#
-		# dispatch operations
-		#
-
+	protected function run_operation()
+	{
 		$operation = WdOperation::decode($_POST + $_GET);
 
-		if ($operation)
+		if (!$operation)
 		{
-			#
-			# check operation and destination
-			#
+			return;
+		}
 
-			if ($operation->destination == 'core')
+		$operation->dispatch();
+	}
+
+	/**
+	 * Display information about the core and its modules.
+	 *
+	 * This is the callback used by the "/api/core/aloha" operation.
+	 */
+
+	static public function operation_aloha()
+	{
+		global $core;
+
+		$enabled = array();
+		$disabled = array();
+
+		foreach ($core->modules->descriptors as $module_id => $descriptor)
+		{
+			if (!empty($descriptor[WdModule::T_DISABLED]))
 			{
-				switch ($operation->name)
-				{
-					case 'aloha':
-					{
-						$this->aloha();
-					}
-					break;
+				$disabled[] = $module_id;
 
-					case 'ping':
-					{
-						header('Content-Type: text/plain');
-
-						echo 'pong';
-
-						exit;
-					}
-					break;
-
-					default:
-					{
-						throw new WdException
-						(
-							'Unknown operation %operation for %destination', array
-							(
-								'%operation' => $operation->name,
-								'%destination' => $operation->destination
-							)
-						);
-					}
-					break;
-				}
-
-				return;
+				continue;
 			}
 
-			$operation->dispatch();
+			$enabled[] = $module_id;
 		}
+
+		sort($enabled);
+		sort($disabled);
+
+		$rc  = 'WdCore version ' . self::VERSION . ' is running here with:';
+		$rc .= PHP_EOL . PHP_EOL . implode(PHP_EOL, $enabled);
+		$rc .= PHP_EOL . PHP_EOL . 'Disabled modules:';
+		$rc .= PHP_EOL . PHP_EOL . implode(PHP_EOL, $disabled);
+		$rc .= PHP_EOL . PHP_EOL . strip_tags(implode(PHP_EOL, WdDebug::fetchMessages('debug')));
+
+		return $rc;
+	}
+
+	/**
+	 * The purpose of this operation is to keep the user's session alive.
+	 */
+
+	static public function operation_ping()
+	{
+		global $core;
+
+		$core->session;
+
+		return 'pong';
 	}
 }
 
