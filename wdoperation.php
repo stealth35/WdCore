@@ -5,7 +5,7 @@
  *
  * @author Olivier Laviale <olivier.laviale@gmail.com>
  * @link http://www.weirdog.com/wdcore/
- * @copyright Copyright (c) 2007-2010 Olivier Laviale
+ * @copyright Copyright (c) 2007-2011 Olivier Laviale
  * @license http://www.weirdog.com/wdcore/license/
  */
 
@@ -19,24 +19,19 @@ class WdOperation
 	const RESTFUL_BASE_LENGHT = 5;
 
 	/**
-	 * Encode an operation as a RESful URL :
+	 * Encodes a module operation as a RESful URL:
 	 *
 	 * '/api/<destination>/(<key>/)?<method>?param1=...'
 	 *
-	 * TODO-20100615: reorder parameters as $destination, $operation, $key, $params, $type
-	 *
-	 * @param unknown_type $destination
-	 * @param unknown_type $name
+	 * @param mixed $destination
+	 * @param string $name
 	 * @param array $params
-	 * @param unknown_type $encode
+	 * @param integer $key
 	 */
 
-	static public function encode($destination, $name, array $params=array(), $encode=false, $key=null)
+	static public function encode($destination, $name, array $params=array(), $key=null)
 	{
-		$query = http_build_query
-		(
-			$params, '', '&'
-		);
+		$query = http_build_query($params, '', '&');
 
 		return self::RESTFUL_BASE . $destination . '/' . ($key !== null ? $key . '/' : '') . $name . ($query ? '?' . $query : '');
 	}
@@ -92,35 +87,28 @@ class WdOperation
 				$uri = substr($uri, 0, -4);
 			}
 
-			#
-			# routes
-			#
-
-			$routes = WdRoute::routes();
+			$routes = WdConfig::get_constructed('restful_operations', array(__CLASS__, 'restful_operations_constructor'), 'routes');
 
 			foreach ($routes as $pattern => $route)
 			{
-				if (substr($pattern, 0, self::RESTFUL_BASE_LENGHT) != self::RESTFUL_BASE)
+				$match = WdRoute::match($uri, $pattern);
+
+				if (!$match)
 				{
 					continue;
 				}
 
-				$match = WdRoute::match($uri, $pattern);
-
-				if ($match)
+				if (is_array($match))
 				{
-					if (is_array($match))
-					{
-						$request += $match;
-					}
-
-					$operation = new WdOperation($route, $pattern, $request);
-
-					$operation->terminus = true;
-					$operation->method = 'GET';
-
-					return $operation;
+					$request += $match;
 				}
+
+				$operation = new WdOperation($route, $pattern, $request);
+
+				$operation->terminus = true;
+				$operation->method = 'GET';
+
+				return $operation;
 			}
 
 			#
@@ -142,53 +130,6 @@ class WdOperation
 				throw new WdException('Uknown operation: %operation', array('%operation' => substr($uri, 4)), array(404 => 'Unknow operation'));
 			}
 		}
-
-		// DIRTY:COMPAT
-
-		else if (isset($request['do']) && isset($request[self::NAME]))
-		{
-			throw new WdException('Ambiguous operation: both GET and POST methods are used.');
-		}
-		else if (isset($request['do']))
-		{
-			$do = $request['do'];
-			unset($request['do']);
-
-			#
-			# Decode encoded operation, and build union with the actual request
-			#
-
-			if (substr($do, -1, 1) == '=')
-			{
-				parse_str(base64_decode($do), $request_base);
-
-				if (get_magic_quotes_gpc())
-				{
-					$request_base = wd_strip_slashes_recursive($request_base);
-				}
-
-				#
-				# because we make a union, additionnal parameters may be defined to override
-				# encoded ones.
-				#
-
-				$request += $request_base;
-				$do = $request['do'];
-			}
-
-			$pos = strrpos($do, '.');
-
-			if (!$pos)
-			{
-				return false;
-			}
-
-			$name = substr($do, $pos + 1);
-			$destination = substr($do, 0, $pos);
-		}
-
-		// /COMPAT
-
 		else if (isset($request[self::NAME]))
 		{
 			$method = 'POST';
@@ -220,6 +161,35 @@ class WdOperation
 		$operation->method = $method;
 
 		return $operation;
+	}
+
+	/**
+	 * Constructs the configuration "restful_operations" by filtering RESTful routes from the
+	 * "routes" config.
+	 *
+	 * @param array $fragments Configuration fragments.
+	 */
+
+	static public function restful_operations_constructor(array $fragments)
+	{
+		$routes = array();
+
+		foreach ($fragments as $fragment)
+		{
+			foreach ($fragment as $pattern => $route)
+			{
+				if (substr($pattern, 0, self::RESTFUL_BASE_LENGHT) != self::RESTFUL_BASE)
+				{
+					continue;
+				}
+
+				$routes[$pattern] = $route;
+			}
+		}
+
+		krsort($routes);
+
+		return $routes;
 	}
 
 	public $name;
@@ -367,11 +337,13 @@ class WdOperation
 
 				$terminus = true;
 			}
-		}
+			else if ($this->method == 'GET')
+			{
+				header('Content-Type: text/plain; charset=utf-8');
 
-		#
-		#
-		#
+				$rc = $this->response->rc;
+			}
+		}
 
 		if ($this->location && !headers_sent())
 		{
