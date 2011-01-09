@@ -79,18 +79,20 @@ class WdI18n
 		date_default_timezone_set($timezone);
 	}
 
+	static private $conventions_by_languages = array();
+
 	static protected function load_conventions($language, $country=null)
 	{
-		self::$conventions = localeconv();
-
-		$conventions = require dirname(__FILE__) . '/i18n/conv/' . $language . '.php';
-
-		if ($language != 'en')
+		if (isset($conventions_by_languages[$language]))
 		{
-			$conventions = wd_array_merge_recursive(require dirname(__FILE__) . '/i18n/conv/en.php', $conventions);
+			self::$conventions = $conventions_by_languages[$language];
+
+			return;
 		}
 
-		self::$conventions += $conventions;
+		$conventions = localeconv() + require dirname(__FILE__) . '/i18n/conventions/' . $language . '.php';
+
+		self::$conventions_by_languages[$language] = self::$conventions = $conventions;
 	}
 
 	static protected function load_catalog($language, $root)
@@ -202,6 +204,11 @@ class WdI18n
 
 		self::$loading[$language] = true;
 
+		if ($language != 'en')
+		{
+			self::load_catalogs('en');
+		}
+
 		if (!empty(self::$messages[$language]))
 		{
 			$messages = self::load_catalogs_construct($language);
@@ -229,7 +236,7 @@ class WdI18n
 
 		if ($language != 'en')
 		{
-			self::$messages[$language] += self::load_catalogs('en');
+			self::$messages[$language] += self::$messages['en'];
 		}
 
 		if (0)

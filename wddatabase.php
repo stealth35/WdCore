@@ -166,9 +166,7 @@ class WdDatabase extends PDO
 	{
 		return strtr
 		(
-			$query,
-
-			array
+			$query, array
 			(
 				'{prefix}' => $this->prefix,
 				'{charset}' => $this->charset,
