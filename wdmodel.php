@@ -52,14 +52,14 @@ class WdModel extends WdDatabaseTable implements ArrayAccess
 
 		global $core;
 
-		if (empty($core->descriptors[$extends][WdModule::T_MODELS]['primary']))
+		if (empty($core->modules->descriptors[$extends][WdModule::T_MODELS]['primary']))
 		{
 			//wd_log('no primary for: \1', array($extends));
 
 			return false;
 		}
 
-		$tags = $core->descriptors[$extends][WdModule::T_MODELS]['primary'];
+		$tags = $core->modules->descriptors[$extends][WdModule::T_MODELS]['primary'];
 
 		//wd_log('try: \1', array($extends));
 

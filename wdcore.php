@@ -22,12 +22,9 @@ class WdCore extends WdObject
 
 	static public $config = array();
 
-	public $descriptors = array();
-	public $models;
-
 	public function __construct(array $tags=array())
 	{
-		$dir = dirname(__FILE__);
+		$path = dirname(__FILE__);
 
 		$tags = wd_array_merge_recursive
 		(
@@ -35,42 +32,23 @@ class WdCore extends WdObject
 			(
 				'paths' => array
 				(
-					'config' => array
-					(
-						$dir
-					),
-
-					'i18n' => array
-					(
-						$dir
-					)
+					'config' => array($path),
+					'i18n' => array($path)
 				)
 			),
 
 			$tags
 		);
 
-		#
-		# add config paths
-		#
-
 		WdConfig::add($tags['paths']['config']);
 
 		self::$config = call_user_func_array('wd_array_merge_recursive', WdConfig::get('core'));
-
-		#
-		# register some functions
-		#
 
 		$class = get_class($this);
 
 		spl_autoload_register(array($class, 'autoload_handler'));
 		set_exception_handler(array($class, 'exception_handler'));
 		set_error_handler(array('WdDebug', 'errorHandler'));
-
-		#
-		#
-		#
 
 		WdI18n::$load_paths = array_merge(WdI18n::$load_paths, $tags['paths']['i18n']);
 
@@ -83,8 +61,24 @@ class WdCore extends WdObject
 
 			wd_kill_magic_quotes();
 		}
+	}
 
-		$this->models = new WdCoreModelsArrayAccess();
+	/**
+	 * Returns the accesor object for the modules.
+	 */
+
+	protected function __get_modules()
+	{
+		return new WdModulesAccessor();
+	}
+
+	/**
+	 * Returns the accessor object for the models.
+	 */
+
+	protected function __get_models()
+	{
+		return new WdModelsAccessor();
 	}
 
 	/**
@@ -155,420 +149,6 @@ class WdCore extends WdObject
 		}
 
 		return false;
-	}
-
-	protected function index_modules()
-	{
-		if (empty(self::$config['modules']))
-		{
-			return;
-		}
-
-//		wd_log_time('cache modules start');
-
-		if (self::$config['cache modules'])
-		{
-			$cache = new WdFileCache
-			(
-				array
-				(
-					WdFileCache::T_REPOSITORY => self::$config['repository.cache'] . '/core',
-					WdFileCache::T_SERIALIZE => true
-				)
-			);
-
-			$index = $cache->load('modules', array($this, 'index_modules_construct'));
-		}
-		else
-		{
-			$index = $this->index_modules_construct();
-		}
-
-//		wd_log_time('cache modules done');
-
-		$this->descriptors = $index['descriptors'];
-
-		WdI18n::$load_paths = array_merge(WdI18n::$load_paths, $index['catalogs']);
-
-		WdConfig::add($index['configs'], 5);
-
-//		wd_log_time('path added');
-
-		#
-		# reload config with modules fragments and add collected autoloads
-		#
-
-		$config = WdConfig::get_constructed('core', 'merge_recursive');
-
-//		wd_log_time('get constructed');
-
-		//self::$config = wd_array_merge_recursive($config, self::$config); // this shouldn't be needed anymore since we reintroduced config weight
-
-		self::$config = $config;
-		self::$config['autoload'] = $index['autoload'] + self::$config['autoload'];
-
-//		wd_log_time('merge done');
-	}
-
-	/**
-	 * The constructor for the modules cache
-	 *
-	 * @return array
-	 */
-
-	public function index_modules_construct()
-	{
-		$aggregate = array
-		(
-			'descriptors' => array(),
-			'catalogs' => array(),
-			'configs' => array(),
-			'autoload' => array()
-		);
-
-		foreach (self::$config['modules'] as $root)
-		{
-			$location = getcwd();
-
-			chdir($root);
-
-			$dh = opendir($root);
-
-			if (!$dh)
-			{
-				throw new WdException
-				(
-					'Unable to open directory %root', array
-					(
-						'%root' => $root
-					)
-				);
-			}
-
-			while (($file = readdir($dh)) !== false)
-			{
-				if ($file{0} == '.' || !is_dir($file))
-				{
-					continue;
-				}
-
-				$module_root = $root . DIRECTORY_SEPARATOR . $file;
-				$read = $this->read_module_infos($file, $module_root . DIRECTORY_SEPARATOR);
-
-				if ($read)
-				{
-					$aggregate['descriptors'][$file] = $read['descriptor'];
-
-					if (is_dir($module_root . '/i18n'))
-					{
-						$aggregate['catalogs'][] = $module_root;
-					}
-
-					if (is_dir($module_root . '/config'))
-					{
-						$aggregate['configs'][] = $module_root;
-					}
-
-					if ($read['autoload'])
-					{
-						$aggregate['autoload'] = $read['autoload'] + $aggregate['autoload'];
-					}
-				}
-			}
-
-			closedir($dh);
-
-			chdir($location);
-		}
-
-		return $aggregate;
-	}
-
-	/**
-	 * Reads the informations about the module.
-	 *
-	 * The function returns the descriptor for the module and an array of autoload references
-	 * automatically generated based on the files available and the module's descriptor:
-	 *
-	 * The module's descriptor is altered by adding the module's dir (T_ROOT) and the module's
-	 * identifier (T_ID).
-	 *
-	 * Autoload references are generated depending on the files available and the module's
-	 * descriptor:
-	 *
-	 * If a 'hooks.php' file exists, the "<module_flat_id>_WdHooks" reference is added to the
-	 * autoload array.
-	 *
-	 * Autoload references are also created for each model and their activerecord depending on
-	 * the T_MODELS tag and the exsitance of the corresponding files.
-	 *
-	 * @param string $module_id The module's identifier
-	 * @param string $module_dir The module's directory
-	 */
-
-	protected function read_module_infos($module_id, $module_dir)
-	{
-		$descriptor_path = $module_dir . 'descriptor.php';
-		$descriptor = require $descriptor_path;
-
-		if (!is_array($descriptor))
-		{
-			throw new WdException
-			(
-				'%var should be an array: %type given instead in %file', array
-				(
-					'%var' => 'descriptor',
-					'%type' => gettype($descriptor),
-					'%file' => substr($descriptor_path, strlen($_SERVER['DOCUMENT_ROOT']) - 1)
-				)
-			);
-		}
-
-		$descriptor[WdModule::T_ROOT] = $module_dir;
-		$descriptor[WdModule::T_ID] = $module_id;
-
-		$flat_module_id = strtr($module_id, '.', '_');
-
-		$autoload = array
-		(
-			$flat_module_id . '_WdModule' => $module_dir . 'module.php'
-		);
-
-		$autoload_root = $module_dir . 'autoload' . DIRECTORY_SEPARATOR;
-
-		if (is_dir($autoload_root))
-		{
-			$dh = opendir($autoload_root);
-
-			while (($file = readdir($dh)) !== false)
-			{
-				if (substr($file, -4, 4) != '.php')
-				{
-					continue;
-				}
-
-				$name = basename($file, '.php');
-
-				if ($name[0] == '_')
-				{
-					$name = $flat_module_id . $name;
-				}
-
-				$autoload[$name] = $autoload_root . $file;
-			}
-
-			closedir($dh);
-		}
-
-		if (file_exists($module_dir . 'hooks.php'))
-		{
-			$autoload[$flat_module_id . '_WdHooks'] = $module_dir . 'hooks.php';
-		}
-
-		if (isset($descriptor[WdModule::T_MODELS]))
-		{
-			foreach ($descriptor[WdModule::T_MODELS] as $model => $dummy)
-			{
-				$class_base = $flat_module_id . ($model == 'primary' ? '' : '_' . $model);
-				$file_base = $module_dir . $model;
-
-				if (file_exists($file_base . '.model.php'))
-				{
-					$autoload[$class_base . '_WdModel'] = $file_base . '.model.php';
-				}
-
-				if (file_exists($file_base . '.ar.php'))
-				{
-					$autoload[$class_base . '_WdActiveRecord'] = $file_base . '.ar.php';
-				}
-			}
-		}
-
-		return array
-		(
-			'descriptor' => $descriptor,
-			'autoload' => $autoload
-		);
-	}
-
-	/**
-	 * Checks the availability of a module.
-	 *
-	 * A module is considered available when its descriptor is defined, and the T_DISABLED tag of
-	 * its descriptor is empty.
-	 *
-	 * @param $id
-	 * @return boolean
-	 */
-
-	public function has_module($id)
-	{
-		$descriptors = $this->descriptors;
-
-		if (empty($descriptors[$id]) || !empty($descriptors[$id][WdModule::T_DISABLED]))
-		{
-			return false;
-		}
-
-		return true;
-	}
-
-	/**
-	 * @var array Array of loaded modules.
-	 */
-
-	protected $loaded_modules = array();
-
-	/**
-	 * Loads a module.
-	 *
-	 * Note: Because the function is used during the installation process to load module without
-	 * starting them, the function needs to remain public until we find a better solution.
-	 *
-	 * @param $id
-	 * @return WdModule The requested module object.
-	 * @throws WdException When the module requested is not defined.
-	 * @throws WdException When the class for the module is not defined.
-	 */
-
-	public function load_module($id)
-	{
-		$descriptors = $this->descriptors;
-
-		if (empty($descriptors[$id]))
-		{
-			throw new WdException
-			(
-				'The module %id does not exists ! (available modules are: :list)', array
-				(
-					'%id' => $id,
-					':list' => implode(', ', array_keys($descriptors))
-				)
-			);
-		}
-
-		$class = strtr($id, '.', '_') . '_WdModule';
-
-		#
-		# Because we rely on class autoloading, we need to check whether the class
-		# has been defined or not.
-		#
-
-		if (empty(self::$config['autoload'][$class]))
-		{
-			throw new WdException
-			(
-				'Missing class %class for module %id', array
-				(
-					'%class' => $class,
-					'%id' => $id
-				)
-			);
-		}
-
-		$this->loaded_modules[$id] = $module = new $class($descriptors[$id]);
-
-		return $module;
-	}
-
-	/**
-	 * Gets a module object.
-	 *
-	 * If the core is running, the 'run' method of the module is invoked upon the module's first
-	 * loading.
-	 *
-	 * @param string $id The module's id.
-	 * @throws WdException If the module's descriptor is not defined, or the module is disabled.
-	 * @return WdModule The module object.
-	 */
-
-	public function module($id)
-	{
-		if (!empty($this->loaded_modules[$id]))
-		{
-			return $this->loaded_modules[$id];
-		}
-
-		$descriptors = $this->descriptors;
-
-		if (empty($descriptors[$id]))
-		{
-			throw new WdException
-			(
-				'The module %id does not exists ! (available modules are: :list)', array
-				(
-					'%id' => $id,
-					':list' => implode(', ', array_keys($descriptors))
-				),
-
-				404
-			);
-		}
-
-		$descriptor = $descriptors[$id];
-
-		if (!empty($descriptor[WdModule::T_DISABLED]))
-		{
-			throw new WdException
-			(
-				'The module is disabled: %id', array('%id' => $id), 404
-			);
-		}
-
-		$module = $this->load_module($id);
-
-		if (self::$is_running)
-		{
-			$module->run();
-		}
-
-		return $module;
-	}
-
-	/**
-	 * Run the modules having a non NULL T_STARTUP value.
-	 *
-	 * The modules to run are sorted using the value of the T_STARTUP tag.
-	 *
-	 * The T_STARTUP tag defines the priority of the module in the run sequence.
-	 * The higher the value, the earlier the module is ran.
-	 *
-	 */
-
-	protected function run_modules()
-	{
-		$list = array();
-
-		foreach ($this->descriptors as $module_id => $descriptor)
-		{
-			if (!isset($descriptor[WdModule::T_STARTUP]) || !$this->has_module($module_id))
-			{
-				continue;
-			}
-
-			$list[$module_id] = $descriptor[WdModule::T_STARTUP];
-		}
-
-		arsort($list);
-
-		#
-		# order modules in reverse order so that modules with the higher priority
-		# are run first.
-		#
-
-		foreach ($list as $module_id => $priority)
-		{
-//			wd_log_time(" run module $m_id - start");
-
-			$this->module($module_id);
-
-//			wd_log_time(" run module $m_id - finish");
-		}
-	}
-
-	public function get_loaded_modules_ids()
-	{
-		return array_keys($this->loaded_modules);
 	}
 
 	/**
@@ -666,8 +246,12 @@ class WdCore extends WdObject
 		self::$is_running = true;
 
 //		wd_log_time('read modules start');
-		$this->index_modules();
+		$this->modules->autorun = true;
 //		wd_log_time('read modules finish');
+
+//		wd_log_time('run modules start');
+		$this->modules->run();
+//		wd_log_time('run modules finish');
 
 		$this->run_context();
 
@@ -752,38 +336,530 @@ class WdCore extends WdObject
 	}
 }
 
-class WdCoreModelsArrayAccess implements ArrayAccess
+/**
+ * Accessor class for the modules of the framework.
+ *
+ */
+
+class WdModulesAccessor implements ArrayAccess
+{
+	/**
+	 * If true, loaded module are run when loaded for the first time.
+	 *
+	 * @var boolean
+	 */
+
+	public $autorun = false;
+
+	/**
+	 * The descriptors for the modules.
+	 *
+	 * @var array
+	 */
+
+	public $descriptors = array();
+
+	/**
+	 * Loaded modules.
+	 *
+	 * @var array
+	 */
+
+	private $modules = array();
+
+	/**
+	 * The index for the available modules is created with the accessor object.
+	 */
+
+	public function __construct()
+	{
+		$this->index();
+	}
+
+	/**
+	 * Overrides the method to throw an exception because the offset is not settable.
+	 *
+	 * @see ArrayAccess::offsetSet()
+	 */
+
+	public function offsetSet($offset, $value)
+	{
+		throw new WdException('Offset is not settable');
+	}
+
+	/**
+	 * Checks the availability of a module.
+	 *
+	 * A module is considered available when its descriptor is defined, and the T_DISABLED tag of
+	 * its descriptor is empty.
+	 *
+	 * @param string $id The module's id.
+	 * @return boolean Whether or not the module is available.
+	 */
+
+	public function offsetExists($id)
+	{
+		global $core;
+
+		$descriptors = $core->modules->descriptors;
+
+		if (empty($descriptors[$id]) || !empty($descriptors[$id][WdModule::T_DISABLED]))
+		{
+			return false;
+		}
+
+		return true;
+	}
+
+	/**
+	 * Overrides the method to throw an exceptin because the offset is not unsettable.
+	 *
+	 * @see ArrayAccess::offsetUnset()
+	 */
+
+	public function offsetUnset($offset)
+	{
+		throw new WdException('Offset is not unsettable');
+	}
+
+	/**
+	 * Gets a module object.
+	 *
+	 * If the core is running, the 'run' method of the module is invoked upon the module's first
+	 * loading.
+	 *
+	 * @param string $id The module's id.
+	 * @throws WdException If the module's descriptor is not defined, or the module is disabled.
+	 * @return WdModule The module object.
+	 */
+
+	public function offsetGet($id)
+	{
+		global $core;
+
+		if (isset($this->modules[$id]))
+		{
+			return $this->modules[$id];
+		}
+
+		$descriptors = $core->modules->descriptors;
+
+		if (empty($descriptors[$id]))
+		{
+			throw new WdException
+			(
+				'The module %id does not exists ! (available modules are: :list)', array
+				(
+					'%id' => $id,
+					':list' => implode(', ', array_keys($descriptors))
+				),
+
+				404
+			);
+		}
+
+		$descriptor = $descriptors[$id];
+
+		if (!empty($descriptor[WdModule::T_DISABLED]))
+		{
+			throw new WdException
+			(
+				'The module %id is disabled', array('%id' => $id), 404
+			);
+		}
+
+		$module = $this->load($id);
+
+		if ($this->autorun)
+		{
+			$module->run();
+		}
+
+		return $module;
+	}
+
+	/**
+	 * Loads a module.
+	 *
+	 * @param $id
+	 * @return WdModule The requested module object.
+	 * @throws WdException When the module requested is not defined.
+	 * @throws WdException When the class for the module is not defined.
+	 */
+
+	protected function load($id)
+	{
+		global $core;
+
+		$descriptors = $core->modules->descriptors;
+
+		if (empty($descriptors[$id]))
+		{
+			throw new WdException
+			(
+				'The module %id does not exists ! (available modules are: :list)', array
+				(
+					'%id' => $id,
+					':list' => implode(', ', array_keys($descriptors))
+				)
+			);
+		}
+
+		$class = strtr($id, '.', '_') . '_WdModule';
+
+		#
+		# Because we rely on class autoloading, we need to check whether the class
+		# has been defined or not.
+		#
+
+		if (empty(WdCore::$config['autoload'][$class]))
+		{
+			throw new WdException
+			(
+				'Missing class %class for module %id', array
+				(
+					'%class' => $class,
+					'%id' => $id
+				)
+			);
+		}
+
+		$this->modules[$id] = $module = new $class($descriptors[$id]);
+
+		return $module;
+	}
+
+	/**
+	 * Build the index for the available modules, specified using the 'modules' core's config key.
+	 *
+	 * The method not only indexes modules it also alters the I18n load paths, adds the modules'
+	 * configuration paths to the configuration and alters the core's configuration for autoloads
+	 * and more.
+	 */
+
+	protected function index()
+	{
+		if (empty(WdCore::$config['modules']))
+		{
+			return;
+		}
+
+//		wd_log_time('cache modules start');
+
+		if (WdCore::$config['cache modules'])
+		{
+			$cache = new WdFileCache
+			(
+				array
+				(
+					WdFileCache::T_REPOSITORY => WdCore::$config['repository.cache'] . '/core',
+					WdFileCache::T_SERIALIZE => true
+				)
+			);
+
+			$index = $cache->load('modules', array($this, 'index_construct'));
+		}
+		else
+		{
+			$index = $this->index_construct();
+		}
+
+//		wd_log_time('cache modules done');
+
+		$this->descriptors = $index['descriptors'];
+
+		WdI18n::$load_paths = array_merge(WdI18n::$load_paths, $index['catalogs']);
+
+		WdConfig::add($index['configs'], 5);
+
+//		wd_log_time('path added');
+
+		#
+		# reload config with modules fragments and add collected autoloads
+		#
+
+		$config = WdConfig::get_constructed('core', 'merge_recursive');
+
+//		wd_log_time('get constructed');
+
+		//self::$config = wd_array_merge_recursive($config, self::$config); // this shouldn't be needed anymore since we reintroduced config weight
+
+		WdCore::$config = $config;
+		WdCore::$config['autoload'] = $index['autoload'] + WdCore::$config['autoload'];
+
+//		wd_log_time('merge done');
+	}
+
+	/**
+	 * The constructor for the modules cache
+	 *
+	 * @return array
+	 */
+
+	public function index_construct()
+	{
+		$aggregate = array
+		(
+			'descriptors' => array(),
+			'catalogs' => array(),
+			'configs' => array(),
+			'autoload' => array()
+		);
+
+		foreach (WdCore::$config['modules'] as $root)
+		{
+			$location = getcwd();
+
+			chdir($root);
+
+			$dh = opendir($root);
+
+			if (!$dh)
+			{
+				throw new WdException
+				(
+					'Unable to open directory %root', array
+					(
+						'%root' => $root
+					)
+				);
+			}
+
+			while (($module_id = readdir($dh)) !== false)
+			{
+				if ($module_id{0} == '.' || !is_dir($module_id))
+				{
+					continue;
+				}
+
+				$module_path = $root . DIRECTORY_SEPARATOR . $module_id;
+				$read = $this->index_module($module_id, $module_path . DIRECTORY_SEPARATOR);
+
+				if ($read)
+				{
+					$aggregate['descriptors'][$module_id] = $read['descriptor'];
+
+					if (is_dir($module_path . '/i18n'))
+					{
+						$aggregate['catalogs'][] = $module_path;
+					}
+
+					if (is_dir($module_path . '/config'))
+					{
+						$aggregate['configs'][] = $module_path;
+					}
+
+					if ($read['autoload'])
+					{
+						$aggregate['autoload'] = $read['autoload'] + $aggregate['autoload'];
+					}
+				}
+			}
+
+			closedir($dh);
+
+			chdir($location);
+		}
+
+		return $aggregate;
+	}
+
+	/**
+	 * Indexes a specified module by reading its descriptor and creating an array of autoload
+	 * references based on the files available.
+	 *
+	 * The module's descriptor is altered by adding the module's path (T_PATH) and the module's
+	 * identifier (T_ID).
+	 *
+	 * Autoload references are generated depending on the files available and the module's
+	 * descriptor:
+	 *
+	 * If a 'hooks.php' file exists, the "<module_flat_id>_WdHooks" reference is added to the
+	 * autoload array.
+	 *
+	 * Autoload references are also created for each model and their activerecord depending on
+	 * the T_MODELS tag and the exsitance of the corresponding files.
+	 *
+	 * @param string $id The module's identifier
+	 * @param string $path The module's directory
+	 */
+
+	protected function index_module($id, $path)
+	{
+		$descriptor_path = $path . 'descriptor.php';
+		$descriptor = require $descriptor_path;
+
+		if (!is_array($descriptor))
+		{
+			throw new WdException
+			(
+				'%var should be an array: %type given instead in %path', array
+				(
+					'%var' => 'descriptor',
+					'%type' => gettype($descriptor),
+					'%path' => wd_strip_root($descriptor_path)
+				)
+			);
+		}
+
+		$descriptor[WdModule::T_PATH] = $path;
+		$descriptor[WdModule::T_ID] = $id;
+
+		$flat_id = strtr($id, '.', '_');
+
+		$autoload = array();
+
+		//COMPAT-20110108
+
+		$autoload_dir = $path . 'autoload' . DIRECTORY_SEPARATOR;
+
+		if (is_dir($autoload_dir))
+		{
+			$dh = opendir($autoload_dir);
+
+			WdDebug::trigger('the autoload dir was a bad idea, we should remove it: \1', array($autoload_dir));
+
+			while (($file = readdir($dh)) !== false)
+			{
+				if (substr($file, -4, 4) != '.php')
+				{
+					continue;
+				}
+
+				$name = basename($file, '.php');
+
+				if ($name[0] == '_')
+				{
+					$name = $flat_id . $name;
+				}
+
+				$autoload[$name] = $autoload_dir . $file;
+			}
+
+			closedir($dh);
+		}
+
+		// /COMPAT
+
+		if (file_exists($path . 'module.php'))
+		{
+			$autoload[$flat_id . '_WdModule'] = $path . 'module.php';
+		}
+
+		if (file_exists($path . 'hooks.php'))
+		{
+			$autoload[$flat_id . '_WdHooks'] = $path . 'hooks.php';
+		}
+
+		if (isset($descriptor[WdModule::T_MODELS]))
+		{
+			foreach ($descriptor[WdModule::T_MODELS] as $model => $dummy)
+			{
+				$class_base = $flat_id . ($model == 'primary' ? '' : '_' . $model);
+				$file_base = $path . $model;
+
+				if (file_exists($file_base . '.model.php'))
+				{
+					$autoload[$class_base . '_WdModel'] = $file_base . '.model.php';
+				}
+
+				if (file_exists($file_base . '.ar.php'))
+				{
+					$autoload[$class_base . '_WdActiveRecord'] = $file_base . '.ar.php';
+				}
+			}
+		}
+
+		return array
+		(
+			'descriptor' => $descriptor,
+			'autoload' => $autoload
+		);
+	}
+
+	/**
+	 * Run the modules having a non NULL T_STARTUP value.
+	 *
+	 * The modules to run are sorted using the value of the T_STARTUP tag.
+	 *
+	 * The T_STARTUP tag defines the priority of the module in the run sequence.
+	 * The higher the value, the earlier the module is ran.
+	 *
+	 */
+
+	public function run()
+	{
+		$list = array();
+
+		foreach ($this->descriptors as $id => $descriptor)
+		{
+			if (!isset($descriptor[WdModule::T_STARTUP]) || empty($this[$id]))
+			{
+				continue;
+			}
+
+			$list[$id] = $descriptor[WdModule::T_STARTUP];
+		}
+
+		arsort($list);
+
+		foreach ($list as $id => $priority)
+		{
+			$this[$id];
+		}
+	}
+}
+
+/**
+ * Accessor for the models of the framework.
+ *
+ * @author olivier
+ *
+ */
+
+class WdModelsAccessor implements ArrayAccess
 {
 	private $models = array();
 
 	public function offsetSet($offset, $value)
-    {
-    	throw new WdException('Offset is not settable');
-    }
+	{
+		throw new WdException('Offset is not settable');
+	}
 
-    public function offsetExists($offset)
-    {
-        return isset($this->models[$offset]);
-    }
+	public function offsetExists($offset)
+	{
+		global $core;
 
-    public function offsetUnset($offset)
-    {
-        throw new WdException('Offset is not unsettable');
-    }
+		list($module_id, $model_id) = explode('/', $offset) + array(1 => 'primary');
 
-    public function offsetGet($offset)
-    {
-    	if (empty($this->models[$offset]))
-    	{
-    		global $core;
+		if (empty($core->modules[$module_id]))
+		{
+			return false;
+		}
 
-    		list($module_id, $model_id) = explode('/', $offset) + array(1 => 'primary');
+		$descriptor = $core->modules->descriptors[$module_id];
 
-			$this->models[$offset] = $core->module($module_id)->model($model_id);
-    	}
+		return isset($descriptor[WdModule::T_MODELS][$model_id]);
+	}
 
-    	return $this->models[$offset];
-    }
+	public function offsetUnset($offset)
+	{
+		throw new WdException('Offset is not unsettable');
+	}
+
+	public function offsetGet($offset)
+	{
+		if (empty($this->models[$offset]))
+		{
+			global $core;
+
+			list($module_id, $model_id) = explode('/', $offset) + array(1 => 'primary');
+
+			$this->models[$offset] = $core->modules[$module_id]->model($model_id);
+		}
+
+		return $this->models[$offset];
+	}
 }
 
 /**

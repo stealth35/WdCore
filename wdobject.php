@@ -67,7 +67,7 @@ class WdObject
 		{
 			throw new WdException
 			(
-				'Unknow method %method for object of class %class', array
+				'Unknown method %method for object of class %class', array
 				(
 					'%method' => $method,
 					'%class' => get_class($this)
@@ -96,7 +96,7 @@ class WdObject
 	 *
 	 * @param string $property
 	 * @return mixed The value of the innaccessible property. `null` is returned if the property
-	 * could not be retrieved, in that cas, an error is also triggered.
+	 * could not be retrieved, in that case, an error is also triggered.
 	 */
 
 	public function __get($property)
@@ -107,15 +107,6 @@ class WdObject
 		{
 			return $this->$getter();
 		}
-
-		$getter = $this->get_method_callback($getter);
-
-		if ($getter)
-		{
-			return $this->$property = call_user_func($getter, $this, $property);
-		}
-
-		#
 
 		$getter = '__get_' . $property;
 
@@ -129,7 +120,14 @@ class WdObject
 		# in the methods.
 		#
 
-		$getter = $this->get_method_callback($getter);
+		$getter = $this->get_method_callback('__volatile_get_' . $property);
+
+		if ($getter)
+		{
+			return $this->$property = call_user_func($getter, $this, $property);
+		}
+
+		$getter = $this->get_method_callback('__get_' . $property);
 
 		if ($getter)
 		{
@@ -339,7 +337,7 @@ class WdObject
 			{
 				global $core;
 
-				$callback[0] = $core->module(substr($callback[0], 2));
+				$callback[0] = $core->modules[substr($callback[0], 2)];
 
 				// TODO-20100809: replace method definition
 			}

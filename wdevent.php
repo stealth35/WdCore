@@ -144,7 +144,7 @@ class WdEvent
 
 					$module_id = substr($callback[0], 2);
 
-					if (!$core->has_module($module_id))
+					if (empty($core->modules[$module_id]))
 					{
 						#
 						# If the module is unavailable, we silently continue
@@ -153,7 +153,7 @@ class WdEvent
 						continue;
 					}
 
-					$callback[0] = $core->module($module_id);
+					$callback[0] = $core->modules[$module_id];
 				}
 
 				call_user_func($callback, $event);

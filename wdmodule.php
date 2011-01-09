@@ -59,7 +59,7 @@ class WdModule extends WdObject
 				return true;
 			}
 
-			$descriptor = $core->descriptors[$module_id];
+			$descriptor = $core->modules->descriptors[$module_id];
 
 			$module_id = isset($descriptor[self::T_EXTENDS]) ? $descriptor[self::T_EXTENDS] : null;
 		}
@@ -397,7 +397,7 @@ class WdModule extends WdObject
 						throw new WdException('Model %module/%model implements itself !', array('%module' => $this->id, '%model' => $which));
 					}
 
-					$module = ($i_module == $this->id) ? $this : $core->module($i_module);
+					$module = ($i_module == $this->id) ? $this : $core->modules[$i_module];
 
 					$implement['table'] = $module->model($i_which);
 				}

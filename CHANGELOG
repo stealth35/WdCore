@@ -1,5 +1,69 @@
 2011-01-09 # 0.9.0-dev
 
+* Modules accessor:
+
+Just like models, modules are now got throught an accessor. The `index_modules`,
+`read_module_info`, `load_module`, `get_module`, `has_module`, `run_modules` methods of the WdCore
+class are now deprecated, one can check the availability of a module or get a module using the
+following lines:
+
+	$has_module = isset($core->modules['system.nodes']);
+	$hasnt_module = empty($core->modules['system.nodes']);
+	
+	$module = $core->modules['system.nodes'];
+	
+As stated before, the `load_module` is now deprecated, it was moved to the modules accessor class
+and is now protected. The sole purpose of it being public was to circumvent the autorun feature of
+the `get_module` method. The same behaviour can now be easily achieved using the `autoload`
+property of the accessor:
+
+	$core->modules->autoload = false;
+	$module = $core->modules['system.nodes'];
+	
+As for the `index_modules`, `read_module_info` and `run_modules` methods, they have been move to
+the accessor class. The `index_modules` and `read_module_info` are now protected, but the former
+`run_modules` has been made public since its now outside the scope of the WdCore class. One can run
+modules with the following line:
+
+	$core->modules->run();
+	
+The `descriptors` property of the Core object is now deprecated, and is available in the modules
+accessor:
+
+	$core->modules->descriptors;
+	
+On a side note, one should pay attention to the relationship between mixin getters and the modules
+accessor, because if mixins getters are initialized before the modules accessor, the modules
+configuration for the getters will never be considered.
+
+
+* WdActiveRecordQuery, WdDatabaseTable & WdModel:
+
+The WdActiveRecordQuery class is now used throughout the framework to compose SQL queries. This
+obviously had a major impact on queries design (which in so much easier now), but it also had
+a huge impact in the way records are retrieved from models.
+
+The `select()` and `count()` methods have been removed from the WdDatabaseTable and are now
+avaiable from the WdModel class, which defers them to a WdActiveRecordQuery object. The
+WdModel::loadRange() method is gone and the WdModel::load() and WdModel::loadAll() methods have
+been replaced with the WdModel::find() method.
+
+The new WdModel::find() method can find single records as well a set of records, ordered as
+they were requested. An exception is now thrown, as a WdMissingRecordException object, when a
+record could not be found in the model, which allows for better software design and error handling.
+More over, the records found are cached and the same record won't be loaded twice, whether it is
+single or in a set.
+
+The WdModel class implements the ArrayAccess interface and allows for nicer code:
+
+	$record = $model[1];
+
+To match the new model/record vocabulary an effort is undergoing to replace any "entry" reference
+with "record".
+
+For queries, the "{self_and_related}" SQL statement placeholder can now be used to query a table
+and all of its related tables.
+
 [NEW] Events are now defined in the "events" namespace of the "hooks" config.
 
 [NEW] The "<flat_module_id>_WdHook" class is added to the autoload classes if the file "hooks.php"
@@ -8,14 +72,7 @@ is found in the root of a module directory.
 [NEW] In order to standardize the event handling, the 'target' property is now used to associate an
 event with an object.
 
-[NEW] The "{self_and_related}" SQL statement placeholder can be used in select statements to query
-a table and all of its related tables.
-
-[NEW] Added the `db` getter for the "primary" database connection.
-
 [NEW] The 'Referer' HTTP header is set when the operation result location is changed.
-
-[NEW] The new WdActiveRecordQuery class is now used troughout the framework to compose SQL queries.
 
 [NEW] Instances of WdObject can now define what we call "volatile getters", getters that return
 values but don't set properties.
@@ -25,9 +82,10 @@ values but don't set properties.
 [NEW] WdFileCache: the T_MODIFIED_TIME tag specifies the time at which assets where modified. This
 time is used to keep the cache up to date.
 
-[NEW] The WdModel class implements the ArrayAccess interface.
+[NEW] Added the `db` getter for the "primary" database connection.
 
-[NEW] Route segments can now be defined as ':identifier' e.g. ':slug' instead of '<slug:[^/]+>'. 
+[NEW] The WdCore::run_context() method can now be override to provide a context for the
+application e.g. language, timezone, site.
 
 [NEW] RESTful operations are now constructed from the 'routes' config.
 
@@ -35,23 +93,18 @@ time is used to keep the cache up to date.
 the different scopes : array('users', 'delete', 'operation') can be used to search for a
 translation in the 'users.delete.operation', 'delete.operaton' and 'operation' namespaces.
 
-[CHG] PERMISSION_+ Permissions are now const of the WdModule class.
-
 [CHG] Renamed the WdLocale class as WdI18n.
 
 [CHG] The '/api/core/aloha' and 'api/core/ping' operations are now defined like any other operation.
 
-[CHG] Renamed WdCore::getModule as "module", WdCore::readModules as "index_modules".
-
 [CHG] Moved to 'cache catalogs' config options from 'i18n' to 'core'.
+
+[CHG] The permission constants are now constants of the WdModule class.
 
 [CHG] Changed the name scheme of the constructed config cache files.
 
 [DEL] WdObject: The `__get_them_all` method is deprecated, override the `__defer_get` method
 instead.
-
-[DEL] WdDatabase::count(), WdDatabase::loadRange(), WdDatabase::loadAll() are deprecated in favor
-of ActiveRecordQuery. WdDatabase::load() is deprecated in favor of WdModule::find().
 
 
 
