@@ -13,173 +13,92 @@ class WdRoute
 {
 	static protected $routes = array();
 
+	/**
+	 * Returns the routes defined using the configuration system or added using the add() method.
+	 */
+
 	static public function routes()
 	{
-		if (!self::$routes)
+		static $constructed;
+
+		if (!$constructed)
 		{
-			self::$routes = WdConfig::get_constructed('routes', array(__CLASS__, 'routes_constructor'));
+			$constructed = true;
+
+			self::$routes += WdConfig::get_constructed('routes', array(__CLASS__, 'routes_constructor'));
 		}
 
 		return self::$routes;
 	}
 
-	static public function routes_constructor($configs)
+	/**
+	 * Indexes routes, filtering out the route definitions which don't start with '/'
+	 *
+	 * @param array $fragments Configiration fragments
+	 */
+
+	static public function routes_constructor(array $fragments)
 	{
-		global $core;
-		static $specials = array('manage', 'create', 'config', 'edit');
-
-		//WdDebug::trigger('routes() called baby');
-
 		$routes = array();
 
-		foreach ($configs as $root => $definitions)
+		foreach ($fragments as $fragment)
 		{
-			$local_module_id = null;
-
-			if (basename(dirname($root)) == 'modules')
+			foreach ($fragment as $pattern => $route)
 			{
-				$local_module_id = basename($root);
-			}
-
-			//wd_log("read routes from $root: $local_module_id" . wd_dump($definitions));
-
-			if (isset($definitions[0]))
-			{
-				// TODO-20100920: COMPAT, the 'defaults' key should die !
-
-				$definitions = $definitions[0];
-			}
-
-			foreach ($definitions as $pattern => $route)
-			{
-				if (isset($route['block']))
-				{
-					if (empty($route['module']))
-					{
-						$route['module'] = $local_module_id;
-					}
-
-					if (empty($route['visibility']))
-					{
-						$route['visibility'] = 'visible';
-					}
-				}
-
-				if (0 && empty($route['module']) && !in_array($pattern, $specials))
-				{
-					echo '<h3>no module for <em>' . wd_entities($pattern) . '</em></h3>' . wd_dump($route);
-				}
-
-				$module_id = isset($route['module']) ? $route['module'] : $local_module_id;
-
-				if ($module_id && !$core->has_module($module_id))
+				if ($pattern{0} != '/')
 				{
 					continue;
 				}
-
-				if (in_array($pattern, $specials))
-				{
-					$workspace = null;
-
-					if ($module_id && isset($core->descriptors[$module_id]) )
-					{
-						$descriptor = $core->descriptors[$module_id];
-
-						if (empty($route['workspace']) && isset($descriptor[WdModule::T_CATEGORY]))
-						{
-							$workspace = $descriptor[WdModule::T_CATEGORY];
-						}
-						else
-						{
-							list($workspace) = explode('.', $module_id);
-						}
-					}
-
-					$route += array
-					(
-						'module' => $module_id,
-						'workspace' => $workspace
-					);
-
-					switch ($pattern)
-					{
-						case 'manage':
-						{
-							$pattern = "/admin/$module_id";
-
-							$route += array
-							(
-								'title' => 'Liste',
-								'block' => 'manage',
-								'index' => true,
-								'visibility' => 'visible'
-							);
-						}
-						break;
-
-						case 'create':
-						{
-							$pattern = "/admin/$module_id/create";
-
-							$route += array
-							(
-								'title' => 'Nouveau',
-								'block' => 'edit',
-								'permission' => WdModule::PERMISSION_CREATE,
-								'visibility' => 'visible'
-							);
-						}
-						break;
-
-						case 'edit':
-						{
-							$pattern = "/admin/$module_id/<\d+>/edit";
-
-							$route += array
-							(
-								'title' => 'Éditer',
-								'block' => 'edit',
-								'visibility' => 'auto'
-							);
-						}
-						break;
-
-						case 'config':
-						{
-							$pattern = "/admin/$module_id/config";
-
-							$route += array
-							(
-								'title' => 'Config.',
-								'block' => 'config',
-								'permission' => WdModule::PERMISSION_ADMINISTER,
-								'visibility' => 'visible'
-							);
-						}
-						break;
-					}
-				}
-
-				$pattern = strtr
-				(
-					$pattern, array
-					(
-						'{self}' => $module_id,
-						'{module}' => $module_id,
-						'{block}' => isset($route['block']) ? $route['block'] : 'not-defined'
-					)
-				);
 
 				$routes[$pattern] = $route;
 			}
 		}
 
-		ksort($routes);
-
 		return $routes;
 	}
 
+	/**
+	 * Adds or replaces a route, or a set of routes,
+	 *
+	 * @param mixed $pattern The pattern for the route to add or replace, or an array of
+	 * pattern/route.
+	 * @param array $route The route definition for the pattern, or nothing if the pattern is
+	 * actually a set of routes.
+	 */
+
+	static public function add($pattern, array $route=array())
+	{
+		if (is_array($pattern))
+		{
+			self::$routes = $pattern + self::$routes;
+
+			return;
+		}
+
+		self::$routes[$pattern] = $route;
+	}
+
+	/**
+	 * Removes a route from the routes using its pattern.
+	 *
+	 * @param string $pattern The pattern for the route to remove.
+	 */
+
+	static public function remove($pattern)
+	{
+		self::routes();
+
+		unset(self::$routes[$pattern]);
+	}
+
 	static private $parse_cache = array();
+
+	/**
+	 * Parses a route pattern and return an array of interleaved paths and parameters, parameters
+	 * and the regular expression for the specified pattern.
+	 *
+	 * @param string $pattern The route pattern.
+	 */
 
 	static public function parse($pattern)
 	{
@@ -193,16 +112,14 @@ class WdRoute
 		$params = array();
 		$n = 0;
 
+		$parts = preg_split('#(:\w+|<(\w+:)?([^>]+)>)#', $pattern, -1, PREG_SPLIT_DELIM_CAPTURE);
+
 		for ($i = 0, $j = count($parts); $i < $j ;)
 		{
-			$part = $parts[$i];
-
-			var_dump($part);
+			$part = $parts[$i++];
 
 			$regex .= $part;
 			$interleave[] = $part;
-
-			$i++;
 
 			if ($i == $j)
 			{
@@ -211,25 +128,26 @@ class WdRoute
 
 			$part = $parts[$i++];
 
-			if ($part)
+			if ($part{0} == ':')
 			{
-				if ($part{0} == ':')
-				{
-					$regex .= '([^/]+)';
-					$params[] = substr($part, 1);
-
-					continue;
-				}
+				$identifier = substr($part, 1);
+				$selector = '[^/]+';
 			}
 			else
 			{
-				$part = $parts[$i];
+				$identifier = substr($parts[$i++], 0, -1);
 
-				$regex .= '(' . $parts[$i + 1] . ')';
-				$params[] = $part;
+				if (!$identifier)
+				{
+					$identifier = $n++;
+				}
 
-				$i += 2;
+				$selector = $parts[$i++];
 			}
+
+			$regex .= '(' . $selector . ')';
+			$interleave[] = array($identifier, $selector);
+			$params[] = $identifier;
 		}
 
 		$regex .= '$#';
@@ -277,14 +195,13 @@ class WdRoute
 	}
 
 	/**
-	 *
 	 * Returns a route formated using a pattern and values.
 	 *
 	 * @param string $pattern The route pattern
 	 * @param mixed $values The values to format the pattern, either as an array or an object.
 	 */
 
-	static public function format($pattern, $values=array())
+	static public function format($pattern, $values=null)
 	{
 		if (is_array($values))
 		{

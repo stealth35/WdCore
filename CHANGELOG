@@ -99,6 +99,21 @@ empty. Thus, a dedicated control callback has been added for the "save" operatio
 even if the operation's key is empty, which is the case for new records.
 
 
+* WdRoute:
+
+Route resolving for the magic routes 'manage', 'create', 'config' and 'edit' has finally been
+removed from the class. The "routes" constructor now filters out routes which pattern doesn't start
+with a slash '/', leaving further parsing and resolving to others.
+
+The WdRoute::add() method can be used to add or replace a route or a set of route, and the remove()
+method can be used to remove a route which is defined using the configuration system or the
+WdRoute::set() method.
+
+Route pattern segments can now be defined as ':identifier' e.g. ':slug' instead of '<slug:[^/]+>'.
+
+
+* Other changes:
+
 [NEW] Events are now defined in the "events" namespace of the "hooks" config.
 
 [NEW] The "<flat_module_id>_WdHook" class is added to the autoload classes if the file "hooks.php"
