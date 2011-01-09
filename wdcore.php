@@ -786,6 +786,13 @@ class WdCoreModelsArrayAccess implements ArrayAccess
     }
 }
 
+/**
+ * Handles the configuration of the framework's components.
+ *
+ * @author olivier
+ *
+ */
+
 class WdConfig
 {
 	static private $pending_paths = array();
@@ -806,8 +813,10 @@ class WdConfig
 
 	static private $required = array();
 
-	static protected function isolated_require($__file__, $root)
+	static protected function isolated_require($__file__, $path)
 	{
+		$root = $path; // COMPAT-20110108
+
 		if (empty(self::$required[$__file__]))
 		{
 			self::$required[$__file__] = require $__file__;
@@ -874,7 +883,7 @@ class WdConfig
 				)
 			);
 
-			$rc = $cache->load($name . '.config', array(__CLASS__, 'get_constructed_constructor'), array($from ? $from : $name, $constructor));
+			$rc = $cache->load('config_' . wd_normalize($name, '_'), array(__CLASS__, 'get_constructed_constructor'), array($from ? $from : $name, $constructor));
 		}
 		else
 		{

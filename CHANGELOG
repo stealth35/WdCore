@@ -45,6 +45,8 @@ translation in the 'users.delete.operation', 'delete.operaton' and 'operation' n
 
 [CHG] Moved to 'cache catalogs' config options from 'i18n' to 'core'.
 
+[CHG] Changed the name scheme of the constructed config cache files.
+
 [DEL] WdObject: The `__get_them_all` method is deprecated, override the `__defer_get` method
 instead.
 
