@@ -448,30 +448,32 @@ class WdModule extends WdObject
 	/**
 	 * Handles a specified operation.
 	 *
-	 * This function has three purpose: Checking if the specified operation is actualy implemented
-	 * by the module, controling the validity of the operation, and finaly processing the
-	 * operation.
+	 * Before processing the operation, the function first checks if the operation is actually
+	 * implemented by the module, and if it's valid.
 	 *
-	 * 1. Checking the operation's implementation
+	 * Checking the operation's implementation
+	 * =======================================
 	 *
-	 * A method callback is required for any operation to be processed. The name of the callback
+	 * A callback method is required for any operation to be processed. The name of the method
 	 * must follow the pattern "operation_<name>", where "<name>" is the name of the operation. A
-	 * module is considered being capable of handling an operation if its associated method
-	 * callback is implemented.
+	 * module is considered being capable of handling an operation if its associated method is
+	 * implemented.
 	 *
-	 * If the required callback is not implemented by the module's class, an exception with code
+	 * If the required method is not implemented by the module's class, an exception with code
 	 * 404 is thrown.
 	 *
-	 * 2. Controlling the validity of an operation
+	 * Checking the validity of an operation
+	 * =====================================
 	 *
-	 * A chain of controls, often specific to the operation, must be passed for an operation to be
-	 * processed. Control is handled by the handle_operation_control(), and failure often result in
-	 * a thrown exception.
+	 * A control chain, often specific to the operation, must be passed for an operation to be
+	 * processed. The control chain is handled by the method handle_operation_control(), failures
+	 * often resulting in an exception being thrown.
 	 *
-	 * 3. Processing the operation
+	 * Processing the operation
+	 * ========================
 	 *
-	 * Once the controls have been successfully passed, the operation is processed by invoking the
-	 * method callback found in step 1.
+	 * Once the controls passed successfully, the operation is processed by invoking the callback
+	 * method associated with the operation.
 	 *
 	 * @param WdOperation $operation The operation object to handle.
 	 *
@@ -480,10 +482,6 @@ class WdModule extends WdObject
 
 	public function handle_operation(WdOperation $operation)
 	{
-		#
-		# We check if the operation is handled by the module.
-		#
-
 		$name = $operation->name;
 		$callback = 'operation_' . $name;
 
@@ -500,19 +498,10 @@ class WdModule extends WdObject
 			);
 		}
 
-		#
-		# Before we process the operation, we ask for its validation.
-		#
-
 		if (!$this->handle_operation_control($operation))
 		{
 			return;
 		}
-
-		#
-		# The operation access has been controled and validated, we can now call the operation
-		# callback method.
-		#
 
 		return $this->$callback($operation);
 	}
@@ -528,7 +517,7 @@ class WdModule extends WdObject
 	/**
 	 * Returns the default controls for any operation.
 	 *
-	 * By default, only the _validator_ control is requested.
+	 * All controls are defined, but onyl the _validator_ control is requested.
 	 *
 	 * @param WdOperation $operation
 	 */
@@ -551,7 +540,7 @@ class WdModule extends WdObject
 	 * Handles the operation control.
 	 *
 	 * Controls for the operation are retrieved by invoking the "controls_for_operation[_<name>]"
-	 * method. The controls chain is processed by invoking the "control_operation[_<name>]" method.
+	 * method. The control chain is processed by invoking the "control_operation[_<name>]" method.
 	 *
 	 * @param WdOperation $operation
 	 * @return boolean Wheter or not the controls were successfully passed.
@@ -850,20 +839,24 @@ class WdModule extends WdObject
 	{
 		$schema = $this->model->getExtendedSchema();
 		$fields = $schema['fields'];
-		$booleans = array();
+		$properties = array_intersect_key($operation->params, $fields);
 
 		foreach ($fields as $identifier => $definition)
 		{
 			if ($definition['type'] == 'boolean')
 			{
-				$booleans[] = $identifier;
+				if (empty($properties[$identifier]))
+				{
+					$properties[$identifier] = false;
+
+					continue;
+				}
+
+				$properties[$identifier] = filter_var($properties[$identifier], FILTER_VALIDATE_BOOLEAN);
 			}
 		}
 
-		$operation->handle_booleans($booleans);
-		$operation->properties = array_intersect_key($operation->params, $fields);
-
-//		wd_log('properties: \1', array($operation->properties));
+		$operation->properties = $properties;
 
 		return true;
 	}
@@ -886,8 +879,8 @@ class WdModule extends WdObject
 	}
 
 	/**
-	 * Override the record control for the "save" operation in order for the control to succeed
-	 * if the operation has no key, which is the case when creating new records.
+	 * Override the record control for the "save" operation in order for the control to pass even
+	 * if the operation's key is empty, which is the case when creating a new record.
 	 *
 	 * @param WdOperation $operation
 	 */

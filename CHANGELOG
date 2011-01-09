@@ -64,6 +64,41 @@ with "record".
 For queries, the "{self_and_related}" SQL statement placeholder can now be used to query a table
 and all of its related tables.
 
+
+* Operations controls:
+
+The pattern used for control callbacks has been changed for one that is more readable and hopefully
+more stable: "control_<control>_for_operation[_<name>]", where "<control>" is the name of the
+control to pass and "<name>" is the name of the operation. The "_<name>" part being optional, one
+can define a callback for a specific operation, or let the framework use the generic one.
+
+The pattern was changed due to collisions occuring when, for the "form" operation, a same callback
+was used to control the operation ("control_operation_<name>") and the generic form control
+("control_operation_form"). 
+
+A properties control has been added. The generic callback for this control is currently filtering
+out operation's parameters and handeling booleans, to transform them into model's values, which can
+be used as is to save a record, for example.
+
+The CONTROL_ENTRY control has been renamed as CONTROL_RECORD to better match the vocabulary used
+throughout the framework. The callback now alters the operation object with the `record` property
+rather then the former `entry` one.
+
+The control chain is now as follows:
+
+1. CONTROL_AUTHENTICATION: control_authentication_for_operation[_<name>]
+2. CONTROL_PERMISSION: control_permission_for_operation[_<name>]
+3. CONTROL_RECORD: control_record_for_operation[_<name>]
+4. CONTROL_OWNERSHIP: control_ownership_for_operation[_<name>]
+5. CONTROL_FORM: control_form_for_operation[_<name>]
+6. CONTROL_PROPERTIES: control_properties_for_operation[_<name>]
+7. CONTROL_VALIDATOR: validate_operation[_<name>]
+
+The generic callback for the CONTROL_RECORD control does no longer succeed if the operation's key is
+empty. Thus, a dedicated control callback has been added for the "save" operation, which succeed
+even if the operation's key is empty, which is the case for new records.
+
+
 [NEW] Events are now defined in the "events" namespace of the "hooks" config.
 
 [NEW] The "<flat_module_id>_WdHook" class is added to the autoload classes if the file "hooks.php"
