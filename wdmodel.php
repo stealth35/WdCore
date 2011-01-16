@@ -126,6 +126,42 @@ class WdModel extends WdDatabaseTable implements ArrayAccess
 	}
 
 	/**
+	 * Override the method to handle dynamic finders.
+	 *
+	 * @see WdObject::__call()
+	 */
+
+	public function __call($method, $arguments)
+	{
+		if (preg_match('#^find_by_#', $method))
+		{
+			$arq = new WdActiveRecordQuery($this);
+
+			return call_user_func_array(array($arq, $method), $arguments);
+		}
+
+		return parent::__call($method, $arguments);
+	}
+
+	/**
+	 * Override the method to handle scopes.
+	 */
+
+	public function __get($property)
+	{
+		$callback = 'scope_' . $property;
+
+		if (method_exists($this, $callback))
+		{
+			$arq = new WdActiveRecordQuery($this);
+
+			return $this->$callback($arq);
+		}
+
+		return parent::__get($property);
+	}
+
+	/**
 	 * Finds a record or a collection of records.
 	 *
 	 * @param mixed $key A key or an array of keys.
@@ -159,8 +195,8 @@ class WdModel extends WdDatabaseTable implements ArrayAccess
 
 			if ($missing)
 			{
-				$query_records = $this->where(array($this->primary => $missing))->all;
 				$primary = $this->primary;
+				$query_records = $this->where(array($primary => $missing))->all;
 
 				foreach ($query_records as $record)
 				{
@@ -209,7 +245,7 @@ class WdModel extends WdDatabaseTable implements ArrayAccess
 
 	/**
 	 * Because objects are cached, we need to removed the object from the cache when it's saved, so
-	 * that loading the object again returns the updated object, not the one in cache.
+	 * that loading the object again returns the updated object, not the one in the cache.
 	 *
 	 * @see $wd/wdcore/WdDatabaseTable#save($values, $id, $options)
 	 */
@@ -377,6 +413,17 @@ class WdModel extends WdDatabaseTable implements ArrayAccess
 	}
 
 	/**
+	 * Delegation method for the WdActiveRecordQuery::group method.
+	 *
+	 * @return WdActiveRecordQuery
+	 */
+
+	public function group($group)
+	{
+		return $this->defer_to_actionrecord_query();
+	}
+
+	/**
 	 * Delegation method for the WdActiveRecordQuery::order method.
 	 *
 	 * @return WdActiveRecordQuery
@@ -398,6 +445,11 @@ class WdModel extends WdDatabaseTable implements ArrayAccess
 		return $this->defer_to_actionrecord_query();
 	}
 
+	protected function __volatile_get_exists()
+	{
+		return $this->exists();
+	}
+
 	/**
 	 * Delegation method for the WdActiveRecordQuery::count method.
 	 *
@@ -412,6 +464,50 @@ class WdModel extends WdDatabaseTable implements ArrayAccess
 	protected function __volatile_get_count()
 	{
 		return $this->count();
+	}
+
+	/**
+	 * Delegation method for the WdActiveRecordQuery::average method.
+	 *
+	 * @return WdActiveRecordQuery
+	 */
+
+	public function average($column)
+	{
+		return $this->defer_to_actionrecord_query();
+	}
+
+	/**
+	 * Delegation method for the WdActiveRecordQuery::minimum method.
+	 *
+	 * @return WdActiveRecordQuery
+	 */
+
+	public function minimum($column)
+	{
+		return $this->defer_to_actionrecord_query();
+	}
+
+	/**
+	 * Delegation method for the WdActiveRecordQuery::maximum method.
+	 *
+	 * @return WdActiveRecordQuery
+	 */
+
+	public function maximum($column)
+	{
+		return $this->defer_to_actionrecord_query();
+	}
+
+	/**
+	 * Delegation method for the WdActiveRecordQuery::sum method.
+	 *
+	 * @return WdActiveRecordQuery
+	 */
+
+	public function sum($column)
+	{
+		return $this->defer_to_actionrecord_query();
 	}
 
 	/**
@@ -434,6 +530,27 @@ class WdModel extends WdDatabaseTable implements ArrayAccess
 	protected function __volatile_get_all()
 	{
 		return $this->all();
+	}
+
+	/**
+	 * Scope
+	 */
+
+	public function has_scope($name)
+	{
+		return method_exists($this, 'scope_' . $name);
+	}
+
+	public function scope($scope_name, $scope_args=null)
+	{
+		$callback = 'scope_' . $scope_name;
+
+		if (!method_exists($this, $callback))
+		{
+			throw new WdException('Unknown scope %scope for model %model', array('%scope' => $scope_name, '%model' => $this->name_unprefixed));
+		}
+
+		return call_user_func_array(array($this, $callback), $scope_args);
 	}
 
 	/*

@@ -21,6 +21,8 @@ class WdActiveRecordQuery extends WdObject implements Iterator
 
 	protected $group;
 	protected $order;
+	protected $having;
+	protected $having_args = array();
 
 	protected $offset;
 	protected $limit;
@@ -30,6 +32,42 @@ class WdActiveRecordQuery extends WdObject implements Iterator
 	public function __construct($model)
 	{
 		$this->model = $model;
+	}
+
+	public function __call($method, $arguments)
+	{
+		if (preg_match('#^find_by_#', $method))
+		{
+			return $this->defered_dynamic_finder(substr($method, strlen('find_by_')), $arguments);
+		}
+
+		return parent::__call($method, $arguments);
+	}
+
+	private $scope_name;
+
+	protected function get_method_callback($method)
+	{
+		if (preg_match('#^__volatile_get_#', $method))
+		{
+			$method = substr($method, strlen('__volatile_get_'));
+
+			if ($this->model->has_scope($method))
+			{
+				$this->scope_name = $method;
+
+				return array($this, '__scope');
+			}
+		}
+
+		return parent::get_method_callback($method);
+	}
+
+	protected function __scope()
+	{
+		$args = func_get_args();
+
+		return call_user_func(array($this->model, 'scope'), $this->scope_name, $args);
 	}
 
 	/**
@@ -61,6 +99,79 @@ class WdActiveRecordQuery extends WdObject implements Iterator
 		$this->join .= ' ' . $expression;
 
 		return $this;
+	}
+
+	private function defered_parse_conditions()
+	{
+		global $core;
+
+		$trace = debug_backtrace(false);
+		$args = $trace[1]['args'];
+
+		$conditions = array_shift($args);
+
+		if (is_array($conditions))
+		{
+			$c = '';
+			$conditions_args = array();
+
+			foreach ($conditions as $column => $arg)
+			{
+				if (is_array($arg))
+				{
+					$joined = '';
+
+					foreach ($arg as $value)
+					{
+						$joined .= ',' . (is_numeric($value) ? $value : $this->model->quote($value));
+					}
+
+					$joined = substr($joined, 1);
+
+					$c .= ' AND `' . ($column{0} == '!' ? substr($column, 1) . '` NOT' : $column . '`') . ' IN(' . $joined . ')';
+				}
+				else
+				{
+					$conditions_args[] = $arg;
+
+					$c .= ' AND `' . ($column{0} == '!' ? substr($column, 1) . '` !' : $column . '` ') . '= ?';
+				}
+			}
+
+			$conditions = substr($c, 5);
+		}
+		else
+		{
+			$conditions_args = array();
+
+			if ($args)
+			{
+				if (is_array($args[0]))
+				{
+					$conditions_args = $args[0];
+				}
+				else
+				{
+					#
+					# We dereference values otherwise the caller would get a corrupted array.
+					#
+
+					foreach ($args as $key => $value)
+					{
+						$conditions_args[$key] = $value;
+					}
+				}
+			}
+		}
+
+		return array($conditions ? '(' . $conditions . ')' : null, $conditions_args);
+	}
+
+	private function defered_dynamic_finder($finder, array $conditions_args=array())
+	{
+		$conditions = explode('_and_', $finder);
+
+		return $this->where(array_combine($conditions, $conditions_args));
 	}
 
 	/**
@@ -119,55 +230,16 @@ class WdActiveRecordQuery extends WdObject implements Iterator
 
 	public function where($conditions, $conditions_args=null)
 	{
-		global $core;
+		list($conditions, $conditions_args) = $this->defered_parse_conditions();
 
-		if (!$conditions)
+		if ($conditions)
 		{
-			return $this;
-		}
+			$this->conditions[] = $conditions;
 
-		if ($conditions_args !== null && !is_array($conditions_args))
-		{
-			$conditions_args = func_get_args();
-			array_shift($conditions_args);
-		}
-
-		if (is_array($conditions))
-		{
-			$c = '';
-			$conditions_args = array();
-
-			foreach ($conditions as $column => $arg)
+			if ($conditions_args)
 			{
-				if (is_array($arg))
-				{
-					$joined = '';
-
-					foreach ($arg as $value)
-					{
-						$joined .= ',' . (is_numeric($value) ? $value : $this->model->quote($value));
-					}
-
-					$joined = substr($joined, 1);
-
-					$c .= ' AND `' . ($column{0} == '!' ? substr($column, 1) . '` NOT' : $column . '`') . ' IN(' . $joined . ')';
-				}
-				else
-				{
-					$conditions_args[] = $arg;
-
-					$c .= ' AND `' . ($column{0} == '!' ? substr($column, 1) . '` !' : $column . '` ') . '= ?';
-				}
+				$this->conditions_args = array_merge($this->conditions_args, $conditions_args);
 			}
-
-			$conditions = substr($c, 5);
-		}
-
-		$this->conditions[] = '(' . $conditions . ')';
-
-		if ($conditions_args)
-		{
-			$this->conditions_args = array_merge($this->conditions_args, $conditions_args);
 		}
 
 		return $this;
@@ -191,6 +263,16 @@ class WdActiveRecordQuery extends WdObject implements Iterator
 	public function group($group)
 	{
 		$this->group = $group;
+
+		return $this;
+	}
+
+	public function having($conditions, $conditions_args=null)
+	{
+		list($having, $having_args) = $this->defered_parse_conditions();
+
+		$this->having = $having;
+		$this->having_args = $having_args;
 
 		return $this;
 	}
@@ -262,6 +344,11 @@ class WdActiveRecordQuery extends WdObject implements Iterator
 		if ($this->group)
 		{
 			$query .= ' GROUP BY ' . $this->group;
+
+			if ($this->having)
+			{
+				$query .= ' HAVING ' . $this->having;
+			}
 		}
 
 		if ($this->order)
@@ -281,8 +368,6 @@ class WdActiveRecordQuery extends WdObject implements Iterator
 		{
 			$query .= " LIMIT $this->limit";
 		}
-
-//		var_dump($query);
 
 		return $query;
 	}
@@ -307,9 +392,25 @@ class WdActiveRecordQuery extends WdObject implements Iterator
 
 		$query .= ' FROM {self_and_related}' . $this->build();
 
-//		var_dump($query);
+		return $this->model->query($query, array_merge($this->conditions_args, $this->having_args));
+	}
 
-		return $this->model->query($query, $this->conditions_args);
+	protected function __volatile_get_prepared()
+	{
+		$query = 'SELECT ';
+
+		if ($this->select)
+		{
+			$query .= $this->select;
+		}
+		else
+		{
+			$query .= '*';
+		}
+
+		$query .= ' FROM {self_and_related}' . $this->build();
+
+		return $this->model->prepare($query);
 	}
 
 	/*
@@ -372,7 +473,14 @@ class WdActiveRecordQuery extends WdObject implements Iterator
 
 	public function one()
 	{
+		$previous_limit = $this->limit;
+
+		$this->limit = 1;
+
 		$statement = $this->query();
+
+		$this->limit = $previous_limit;
+
 		$args = $this->resolve_fetch_mode();
 
 		if (count($args) == 2 && $args[0] == PDO::FETCH_CLASS)
@@ -435,17 +543,23 @@ class WdActiveRecordQuery extends WdObject implements Iterator
 
 	public function exists($key=null)
 	{
+		$suffix = '';
+
 		if ($key !== null)
 		{
-			if (func_get_args() > 1)
+			if (func_num_args() > 1)
 			{
 				$key = func_get_args();
 			}
 
 			$this->where(array('{primary}' => $key));
 		}
+		else if (!$this->limit)
+		{
+			$suffix = ' LIMIT 1';
+		}
 
-		$rc = $this->model->query('SELECT `{primary}` FROM {self_and_related}' . $this->build(), $this->conditions_args)->fetchAll(PDO::FETCH_COLUMN);
+		$rc = $this->model->query('SELECT `{primary}` FROM {self_and_related}' . $this->build() . $suffix, array_merge($this->conditions_args, $this->having_args))->fetchAll(PDO::FETCH_COLUMN);
 
 		if (is_array($key))
 		{
@@ -467,26 +581,53 @@ class WdActiveRecordQuery extends WdObject implements Iterator
 		return $this->exists();
 	}
 
-	public function count($column=null)
+	/*
+	 * Calculations
+	 */
+
+	private function compute($method, $column)
 	{
 		$query = 'SELECT ';
 
 		if ($column)
 		{
-			$query .= "`$column`, COUNT(`$column`)";
+			if ($method == 'COUNT')
+			{
+				$query .= "`$column`, $method(`$column`)";
 
-			$this->group($column);
+				$this->group($column);
+			}
+			else
+			{
+				$query .= "$method(`$column`)";
+			}
 		}
 		else
 		{
-			$query .= 'COUNT(*)';
+			$query .= $method . '(*)';
 		}
 
 		$query .= ' AS count FROM {self_and_related}' . $this->build();
 
-		$method = 'fetch' . ($column ? 'Pairs' : 'ColumnAndClose');
+		if ($method == 'COUNT')
+		{
+			$method = 'fetch' . ($column ? 'Pairs' : 'ColumnAndClose');
+		}
+		else
+		{
+			$method = 'fetchColumnAndClose';
+		}
 
-		return $this->model->query($query, $this->conditions_args)->$method();
+		return $this->model->query($query, array_merge($this->conditions_args, $this->having_args))->$method();
+	}
+
+	/**
+	 * Implements the 'COUNT' computation.
+	 */
+
+	public function count($column=null)
+	{
+		return $this->compute('COUNT', $column);
 	}
 
 	protected function __volatile_get_count()
@@ -494,6 +635,49 @@ class WdActiveRecordQuery extends WdObject implements Iterator
 		return $this->count();
 	}
 
+	/**
+	 * Implements the 'AVG' computation.
+	 *
+	 * @param string $column
+	 */
+
+	public function average($column)
+	{
+		return $this->compute('AVG', $column);
+	}
+
+	/**
+	 * Implements the 'MIN' computation.
+	 *
+	 * @param string $column
+	 */
+
+	public function minimum($column)
+	{
+		return $this->compute('MIN', $column);
+	}
+
+	/**
+	 * Implements the 'MAX' computation.
+	 *
+	 * @param string $column
+	 */
+
+	public function maximum($column)
+	{
+		return $this->compute('MAX', $column);
+	}
+
+	/**
+	 * Implements the 'SUM' computation.
+	 *
+	 * @param string $column
+	 */
+
+	public function sum($column)
+	{
+		return $this->compute('SUM', $column);
+	}
 
 	/*
 	 * MORE
