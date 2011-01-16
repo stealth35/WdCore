@@ -170,7 +170,7 @@ class WdObject
 		);
 
 		#
-		# The operation is considered a sucess if the `value` property exists in the event
+		# The operation is considered a success if the `value` property exists in the event
 		# object. Thus, even a `null` value is considered a success.
 		#
 
@@ -267,16 +267,27 @@ class WdObject
 			return true;
 		}
 
-		#
-		#
-		#
-
 		$rc = $this->__defer_get($property, $success);
 
 		if ($success)
 		{
 			$this->$property = $rc;
 
+			return true;
+		}
+
+		return false;
+	}
+
+	public function has_method($name)
+	{
+		if (method_exists($this, $name))
+		{
+			return true;
+		}
+
+		if ($this->get_method_callback($name))
+		{
 			return true;
 		}
 

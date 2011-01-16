@@ -1,4 +1,4 @@
-2011-01-09 # 0.9.0-dev
+2011-01-16 # 0.9.0-dev
 
 * Modules accessor:
 
@@ -136,6 +136,9 @@ time is used to keep the cache up to date.
 
 [NEW] The WdCore::run_context() method can now be override to provide a context for the
 application e.g. language, timezone, site.
+
+[NEW] The WdObject::has_method() method can now be used to know if an objet as a method, either
+a class method or a mixin.
 
 [NEW] RESTful operations are now constructed from the 'routes' config.
 
