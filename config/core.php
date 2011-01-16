@@ -43,9 +43,10 @@ return array
 	),
 
 	'repository' => '/repository',
-	'repository.temp' => '/repository/temp',
+	'repository.temp' => '/repository/tmp',
 	'repository.cache' => '/repository/cache',
 	'repository.files' => '/repository/files',
+	'repository.vars' => '/repository/var',
 
 	'sessionId' => 'wdsid'
 );

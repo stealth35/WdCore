@@ -37,6 +37,23 @@ accessor, because if mixins getters are initialized before the modules accessor,
 configuration for the getters will never be considered.
 
 
+* Variables accessor:
+
+Values can now be stored as simple files in the "/repository/var" directory. This accessor
+is a meant to simplify the process:
+
+	$core->vars['my_variable_name'] = $value;
+	$value = $core->vars['my_variable_name'];
+	
+	$has_value = isset($core->vars['my_variable_name']);
+	$hasnt_value = empty($core->vars['my_variable_name']);
+	
+	unset($core->vars['my_variable_name']);
+	
+This is now the prefered way to store low-level system configuration, instead of using the
+registry.
+
+
 * WdActiveRecordQuery, WdDatabaseTable & WdModel:
 
 The WdActiveRecordQuery class is now used throughout the framework to compose SQL queries. This

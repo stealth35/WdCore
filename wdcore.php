@@ -82,6 +82,15 @@ class WdCore extends WdObject
 	}
 
 	/**
+	 * Returns the accessor object for the variables.
+	 */
+
+	protected function __get_vars()
+	{
+		return new WdVarsAccessor();
+	}
+
+	/**
 	 * Echos the exception and kills PHP.
 	 *
 	 * @param Exception $exception
@@ -813,8 +822,6 @@ class WdModulesAccessor implements ArrayAccess
 /**
  * Accessor for the models of the framework.
  *
- * @author olivier
- *
  */
 
 class WdModelsAccessor implements ArrayAccess
@@ -825,6 +832,13 @@ class WdModelsAccessor implements ArrayAccess
 	{
 		throw new WdException('Offset is not settable');
 	}
+
+	/**
+	 * Checks if a models exists by first checking if the module it belongs to is enabled and that
+	 * the module actually defines the model.
+	 *
+	 * @see ArrayAccess::offsetExists()
+	 */
 
 	public function offsetExists($offset)
 	{
@@ -847,6 +861,16 @@ class WdModelsAccessor implements ArrayAccess
 		throw new WdException('Offset is not unsettable');
 	}
 
+	/**
+	 * Gets the specified model of the specified module.
+	 *
+	 * The pattern used to request a model is "<module_id>[/<model_id>]" where "<module_id>" is
+	 * the identifier for the module and "<model_id>" is the identifier of the module's model. The
+	 * _model_ part is optionnal, if it's not defined it defaults to "primary".
+	 *
+	 * @see ArrayAccess::offsetGet()
+	 */
+
 	public function offsetGet($offset)
 	{
 		if (empty($this->models[$offset]))
@@ -863,9 +887,97 @@ class WdModelsAccessor implements ArrayAccess
 }
 
 /**
- * Handles the configuration of the framework's components.
+ * Accessor for the variables stored as files in the "/repository/var" directory.
  *
- * @author olivier
+ */
+
+class WdVarsAccessor implements ArrayAccess
+{
+	public function offsetSet($name, $value)
+	{
+		$this->store($name, $value);
+	}
+
+	public function offsetExists($name)
+	{
+		$filename = $this->get_filename($name);
+
+		return file_exists($filename);
+	}
+
+	public function offsetUnset($name)
+	{
+		$filename = $this->get_filename($name);
+
+		unlink($filename);
+	}
+
+	public function offsetGet($name)
+	{
+		return $this->retrieve($name);
+	}
+
+	private function get_filename($name)
+	{
+		$root = $_SERVER['DOCUMENT_ROOT'];
+		$path = WdCore::$config['repository.vars'];
+
+		return $root . $path . '/' . $name;
+	}
+
+	/**
+	 * Cache a variable in the repository.
+	 *
+	 * @param string $key The key used to identify the value. Keys are unique, so storing a second
+	 * value with the same key will overwrite the previous value.
+	 * @param mixed $value The value to store for the key.
+	 * @param int $ttl The time to live in seconds for the stored value. If no _ttl_ is supplied
+	 * (or if the _tll_ is __0__), the value will persist until it is removed from the cache
+	 * manualy or otherwise fails to exist in the cache.
+	 */
+
+	public function store($key, $value, $ttl=0)
+	{
+		$ttl_mark = $this->get_filename($key . '.ttl');
+
+		if ($ttl)
+		{
+			$future = time() + $ttl;
+
+			touch($ttl_mark, $future, $future);
+		}
+		else if (file_exists($ttl_mark))
+		{
+			unlink($ttl_mark);
+		}
+
+		$filename = $this->get_filename($key);
+
+		file_put_contents($filename, $value);
+	}
+
+	public function retrieve($name, $default=null)
+	{
+		$ttl_mark = $this->get_filename($name . '.ttl');
+
+		if (file_exists($ttl_mark) && fileatime($ttl_mark) < time())
+		{
+			return $default;
+		}
+
+		$filename = $this->get_filename($name);
+
+		if (!file_exists($filename))
+		{
+			return $default;
+		}
+
+		return file_get_contents($filename);
+	}
+}
+
+/**
+ * Handles the configuration of the framework's components.
  *
  */
 
