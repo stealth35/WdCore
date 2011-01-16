@@ -670,19 +670,7 @@ class WdModule extends WdObject
 				$callback = $fallback;
 			}
 
-			if (!$this->$callback($operation, $controls[self::CONTROL_PERMISSION]))
-			{
-				throw new WdHTTPException
-				(
-					"You don't have permission to perform the requested operation on the %module module: %operation", array
-					(
-						'%operation' => $operation_name,
-						'%module' => $this->id
-					),
-
-					401
-				);
-			}
+			$this->$callback($operation, $controls[self::CONTROL_PERMISSION]);
 		}
 
 		if ($controls[self::CONTROL_RECORD])
@@ -815,13 +803,28 @@ class WdModule extends WdObject
 	 *
 	 * @param WdOperation $operation The operation object.
 	 * @param mixed $permission The required permission.
+	 * @throws WdException if the user doesn't have the specified permission.
 	 */
 
 	protected function control_permission_for_operation(WdOperation $operation, $permission)
 	{
 		global $core;
 
-		return $core->user->has_permission($permission, $this);
+		if (!$core->user->has_permission($permission, $this))
+		{
+			throw new WdHTTPException
+			(
+				"You don't have permission to perform the %operation operation on the %module module.", array
+				(
+					'%operation' => $operation->name,
+					'%module' => $this->id
+				),
+
+				401
+			);
+		}
+
+		return true;
 	}
 
 	/**
