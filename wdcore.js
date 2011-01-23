@@ -91,136 +91,160 @@ WdOperation.encode = function(destination, operation, params)
 	return query;
 };
 
-function wd_update_assets(assets, done)
-{
-	var base = window.location.protocol + '//' + window.location.hostname;
+Document.implement
+({
 
-	//console.info('base: %s', base);
-
-	//
-	// initialize css
-	//
-
-	var css = [];
-
-	if (typeof(document_cached_css_assets) !== 'undefined')
+	updateAssets: function (assets, done)
 	{
-		//console.log('cached css assets: %a', document_cached_css_assets);
+		var base = window.location.protocol + '//' + window.location.hostname;
 
-		css = document_cached_css_assets;
-	}
+		//
+		// initialize css
+		//
 
-	if (assets.css)
-	{
-		css = assets.css;
+		var css = [];
 
-		$(document.head).getElements('link[type="text/css"]').each
-		(
-			function(el)
-			{
-				var href = el.href.substring(base.length);
-
-				if (css.indexOf(href) != -1)
-				{
-					//console.info('css already exists: %s', href);
-
-					css.erase(href);
-				}
-			}
-		);
-	}
-
-	//console.info('css final: %a', css);
-
-	css.each
-	(
-		function(href)
+		if (typeof(document_cached_css_assets) !== 'undefined')
 		{
-			new Asset.css(href);
+			//console.log('cached css assets: %a', document_cached_css_assets);
+
+			css = document_cached_css_assets;
 		}
-	);
 
-	//
-	// initialize javascript
-	//
+		if (assets.css)
+		{
+			css = assets.css;
 
-	var js = [];
-
-	if (typeof(document_cached_js_assets) !== 'undefined')
-	{
-		//console.log('cached js assets: %a', document_cached_js_assets);
-
-		js = document_cached_js_assets;
-	}
-
-	if (assets.js)
-	{
-		js = assets.js;
-
-		$(document.html).getElements('script').each
-		(
-			function(el)
-			{
-				var src = el.src.substring(base.length);
-
-				if (js.indexOf(src) != -1)
+			$(document.head).getElements('link[type="text/css"]').each
+			(
+				function(el)
 				{
-					//console.info('script alredy exixts: %s', src);
+					var href = el.href.substring(base.length);
 
-					js.erase(src);
+					if (css.indexOf(href) != -1)
+					{
+						//console.info('css already exists: %s', href);
+
+						css.erase(href);
+					}
 				}
+			);
+		}
+
+		//console.info('css final: %a', css);
+
+		css.each
+		(
+			function(href)
+			{
+				new Asset.css(href);
 			}
 		);
-	}
 
-	//console.info('js: %a', js);
+		//
+		// initialize javascript
+		//
 
-	if (js.length)
-	{
-		var js_count = js.length;
+		var js = [];
 
-		js.each
-		(
-			function(src)
-			{
-				new Asset.javascript
-				(
-					src,
+		if (typeof(document_cached_js_assets) !== 'undefined')
+		{
+			//console.log('cached js assets: %a', document_cached_js_assets);
+
+			js = document_cached_js_assets;
+		}
+
+		if (assets.js)
+		{
+			js = assets.js;
+
+			$(document.html).getElements('script').each
+			(
+				function(el)
+				{
+					var src = el.src.substring(base.length);
+
+					if (js.indexOf(src) != -1)
 					{
-						onload: function()
+						//console.info('script alredy exixts: %s', src);
+
+						js.erase(src);
+					}
+				}
+			);
+		}
+
+		//console.info('js: %a', js);
+
+		if (js.length)
+		{
+			var js_count = js.length;
+
+			js.each
+			(
+				function(src)
+				{
+					new Asset.javascript
+					(
+						src,
 						{
-							//console.info('loaded: %a', src);
-
-							js_count--;
-
-							if (!js_count)
+							onload: function()
 							{
-								//console.info('no js remaingn, initialize editor');
+								//console.info('loaded: %a', src);
 
-								/*
-								if (response.rc.initialize)
+								js_count--;
+
+								if (!js_count)
 								{
-									eval(response.rc.initialize);
-								}
-								*/
+									//console.info('no js remaingn, initialize editor');
 
-								done();
+									done();
+								}
 							}
 						}
-					}
-				);
+					);
+				}
+			);
+		}
+		else
+		{
+			done();
+		}
+	}
+});
+
+
+Request.Element = new Class
+({
+	Extends: Request.JSON,
+
+	options:
+	{
+		link: 'cancel'
+	},
+
+	onSuccess: function(response)
+	{
+		var el = Elements.from(response.rc).shift();
+
+		if (!response.assets)
+		{
+			this.parent(el, response);
+
+			return;
+		}
+
+//		document.updateAssets(response.assets, this.parent.bind(this, el, response));
+
+		// https://github.com/mootools/mootools-core/blob/master/Source/Request/Request.js
+
+		document.updateAssets
+		(
+			response.assets, function()
+			{
+				this.fireEvent('complete', arguments).fireEvent('success', arguments).callChain();
 			}
+			.bind(this, el, response)
 		);
 	}
-	else
-	{
-		/*
-		if (response.rc.initialize)
-		{
-			eval(response.rc.initialize);
-		}
-		*/
-
-		done();
-	}
-}
+});
