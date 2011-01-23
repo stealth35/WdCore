@@ -527,3 +527,36 @@ function wd_array_flatten($array, $separator='.', $depth=0)
 
 	return $rc;
 }
+
+function wd_date_period($date)
+{
+	if (is_numeric($date))
+	{
+		$date_secs = $date;
+		$date = date('Y-m-d', $date);
+	}
+	else
+	{
+		$date_secs = strtotime($date);
+	}
+
+	$today_days = strtotime(date('Y-m-d')) / (60 * 60 * 24);
+	$date_days = strtotime(date('Y-m-d', $date_secs)) / (60 * 60 * 24);
+
+	$diff = $today_days - $date_days;
+
+	if ($diff == 0)
+	{
+		return "Aujourd'hui";
+	}
+	else if ($diff == 1)
+	{
+		return 'Hier';
+	}
+	else if ($diff < 6)
+	{
+		return ucfirst(strftime('%A', $date_secs));
+	}
+
+	return wd_format_time($date);
+}

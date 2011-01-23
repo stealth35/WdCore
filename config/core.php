@@ -9,7 +9,6 @@ return array
 		'WdArray' => $root . 'wdarray.php',
 		'WdDatabase' => $root . 'wddatabase.php',
 		'WdDatabaseTable' => $root . 'wddatabasetable.php',
-		'WdDate' => $root . 'wddate.php',
 		'WdDebug' => $root . 'wddebug.php',
 		'WdEvent' => $root . 'wdevent.php',
 		'WdException' => $root . 'wdexception.php',
