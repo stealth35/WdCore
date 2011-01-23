@@ -367,50 +367,55 @@ class WdI18n
 			}
 		}
 
-		if ($args)
+		return self::format($str, $args);
+	}
+
+	static public function format($str, array $args=array())
+	{
+		if (!$args)
 		{
-			$holders = array();
-
-			$i = 0;
-
-			foreach ($args as $key => $value)
-			{
-				$i++;
-
-				if (is_numeric($key))
-				{
-					$key = '\\' . $i;
-				}
-
-				if (is_array($value) || is_object($value))
-				{
-					$value = wd_dump($value);
-				}
-				else if (is_bool($value))
-				{
-					$value = $value ? 'true' : 'false';
-				}
-				else if (is_null($value))
-				{
-					$value = '<em>null</em>';
-				}
-				else
-				{
-					switch ($key{0})
-					{
-						case ':': break;
-						case '!': $value = wd_entities($value); break;
-						case '%': $value = '<em>' . wd_entities($value) . '</em>'; break;
-					}
-				}
-
-				$holders[$key] = $value;
-			}
-
-			$str = strtr($str, $holders);
+			return $str;
 		}
 
-		return $str;
+		$holders = array();
+
+		$i = 0;
+
+		foreach ($args as $key => $value)
+		{
+			$i++;
+
+			if (is_numeric($key))
+			{
+				$key = '\\' . $i;
+			}
+
+			if (is_array($value) || is_object($value))
+			{
+				$value = wd_dump($value);
+			}
+			else if (is_bool($value))
+			{
+				$value = $value ? 'true' : 'false';
+			}
+			else if (is_null($value))
+			{
+				$value = '<em>null</em>';
+			}
+			else
+			{
+				switch ($key{0})
+				{
+					case ':': break;
+					case '!': $value = wd_entities($value); break;
+					case '%': $value = '<em>' . wd_entities($value) . '</em>'; break;
+				}
+			}
+
+			$holders[$key] = $value;
+		}
+
+		return strtr($str, $holders);
 	}
 
 	static public function store_translation($language, $translation)
