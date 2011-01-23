@@ -600,8 +600,10 @@ class WdModule extends WdObject
 	 * 3. CONTROL_RECORD
 	 *
 	 * Controls the existence of the record specified by the operation's key. The
-	 * "control_record_for_operation[_<name>]" callback method is invoked for this control. An
-	 * exception with code 404 is thrown if the control fails.
+	 * "control_record_for_operation[_<name>]" callback method is invoked for this control. The
+	 * value returned by the callback method is set in the operation objet under the `record`
+	 * property. The callback method must throw an exception if the record could not be loaded or
+	 * the control of this record failed.
 	 *
 	 * 4. CONTROL_OWNERSHIP
 	 *
@@ -619,7 +621,7 @@ class WdModule extends WdObject
 	 *
 	 * Controls the operation's params and process them to create properties suitable for the
 	 * module's primary model. The "control_properties_for_operation[_<name>]" callback method is
-	 * invoked for this control. Failing the control won't throw an exception, but a message will
+	 * invoked for this control. Failling the control won't throw an exception, but a message will
 	 * be logged to the debug log.
 	 *
 	 * 7. CONTROL_VALIDATOR
@@ -683,7 +685,10 @@ class WdModule extends WdObject
 				$callback = $fallback;
 			}
 
-			if (!$this->$callback($operation))
+			$operation->record = $this->$callback($operation);
+
+			/*
+			if (!$record instanceof WdActiveRecord)
 			{
 				throw new WdHTTPException
 				(
@@ -696,6 +701,7 @@ class WdModule extends WdObject
 					404
 				);
 			}
+			*/
 		}
 
 		if ($controls[self::CONTROL_OWNERSHIP])
@@ -750,13 +756,17 @@ class WdModule extends WdObject
 				$callback = $fallback;
 			}
 
-			if (!$this->$callback($operation))
+			try
+			{
+				$operation->properties = $this->$callback($operation);
+			}
+			catch (Exception $e)
 			{
 				wd_log
 				(
-					"Control %control failed for operation %operation on module %module.", array
+					"Control %control failed for operation %operation on module %module: :exception", array
 					(
-						'%control' => 'properties', '%module' => $this->id, '%operation' => $operation_name
+						'%control' => 'properties', '%module' => $this->id, '%operation' => $operation_name, ':exception' => $e->getMessage()
 					)
 				);
 
@@ -830,38 +840,15 @@ class WdModule extends WdObject
 	/**
 	 * Controls the properties for the operation.
 	 *
-	 * The method filters out the operation's parameters which are not defined as fields by the
-	 * primary model of the module, and take care of resolving properties defined as booleans.
-	 *
-	 * The resulting properties are stored in the 'properties' property of the operation's object.
+	 * Currently, this generic method returns an empty array as properties.
 	 *
 	 * @param WdOperation $operation
+	 * @return array An empty array.
 	 */
 
 	protected function control_properties_for_operation(WdOperation $operation)
 	{
-		$schema = $this->model->getExtendedSchema();
-		$fields = $schema['fields'];
-		$properties = array_intersect_key($operation->params, $fields);
-
-		foreach ($fields as $identifier => $definition)
-		{
-			if ($definition['type'] == 'boolean')
-			{
-				if (empty($properties[$identifier]))
-				{
-					$properties[$identifier] = false;
-
-					continue;
-				}
-
-				$properties[$identifier] = filter_var($properties[$identifier], FILTER_VALIDATE_BOOLEAN);
-			}
-		}
-
-		$operation->properties = $properties;
-
-		return true;
+		return array();
 	}
 
 	/**
@@ -876,9 +863,7 @@ class WdModule extends WdObject
 
 	protected function control_record_for_operation(WdOperation $operation)
 	{
-		$operation->record = $this->model[$operation->key];
-
-		return true;
+		return $this->model[$operation->key];
 	}
 
 	/**
@@ -890,9 +875,7 @@ class WdModule extends WdObject
 
 	protected function control_record_for_operation_save(WdOperation $operation)
 	{
-		$operation->record = false;
-
-		return $operation->key ? $this->control_record_for_operation($operation) : true;
+		return $operation->key ? $this->control_record_for_operation($operation) : null;
 	}
 
 	/**
@@ -999,16 +982,62 @@ class WdModule extends WdObject
 	}
 
 	/**
-	 * Handle the OPERATION_SAVE operation
+	 * Filters out the operation's parameters which are not defined as fields by the
+	 * primary model of the module, and take care of resolving properties defined as booleans.
 	 *
-	 * @param array $params
-	 * @return array Result of the operation, or `null` if the operation failed.
+	 * The resulting properties are stored in the 'properties' property of the operation's object.
+	 *
+	 * @param WdOperation $operation
 	 */
+
+	protected function control_properties_for_operation_save(WdOperation $operation)
+	{
+		$schema = $this->model->getExtendedSchema();
+		$fields = $schema['fields'];
+		$properties = array_intersect_key($operation->params, $fields);
+
+		foreach ($fields as $identifier => $definition)
+		{
+			if ($definition['type'] == 'boolean')
+			{
+				if (empty($properties[$identifier]))
+				{
+					$properties[$identifier] = false;
+
+					continue;
+				}
+
+				$properties[$identifier] = filter_var($properties[$identifier], FILTER_VALIDATE_BOOLEAN);
+			}
+		}
+
+		return $properties;
+	}
+
+	/**
+	 * Saves a record to the primary model associated with the module.
+	 *
+	 * A record is either created or updated. A record is created if the operation's key is empty,
+	 * otherwise an existing record is updated.
+	 *
+	 * The method uses the operation's `properties` property, created by the
+	 * control_properties_for_operation() method, to save the record.
+	 *
+	 * @param WdOperation $operation An operation object.
+	 * @return array An array composed of the save mode ('update' or 'create') and the record's
+	 * key.
+	 * @throws WdException if the method fails to save the record.
+	 */
+
+	// TODO-20110121: the operation should throw exceptions on failure. Will the current
+	// implementation support this ? Those relying on test for cleanup would have to use
+	// _try/catch_, the others could just forget about checking the return value, assuming it is
+	// good since no exception was raised.
 
 	protected function operation_save(WdOperation $operation)
 	{
 		$operation_key = $operation->key;
-		$key = $this->model->save($operation->params, $operation_key);
+		$key = $this->model->save($operation->properties, $operation_key);
 		$log_params = array('%key' => $operation_key, '%module' => $this->id);
 
 		if (!$key)
@@ -1019,12 +1048,10 @@ class WdModule extends WdObject
 			# don't want to happen since the operation failed.
 			#
 
-			wd_log_error($operation_key ? 'Unable to update entry %key in %module.' : 'Unable to create entry in %module.', $log_params, 'save');
-
-			return;
+			throw new WdException($operation_key ? 'Unable to update record %key in %module.' : 'Unable to create record in %module.', $log_params, 'save');
 		}
 
-		wd_log_done($operation_key ? 'The entry %key in %module has been saved.' : 'A new entry has been saved in %module.', $log_params, 'save');
+		wd_log_done($operation_key ? 'The record %key in %module has been saved.' : 'A new record has been saved in %module.', $log_params, 'save');
 
 		return array
 		(

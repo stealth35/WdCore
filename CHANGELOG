@@ -61,7 +61,7 @@ obviously had a major impact on queries design (which in so much easier now), bu
 a huge impact in the way records are retrieved from models.
 
 The `select()` and `count()` methods have been removed from the WdDatabaseTable and are now
-avaiable from the WdModel class, which defers them to a WdActiveRecordQuery object. The
+available from the WdModel class, which defers them to a WdActiveRecordQuery object. The
 WdModel::loadRange() method is gone and the WdModel::load() and WdModel::loadAll() methods have
 been replaced with the WdModel::find() method.
 
@@ -80,6 +80,19 @@ with "record".
 
 For queries, the "{self_and_related}" SQL statement placeholder can now be used to query a table
 and all of its related tables.
+
+Filters are automatically generated for the fields defined by the model :
+
+	$model->find_by_slug('my-slug');
+	
+Models can define scopes, which are macros for serch methods :
+
+	$model->visible;
+	# shortcut for
+	$model->where('is_online AND (siteid = 0 OR siteid = ?) AND (language = "" OR language = ?', $site->siteid, $site->language); 
+
+The `average`, `minimum`, `maximum` and `sum` compute methods can be used to compute the value of
+a column.
 
 
 * Operations controls:
@@ -114,6 +127,9 @@ The control chain is now as follows:
 The generic callback for the CONTROL_RECORD control does no longer succeed if the operation's key is
 empty. Thus, a dedicated control callback has been added for the "save" operation, which succeed
 even if the operation's key is empty, which is the case for new records.
+
+All callbacks for the "save" operation must now use the CONTROL_PROPERTIES control and the
+operation object's `properties` array created by the associated callbacks.
 
 
 * WdRoute:
