@@ -339,8 +339,6 @@ class WdOperation
 			}
 			else if ($this->method == 'GET')
 			{
-				header('Content-Type: text/plain; charset=utf-8');
-
 				$rc = $this->response->rc;
 			}
 		}

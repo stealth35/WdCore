@@ -212,14 +212,14 @@ class WdModel extends WdDatabaseTable implements ArrayAccess
 			{
 				if (count($missing) > 1)
 				{
-					throw new WdMissingRecordException('Missing records from model %model: %keys', array('%model' => $this->name_unprefixed, '%keys' => implode(', ', array_keys($missing))), 404);
+					throw new WdMissingRecordException('Missing records %keys from the %model model.', array('%model' => $this->name_unprefixed, '%keys' => implode(', ', array_keys($missing))), 404);
 				}
 				else
 				{
 					$key = array_keys($missing);
 					$key = array_shift($key);
 
-					throw new WdMissingRecordException('Missing record from model %model: %key', array('%model' => $this->name_unprefixed, '%key' => $key), 404);
+					throw new WdMissingRecordException('Missing record %key from the %model model.', array('%model' => $this->name_unprefixed, '%key' => $key), 404);
 				}
 			}
 
@@ -234,7 +234,7 @@ class WdModel extends WdDatabaseTable implements ArrayAccess
 
 			if (!$record)
 			{
-				throw new WdMissingRecordException('Missing record from model %model: %key', array('%model' => $this->name_unprefixed, '%key' => $key), 404);
+				throw new WdMissingRecordException('Missing record %key from the %model model.', array('%model' => $this->name_unprefixed, '%key' => $key), 404);
 			}
 
 			$this->store($key, $record);

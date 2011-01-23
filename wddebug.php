@@ -157,7 +157,7 @@ class WdDebug
 		#
 		#
 
-		$rc = '<code>' . join("<br />\n", $lines) . '</code><br />';
+		$rc = '<code class="wd-core-debug">' . join("<br />\n", $lines) . '</code><br />';
 
 		self::report($rc);
 

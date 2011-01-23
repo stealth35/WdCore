@@ -499,7 +499,7 @@ function wd_excerpt($str, $limit=55)
 {
 	$allowed_tags = array
 	(
-		'p', 'code', 'del', 'em', 'ins', 'strong'
+		'a', 'p', 'code', 'del', 'em', 'ins', 'strong'
 	);
 
 	$str = strip_tags((string) $str, '<' . implode('><', $allowed_tags) . '>');
@@ -590,12 +590,7 @@ function wd_camelCase($str, $separator='-')
 
 	return preg_replace_callback('/' . preg_quote($separator) . '\D/', $callback, $str);
 }
-/*
-function wd_camel_case_callback($match)
-{
-	return mb_strtoupper(mb_substr($match[0], 1));
-}
-*/
+
 function wd_shorten($str, $length=32, $position=.75, &$shortened=null)
 {
 	$l = mb_strlen($str);
@@ -629,4 +624,11 @@ function wd_shorten($str, $length=32, $position=.75, &$shortened=null)
 function wd_strip_root($str)
 {
 	return substr($str, strlen($_SERVER['DOCUMENT_ROOT']));
+}
+
+function wd_isolated_require($__file__, $__exposed__)
+{
+	extract($__exposed__);
+
+	return require $__file__;
 }

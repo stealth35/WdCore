@@ -322,6 +322,8 @@ class WdCore extends WdObject
 		sort($enabled);
 		sort($disabled);
 
+		header('Content-Type: text/plain; charset=utf-8');
+
 		$rc  = 'WdCore version ' . self::VERSION . ' is running here with:';
 		$rc .= PHP_EOL . PHP_EOL . implode(PHP_EOL, $enabled);
 		$rc .= PHP_EOL . PHP_EOL . 'Disabled modules:';
@@ -338,6 +340,8 @@ class WdCore extends WdObject
 	static public function operation_ping()
 	{
 		global $core;
+
+		header('Content-Type: text/plain; charset=utf-8');
 
 		$core->session;
 
