@@ -373,44 +373,41 @@ class WdActiveRecordQuery extends WdObject implements Iterator
 	}
 
 	/**
+	 * Prepares the statement.
 	 *
-	 *  @return WdDatabaseStatement
+	 * @return WdDatabaseStatement
+	 */
+
+	protected function prepare()
+	{
+		$query = 'SELECT ' . ($this->select ? $this->select : '*') . ' FROM {self_and_related}' . $this->build();
+
+		return $this->model->prepare($query);
+	}
+
+	/**
+	 * Prepares and executes the query.
+	 *
+	 * @return WdDatabaseStatement
 	 */
 
 	public function query()
 	{
-		$query = 'SELECT ';
+		$statement = $this->prepare();
+		$statement->execute(array_merge($this->conditions_args, $this->having_args));
 
-		if ($this->select)
-		{
-			$query .= $this->select;
-		}
-		else
-		{
-			$query .= '*';
-		}
-
-		$query .= ' FROM {self_and_related}' . $this->build();
-
-		return $this->model->query($query, array_merge($this->conditions_args, $this->having_args));
+		return $statement;
 	}
+
+	/**
+	 * Returns a prepared statement.
+	 *
+	 * @return WdDatabaseStatement
+	 */
 
 	protected function __volatile_get_prepared()
 	{
-		$query = 'SELECT ';
-
-		if ($this->select)
-		{
-			$query .= $this->select;
-		}
-		else
-		{
-			$query .= '*';
-		}
-
-		$query .= ' FROM {self_and_related}' . $this->build();
-
-		return $this->model->prepare($query);
+		return $this->prepare();
 	}
 
 	/*
@@ -505,7 +502,7 @@ class WdActiveRecordQuery extends WdObject implements Iterator
 	 * the first column and the value of the key the value of the second column.
 	 */
 
-	public function pairs()
+	protected function __volatile_get_pairs()
 	{
 		$rows = $this->all(PDO::FETCH_NUM);
 
@@ -524,22 +521,36 @@ class WdActiveRecordQuery extends WdObject implements Iterator
 		return $rc;
 	}
 
-	protected function __volatile_get_pairs()
-	{
-		return $this->pairs();
-	}
+	/**
+	 * Returns the value of the first column of the first row.
+	 *
+	 * @return string
+	 */
 
-	public function column()
+	protected function __volatile_get_rc()
 	{
+		$previous_limit = $this->limit;
+
+		$this->limit = 1;
+
 		$statement = $this->query();
 
-		return call_user_func_array(array($statement, 'fetchColumnAndClose'), array());
+		$this->limit = $previous_limit;
+
+		return $statement->fetchColumnAndClose();
 	}
 
-	protected function __volatile_get_column()
-	{
-		return $this->column();
-	}
+	/**
+	 * Check the existence of records in the model.
+	 *
+	 * $model->exists;
+	 * $model->where('name = "max"')->exists;
+	 * $model->exists(1);
+	 * $model->exists(1, 2);
+	 * $model->exists(array(1, 2));
+	 *
+	 * @param mixed $key
+	 */
 
 	public function exists($key=null)
 	{

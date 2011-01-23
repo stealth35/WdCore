@@ -435,6 +435,17 @@ class WdModel extends WdDatabaseTable implements ArrayAccess
 	}
 
 	/**
+	 * Delegation method for the WdActiveRecordQuery::limit method.
+	 *
+	 * @return WdActiveRecordQuery
+	 */
+
+	public function limit($limit, $offset=null)
+	{
+		return $this->defer_to_actionrecord_query();
+	}
+
+	/**
 	 * Delegation method for the WdActiveRecordQuery::exists method.
 	 *
 	 * @return WdActiveRecordQuery
