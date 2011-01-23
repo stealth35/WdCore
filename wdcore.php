@@ -259,7 +259,7 @@ class WdCore extends WdObject
 //		wd_log_time('read modules finish');
 
 //		wd_log_time('run modules start');
-		$this->modules->run();
+		$this->run_modules();
 //		wd_log_time('run modules finish');
 
 		$this->run_context();
@@ -267,6 +267,33 @@ class WdCore extends WdObject
 //		wd_log_time('run operation start');
 		$this->run_operation();
 //		wd_log_time('run operation start');
+	}
+
+	/**
+	 * Run the enabled modules.
+	 *
+	 * Before the modules are actually ran, their index is used to alter the I18n load paths, the
+	 * config paths and the core's `autoload` and `classes aliases` config properties.
+	 */
+
+	protected function run_modules()
+	{
+		$index = $this->modules->index;
+
+		WdI18n::$load_paths = array_merge(WdI18n::$load_paths, $index['catalogs']);
+		WdConfig::add($index['configs'], 5);
+
+		if ($index['autoload'])
+		{
+			self::$config['autoload'] += $index['autoload'];
+		}
+
+		if ($index['classes aliases'])
+		{
+			self::$config['classes aliases'] += $index['classes aliases'];
+		}
+
+		$this->modules->run();
 	}
 
 	/**
@@ -354,7 +381,7 @@ class WdCore extends WdObject
  *
  */
 
-class WdModulesAccessor implements ArrayAccess
+class WdModulesAccessor extends WdObject implements ArrayAccess
 {
 	/**
 	 * If true, loaded module are run when loaded for the first time.
@@ -386,18 +413,26 @@ class WdModulesAccessor implements ArrayAccess
 
 	public function __construct()
 	{
-		$this->index();
+		$this->index;
 	}
 
 	/**
-	 * Overrides the method to throw an exception because the offset is not settable.
+	 * Used to enable or disable a module using the specified offset as the module's id.
+	 *
+	 * The module is enabled or disabled by modifying the value of the T_DISABLED key of the
+	 * module's descriptor.
 	 *
 	 * @see ArrayAccess::offsetSet()
 	 */
 
-	public function offsetSet($offset, $value)
+	public function offsetSet($id, $enable)
 	{
-		throw new WdException('Offset is not settable');
+		if (empty($this->descriptors[$id]))
+		{
+			return;
+		}
+
+		$this->descriptors[$id][WdModule::T_DISABLED] = empty($enable);
 	}
 
 	/**
@@ -425,21 +460,26 @@ class WdModulesAccessor implements ArrayAccess
 	}
 
 	/**
-	 * Overrides the method to throw an exceptin because the offset is not unsettable.
+	 * Disables a module by setting the T_DISABLED key of its descriptor to TRUE.
 	 *
 	 * @see ArrayAccess::offsetUnset()
 	 */
 
-	public function offsetUnset($offset)
+	public function offsetUnset($id)
 	{
-		throw new WdException('Offset is not unsettable');
+		if (empty($this->descriptors[$id]))
+		{
+			return;
+		}
+
+		$this->descriptors[$id][WdModule::T_DISABLED] = true;
 	}
 
 	/**
 	 * Gets a module object.
 	 *
-	 * If the core is running, the 'run' method of the module is invoked upon the module's first
-	 * loading.
+	 * If the `autorun` property is TRUE, the `run()` method of the module is invoked upon its
+	 * first loading.
 	 *
 	 * @param string $id The module's id.
 	 * @throws WdException If the module's descriptor is not defined, or the module is disabled.
@@ -448,14 +488,12 @@ class WdModulesAccessor implements ArrayAccess
 
 	public function offsetGet($id)
 	{
-		global $core;
-
 		if (isset($this->modules[$id]))
 		{
 			return $this->modules[$id];
 		}
 
-		$descriptors = $core->modules->descriptors;
+		$descriptors = $this->descriptors;
 
 		if (empty($descriptors[$id]))
 		{
@@ -481,43 +519,6 @@ class WdModulesAccessor implements ArrayAccess
 			);
 		}
 
-		$module = $this->load($id);
-
-		if ($this->autorun)
-		{
-			$module->run();
-		}
-
-		return $module;
-	}
-
-	/**
-	 * Loads a module.
-	 *
-	 * @param $id
-	 * @return WdModule The requested module object.
-	 * @throws WdException When the module requested is not defined.
-	 * @throws WdException When the class for the module is not defined.
-	 */
-
-	protected function load($id)
-	{
-		global $core;
-
-		$descriptors = $core->modules->descriptors;
-
-		if (empty($descriptors[$id]))
-		{
-			throw new WdException
-			(
-				'The module %id does not exists ! (available modules are: :list)', array
-				(
-					'%id' => $id,
-					':list' => implode(', ', array_keys($descriptors))
-				)
-			);
-		}
-
 		$class = strtr($id, '.', '_') . '_WdModule';
 
 		#
@@ -539,6 +540,11 @@ class WdModulesAccessor implements ArrayAccess
 
 		$this->modules[$id] = $module = new $class($descriptors[$id]);
 
+		if ($this->autorun)
+		{
+			$module->run();
+		}
+
 		return $module;
 	}
 
@@ -552,7 +558,9 @@ class WdModulesAccessor implements ArrayAccess
 
 	protected function index()
 	{
-		if (empty(WdCore::$config['modules']))
+		$paths = WdCore::$config['modules'];
+
+		if (!$paths)
 		{
 			return;
 		}
@@ -570,7 +578,7 @@ class WdModulesAccessor implements ArrayAccess
 				)
 			);
 
-			$index = $cache->load('modules', array($this, 'index_construct'));
+			$index = $cache->load('modules_' . sha1(implode($paths)), array($this, 'index_construct'));
 		}
 		else
 		{
@@ -581,42 +589,29 @@ class WdModulesAccessor implements ArrayAccess
 
 		$this->descriptors = $index['descriptors'];
 
-		WdI18n::$load_paths = array_merge(WdI18n::$load_paths, $index['catalogs']);
+		return $index;
+	}
 
-		WdConfig::add($index['configs'], 5);
-
-//		wd_log_time('path added');
-
-		#
-		# reload config with modules fragments and add collected autoloads
-		#
-
-		$config = WdConfig::get_constructed('core', 'merge_recursive');
-
-//		wd_log_time('get constructed');
-
-		//self::$config = wd_array_merge_recursive($config, self::$config); // this shouldn't be needed anymore since we reintroduced config weight
-
-		WdCore::$config = $config;
-		WdCore::$config['autoload'] = $index['autoload'] + WdCore::$config['autoload'];
-
-//		wd_log_time('merge done');
+	protected function __get_index()
+	{
+		return $this->index();
 	}
 
 	/**
-	 * The constructor for the modules cache
+	 * Construct the index for the modules.
 	 *
 	 * @return array
 	 */
 
 	public function index_construct()
 	{
-		$aggregate = array
+		$index = array
 		(
 			'descriptors' => array(),
 			'catalogs' => array(),
 			'configs' => array(),
-			'autoload' => array()
+			'autoload' => array(),
+			'classes aliases' => array()
 		);
 
 		foreach (WdCore::$config['modules'] as $root)
@@ -650,21 +645,38 @@ class WdModulesAccessor implements ArrayAccess
 
 				if ($read)
 				{
-					$aggregate['descriptors'][$module_id] = $read['descriptor'];
+					$index['descriptors'][$module_id] = $read['descriptor'];
 
 					if (is_dir($module_path . '/i18n'))
 					{
-						$aggregate['catalogs'][] = $module_path;
+						$index['catalogs'][] = $module_path;
 					}
 
 					if (is_dir($module_path . '/config'))
 					{
-						$aggregate['configs'][] = $module_path;
+						$index['configs'][] = $module_path;
+
+						$core_config_path = $module_path . '/config/core.php';
+
+						if (is_file($core_config_path))
+						{
+							$core_config = wd_isolated_require($core_config_path, array('path' => $module_path . '/', 'root' => $module_path . '/'));
+
+							if (isset($core_config['autoload']))
+							{
+								$index['autoload'] += $core_config['autoload'];
+							}
+
+							if (isset($core_config['classes aliases']))
+							{
+								$index['classes aliases'] += $core_config['classes aliases'];
+							}
+						}
 					}
 
 					if ($read['autoload'])
 					{
-						$aggregate['autoload'] = $read['autoload'] + $aggregate['autoload'];
+						$index['autoload'] = $read['autoload'] + $index['autoload'];
 					}
 				}
 			}
@@ -674,7 +686,7 @@ class WdModulesAccessor implements ArrayAccess
 			chdir($location);
 		}
 
-		return $aggregate;
+		return $index;
 	}
 
 	/**

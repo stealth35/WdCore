@@ -45,7 +45,7 @@ return array
 	'repository.temp' => '/repository/tmp',
 	'repository.cache' => '/repository/cache',
 	'repository.files' => '/repository/files',
-	'repository.vars' => '/repository/var',
+	'repository.vars' => '/repository/lib',
 
 	'sessionId' => 'wdsid'
 );
