@@ -220,6 +220,11 @@ class WdOperation
 
 		$name = $this->name;
 
+		if ($name{0} == '/')
+		{
+			$name = substr($name, self::RESTFUL_BASE_LENGHT);
+		}
+
 		#
 		# reset results
 		#
@@ -236,7 +241,16 @@ class WdOperation
 		#
 
 		$destination = $this->destination;
-		$module = null;
+		$module = is_array($destination) ? null : $module = $core->modules[$destination];
+
+		WdEvent::fire
+		(
+			'operation.' . $name . ':before', array
+			(
+				'target' => $module,
+				'operation' => $this
+			)
+		);
 
 		if (is_array($destination))
 		{
@@ -244,17 +258,6 @@ class WdOperation
 		}
 		else
 		{
-			$module = $core->modules[$destination];
-
-			$event = WdEvent::fire
-			(
-				'operation.' . $name . ':before', array
-				(
-					'target' => $module,
-					'operation' => $this
-				)
-			);
-
 			#
 			# We ask the module to handle the operation. In return we get a response or `null` if the
 			# operation failed.
@@ -271,7 +274,7 @@ class WdOperation
 
 		$this->response->rc = $rc;
 
-		if ($rc !== null && $module)
+		if ($rc !== null)
 		{
 			WdEvent::fire
 			(
