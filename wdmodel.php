@@ -77,7 +77,7 @@ class WdModel extends WdDatabaseTable implements ArrayAccess
 
 //			wd_log('extending a model without schema: \1', array($extends));
 
-			$tags[self::T_NAME] = $extends->name;
+			$tags[self::T_NAME] = $extends->name_unprefixed;
 			$tags[self::T_SCHEMA] = $extends->schema;
 			$tags[self::T_EXTENDS] = $extends->parent;
 
