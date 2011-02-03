@@ -361,7 +361,8 @@ class WdCore extends WdObject
 	}
 
 	/**
-	 * The purpose of this operation is to keep the user's session alive.
+	 * Keeps the user's session alive. Only already created sessions are kept alive, new session
+	 * will *not* be started.
 	 */
 
 	static public function operation_ping()
@@ -370,7 +371,10 @@ class WdCore extends WdObject
 
 		header('Content-Type: text/plain; charset=utf-8');
 
-		$core->session;
+		if (WdSession::exists())
+		{
+			$core->session;
+		}
 
 		return 'pong';
 	}

@@ -19,7 +19,7 @@ class WdSession
 
 		// TODO-20100525: we restore _by hand_ the messages saved by the WdDebug class.
 		// I'm not sure this is the right place for this.
-		// Maybe we could trigger an event 'application.session.load', giving a chance to other
+		// Maybe we could trigger an event 'application.session.load', giving a chance to others
 		// to handle the session, with a 'application.session.load:before' too.
 
 		WdEvent::fire('application.session.load', array('application' => $caller, 'session' => $session));
@@ -32,9 +32,20 @@ class WdSession
 		return $session;
 	}
 
-	#
-	#
-	#
+	/**
+	 * Checks if a session identifier can be found to retrieve a session.
+	 *
+	 * @return bool
+	 */
+
+	static public function exists()
+	{
+		// FIXME-20100708: use config
+
+		$session_name = 'wdsid';
+
+		return !empty($_COOKIE[$session_name]);
+	}
 
 	public function __construct(array $options=array())
 	{
