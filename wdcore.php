@@ -152,7 +152,7 @@ class WdCore extends WdObject
 
 		if (isset($list[$name]))
 		{
-			eval('final class ' . $name . ' extends ' . $list[$name] . ' {}');
+			class_alias($list[$name], $name);
 
 			return true;
 		}
@@ -1125,5 +1125,15 @@ class WdConfig
 		}
 
 		return $rc;
+	}
+}
+
+if (!function_exists('class_alias'))
+{
+	function class_alias($original, $alias)
+	{
+		eval('final class ' . $name . ' extends ' . $original . ' {}');
+
+		return true;
 	}
 }
