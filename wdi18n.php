@@ -90,7 +90,15 @@ class WdI18n
 			return;
 		}
 
-		$conventions = localeconv() + require dirname(__FILE__) . '/i18n/conventions/' . $language . '.php';
+		$path = dirname(__FILE__) . '/i18n/conventions/';
+		$file = $path . $language . '.php';
+
+		if (!file_exists($file))
+		{
+			$file = $path . 'en.php';
+		}
+
+		$conventions = localeconv() + require $file;
 
 		self::$conventions_by_languages[$language] = self::$conventions = $conventions;
 	}
@@ -317,10 +325,17 @@ class WdI18n
 			}
 		}
 
-		if (isset($options['scope']))
-		{
-			$scope = $options['scope'];
+		$scope = isset($options['scope']) ? $options['scope'] : array();
 
+		if (self::$scope)
+		{
+			$scope = array_merge(self::$scope, (array) $scope);
+
+//			echo "<code>translate <q>$str</q> using scope: <q>" . implode('.', $scope) . '</q></code><br />';
+		}
+
+		if ($scope)
+		{
 			if (is_array($scope))
 			{
 				while ($scope)
@@ -424,6 +439,21 @@ class WdI18n
 
 		self::$messages[$language] = empty(self::$messages[$language]) ? $translation : $translation + self::$messages[$language];
 	}
+
+	static private $scope;
+	static private $scope_chain = array();
+
+	static public function push_scope(array $scope)
+	{
+		array_push(self::$scope_chain, self::$scope);
+
+		self::$scope = $scope;
+	}
+
+	static public function pop_scope()
+	{
+		self::$scope = array_pop(self::$scope_chain);
+	}
 }
 
 function t($str, array $args=array(), array $options=array())
@@ -453,11 +483,10 @@ function wd_format_size($size)
 		$size = $size / (1024 * 1024 * 1024);
 	}
 
-	$conv = WdI18n::$conventions;
+//	$conv = WdI18n::$conventions;
+//	$size = number_format($size, ($size - floor($size) < .009) ? 0 : 2, $conv['decimal_point'], $conv['thousands_sep']);
 
-	$size = number_format($size, ($size - floor($size) < .009) ? 0 : 2, $conv['decimal_point'], $conv['thousands_sep']);
-
-	return t($str, array(':size' => $size));
+	return t($str, array(':size' => round($size)));
 }
 
 function wd_format_number($number)
