@@ -6,6 +6,11 @@ return array
 	(
 		'cancel' => 'Cancel',
 		'continue' => 'Continue',
+		'edit' => 'Edit',
+		'delete' => 'Delete',
+		'display' => 'Display',
+		'download' => 'Download',
+		'remove' => 'Remove',
 		'save' => 'Save',
 		'send' => 'Send',
 		'use' => 'Use'
@@ -21,15 +26,6 @@ return array
 		'administer' => 'Administer'
 	),
 
-
-
-
-
-
-
-
-
-
 	#
 	# WdUpload
 	#
@@ -44,29 +40,5 @@ return array
 		'misses' => 'Misses',
 		'miss' => 'Miss',
 		'mister' => 'Mister'
-	),
-
-	#
-	# Modules categories
-	#
-
-	'system' => array
-	(
-		'modules' => array
-		(
-			'categories' => array
-			(
-				'contents' => 'Contents',
-				'resources' => 'Resources',
-				'organize' => 'Organize',
-				'system' => 'System',
-				'users' => 'Users',
-
-				// TODO-20100721: not sure about those two: "feedback" and "structure"
-
-				'feedback' => 'Feedback',
-				'structure' => 'Structure'
-			)
-		)
 	)
 );
