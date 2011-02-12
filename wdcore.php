@@ -1132,7 +1132,7 @@ if (!function_exists('class_alias'))
 {
 	function class_alias($original, $alias)
 	{
-		eval('final class ' . $name . ' extends ' . $original . ' {}');
+		eval('final class ' . $alias . ' extends ' . $original . ' {}');
 
 		return true;
 	}
