@@ -76,7 +76,7 @@ class WdException extends Exception
 
 		if (WDEXCEPTION_WITH_LOG)
 		{
-			$log = WdDebug::fetchMessages('debug');
+			$log = array_merge(WdDebug::fetchMessages('debug'), WdDebug::fetchMessages('error'), WdDebug::fetchMessages('done'));
 
 			if ($log)
 			{
