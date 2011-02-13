@@ -1,4 +1,4 @@
-2011-01-16 # 0.9.0-dev
+2011-02-13 # 0.9.0-dev
 
 * Modules accessor:
 
@@ -52,6 +52,23 @@ is a meant to simplify the process:
 	
 This is now the prefered way to store low-level system configuration, instead of using the
 registry.
+
+
+* Connections accessor:
+
+Database connections are now got throught the `connections` accessor. The accessor is traversable
+and iterates throught the established connections:
+
+	$primary = $core->connections['primary'];
+	$local = $core->connections['local'];
+	
+	foreach ($core->connections as $id => $connection)
+	{
+		echo "{$connection->queries_count} queries were made using the $id connection<br />";
+	}
+
+The WdCore::db() method is now deprecated, but the `db` getter can still be used to get the primary
+connection.
 
 
 * WdActiveRecordQuery, WdDatabaseTable & WdModel:
@@ -143,6 +160,17 @@ method can be used to remove a route which is defined using the configuration sy
 WdRoute::set() method.
 
 Route pattern segments can now be defined as ':identifier' e.g. ':slug' instead of '<slug:[^/]+>'.
+
+
+* WdI18n:
+
+An additionnal scope can be specified, adding further context to translations:
+
+	WdI18n:push_scope(array('user_users', 'edit');
+	
+	$label = t('username', array(), array('scope' => array('element', 'label'))); 
+
+	WdI18n:pop_scope();
 
 
 * Other changes:
