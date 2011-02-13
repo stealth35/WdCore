@@ -5,49 +5,108 @@
  *
  * @author Olivier Laviale <olivier.laviale@gmail.com>
  * @link http://www.weirdog.com/wdcore/
- * @copyright Copyright (c) 2007-2010 Olivier Laviale
+ * @copyright Copyright (c) 2007-2011 Olivier Laviale
  * @license http://www.weirdog.com/wdcore/license/
  */
 
 class WdDatabase extends PDO
 {
-	public $name;
+	const T_ID = '#id';
+	const T_PREFIX = '#prefix';
+	const T_CHARSET = '#charset';
+	const T_COLLATE = '#collate';
+	const T_TIMEZONE = '#timezone';
+
+	/**
+	 * Connection identifier.
+	 *
+	 * @var string
+	 */
+	public $id;
+
+	/**
+	 * Prefix for the database tables.
+	 *
+	 * @var string
+	 */
 	public $prefix;
+
+	/**
+	 * Charset for the connection. Also used to specify the charset while creating tables.
+	 *
+	 * @var string
+	 */
 	public $charset = 'utf8';
+
+	/**
+	 * Used to specify the collate while creating tables.
+	 * @var unknown_type
+	 */
 	public $collate = 'utf8_general_ci';
 
+	/**
+	 * Driver name for the connection.
+	 *
+	 * @var string
+	 */
 	public $driver_name;
 
-	static public $stats = array
-	(
-		'queries_by_connection' => array()
-	);
+	/**
+	 * The number of database queries and executions, used for statistics purpose.
+	 *
+	 * @var int
+	 */
+	public $queries_count = 0;
 
+	/**
+	 * Creates a WdDatabase instance representing a connection to a database.
+	 *
+	 * Custom options can be specified using the driver-specific connection options:
+	 *
+	 * - T_ID: Connection identifier.
+	 * - T_PREFIX: Prefix for the database tables.
+	 * - T_CHARSET and T_COLLATE: Charset and collate used for the connection to the database,
+	 * and to create tables.
+	 * - T_TIMEZONE: Timezone for the connection.
+	 *
+	 * @link http://www.php.net/manual/en/pdo.construct.php
+	 * @link http://dev.mysql.com/doc/refman/5.5/en/time-zone-support.html
+	 *
+	 * @param string $dsn
+	 * @param string $username
+	 * @param string $password
+	 * @param array $options
+	 */
 	public function __construct($dsn, $username=null, $password=null, $options=array())
 	{
 		list($driver_name) = explode(':', $dsn, 2);
 
 		$this->driver_name = $driver_name;
 
+		$timezone = null;
+
 		foreach ($options as $option => $value)
 		{
 			switch ($option)
 			{
-				case '#name': $this->name = $value; break;
-				case '#prefix': $this->prefix = $value ? $value . '_' : null; break;
-				case '#charset': $this->charset = $value; $this->collate = null; break;
-				case '#collate': $this->collate = $value; break;
+				case self::T_ID: $this->id = $value; break;
+				case self::T_PREFIX: $this->prefix = $value ? $value . '_' : null; break;
+				case self::T_CHARSET: $this->charset = $value; $this->collate = null; break;
+				case self::T_COLLATE: $this->collate = $value; break;
+				case self::T_TIMEZONE: $timezone = $value; break;
 			}
 		}
 
-		self::$stats['queries_by_connection'][$this->name] = 0;
-
 		if ($driver_name == 'mysql')
 		{
-			$options += array
-			(
-				self::MYSQL_ATTR_INIT_COMMAND => 'SET NAMES ' . $this->charset
-			);
+			$init_command = 'SET NAMES ' . $this->charset;
+
+			if ($timezone)
+			{
+				$init_command .= ', time_zone = "' . $timezone . '"';
+			}
+
+			$options += array(self::MYSQL_ATTR_INIT_COMMAND => $init_command);
 		}
 
 		parent::__construct($dsn, $username, $password, $options);
@@ -61,21 +120,22 @@ class WdDatabase extends PDO
 		}
 	}
 
-	/*
-	**
-
-	QUERY & EXECUTE
-
-	**
-	*/
-
-	public function prepare($query, $options=array())
+	/**
+	 * Overrides the method to resolve the statement before it is prepared, then set its fetch
+	 * mode and connection.
+	 *
+	 * @return WdDatabaseStatement The prepared statement.
+	 *
+	 * @see PDO::prepare()
+	 * @see WdDatabase::resolve_statement()
+	 */
+	public function prepare($statement, $options=array())
 	{
-		$query = $this->resolve_statement($query);
+		$statement = $this->resolve_statement($statement);
 
 		try
 		{
-			$statement = parent::prepare($query, $options);
+			$statement = parent::prepare($statement, $options);
 		}
 		catch (PDOException $e)
 		{
@@ -85,7 +145,7 @@ class WdDatabase extends PDO
 			(
 				'SQL error: \1(\2) <code>\3</code> &mdash; <code>%query</code>', array
 				(
-					$er[0], $er[1], $er[2], '%query' => $query
+					$er[0], $er[1], $er[2], '%query' => $statement
 				)
 			);
 		}
@@ -94,59 +154,48 @@ class WdDatabase extends PDO
 
 		if (isset($options['mode']))
 		{
-			#
-			# change fetch mode
-			#
-
 			$mode = (array) $options['mode'];
 
-			//wd_log(__CLASS__ . '::' . __FUNCTION__ . ':: mode: :mode', array(':mode' => $mode));
-
-			try
-			{
-				call_user_func_array(array($statement, 'setFetchMode'), $mode);
-			}
-			catch (PDOException $e)
-			{
-				throw new WdException($e . 'fuck with: \1', array($mode));
-			}
+			call_user_func_array(array($statement, 'setFetchMode'), $mode);
 		}
 
 		return $statement;
 	}
 
-	public function begin()
+	/**
+	 * Overrides the method in order to prepare (and resolve) the statement and execute it with
+	 * the specified arguments and options.
+	 *
+	 * @see PDO::query()
+	 */
+	public function query($statement, array $args=array(), array $options=array())
 	{
-		return $this->beginTransaction();
-	}
-
-	public function query($query, array $args=array(), array $options=array())
-	{
-		$statement = $this->prepare($query, $options);
-
+		$statement = $this->prepare($statement, $options);
 		$statement->execute($args);
-
-		//wd_log(__CLASS__ . '::' . __FUNCTION__ . ':: \1', $statement);
 
 		return $statement;
 	}
 
+	/**
+	 * Overrides the method to resolve the statement before actually execute it.
+	 *
+	 * The execution of the statement is wrapped in a try/catch block. If an exception of class
+	 * PDOException is catched, an exception of class WdException is thrown with addition
+	 * information about the error.
+	 *
+	 * Using this method increments the `queries_by_connection` stat.
+	 *
+	 * @see PDO::exec()
+	 */
 	public function exec($statement)
 	{
 		$statement = $this->resolve_statement($statement);
 
 		try
 		{
-			WdDatabase::$stats['queries_by_connection'][$this->name]++;
+			$this->queries_count++;
 
-			$rc = parent::exec($statement);
-
-			if ((int) $this->errorCode())
-			{
-				throw new PDOException();
-			}
-
-			return $rc;
+			return parent::exec($statement);
 		}
 		catch (PDOException $e)
 		{
@@ -162,11 +211,33 @@ class WdDatabase extends PDO
 		}
 	}
 
-	public function resolve_statement($query)
+	/**
+	 * Places quotes around the identifier.
+	 *
+	 * @param string $identifier
+	 * @return string
+	 */
+	public function quote_identifier($identifier)
+	{
+		return $this->driver_name == 'oci' ? '"' . $identifier . '"' : '`' . $identifier . '`';
+	}
+
+	/**
+	 * Replaces placeholders with their value. The following placeholders are supported:
+	 *
+	 * - {prefix}: replaced by the value of the `#prefix` construct option.
+	 * - {charset}: replaced by the value of the `#charset` construct option.
+	 * - {collate}: replaced by the value of the `#collate` construct option.
+	 *
+	 * @param string $statement
+	 *
+	 * @return stirng The resolved statement.
+	 */
+	public function resolve_statement($statement)
 	{
 		return strtr
 		(
-			$query, array
+			$statement, array
 			(
 				'{prefix}' => $this->prefix,
 				'{charset}' => $this->charset,
@@ -175,30 +246,30 @@ class WdDatabase extends PDO
 		);
 	}
 
-	/*
-	**
-
-	TABLES
-
-	**
-	*/
-
-	public function parseSchema(array $schema)
+	/**
+	 * Alias for the `beginTransaction()` method.
+	 *
+	 * @see PDO::beginTransaction()
+	 */
+	public function begin()
 	{
-		if (empty($schema['fields']))
-		{
-			WdDebug::trigger
-			(
-				'Missing %tag in schema: :schema', array
-				(
-					'%tag' => 'fields',
-					':schema' => $schema
-				)
-			);
+		return $this->beginTransaction();
+	}
 
-			return;
-		}
-
+	/**
+	 * Parses a schema to create a schema with lowlevel definitions.
+	 *
+	 * For example, a column defined as 'serial' is parsed as :
+	 *
+	 * 'type' => 'integer', 'serial' => true, 'size' => 'big', 'unsigned' => true,
+	 * 'primary' => true
+	 *
+	 * @param array $schema
+	 *
+	 * @return array
+	 */
+	public function parse_schema(array $schema)
+	{
 		$driver_name = $this->driver_name;
 
 		foreach ($schema['fields'] as $identifier => &$params)
@@ -330,22 +401,27 @@ class WdDatabase extends PDO
 				}
 
 				unset($schema['indexes'][$identifier]);
-
-				//wd_log('index in primary: \1', $identifier);
 			}
 		}
 
 		return $schema;
 	}
 
-	public function createTable($name, array $schema)
+	/**
+	 * Creates a table of the specified name and schema.
+	 *
+	 * @param string $name The unprefixed name of the table.
+	 * @param array $schema The schema of the table.
+	 * @throws WdException
+	 */
+	public function create_table($unprefixed_name, array $schema)
 	{
 		// FIXME-20091201: I don't think 'UNIQUE' is properly implemented
 
 		$collate = $this->collate;
 		$driver_name = $this->driver_name;
 
-		$schema = $this->parseSchema($schema);
+		$schema = $this->parse_schema($schema);
 
 		$parts = array();
 
@@ -533,7 +609,7 @@ class WdDatabase extends PDO
 
 //		wd_log('<h3>parts</h3>\1', $parts);
 
-		$table_name = $this->prefix . $name;
+		$table_name = $this->prefix . $unprefixed_name;
 
 		$statement  = 'create table `' . $table_name . '` (';
 		$statement .= implode(', ', $parts);
@@ -581,40 +657,36 @@ class WdDatabase extends PDO
 		return $rc;
 	}
 
-	public function tableExists($name)
-	{
-		//try
+	/**
+	 * Checks if a specified table exists in the database.
+	 *
+	 * @param string $unprefixed_name The unprefixed name of the table.
+	 * @return bool true if the table exists, false otherwise.
+	 */
+    public function table_exists($unprefixed_name)
+    {
+    	$name = $this->prefix . $unprefixed_name;
+
+    	if ($this->driver_name == 'sqlite')
 		{
-			$name = $this->prefix . $name;
+			$tables = $this->query('SELECT name FROM sqlite_master WHERE type = "table" AND name = ?', array($name))->fetchAll(self::FETCH_COLUMN);
 
-			switch ($this->driver_name)
-			{
-				case 'sqlite':
-				{
-					$tables = $this->query('SELECT name FROM sqlite_master WHERE type = "table"')->fetchAll(self::FETCH_COLUMN);
-				}
-				break;
-
-				default:
-				{
-					$tables = $this->query('SHOW TABLES')->fetchAll(self::FETCH_COLUMN);
-				}
-				break;
-			}
-
-			foreach ($tables as $table)
-			{
-				if ($name == $table)
-				{
-					return true;
-				}
-			}
+			return !empty($tables);
 		}
-		//catch (Exception $e) {}
+		else
+		{
+			$tables = $this->query('SHOW TABLES')->fetchAll(self::FETCH_COLUMN);
+
+			return in_array($name, $tables);
+		}
 
 		return false;
-	}
+    }
 
+    /**
+     * Optimizes the tables of the database.
+     *
+     */
 	public function optimize()
 	{
 		if ($this->driver_name == 'sqlite')
@@ -625,18 +697,28 @@ class WdDatabase extends PDO
 		{
 			$tables = $this->query('SHOW TABLES')->fetchAll(self::FETCH_COLUMN);
 
-			$stmt = $this->query('OPTIMIZE TABLE ' . implode(', ', $tables));
-
-			$stmt->closeCursor();
+			$this->exec('OPTIMIZE TABLE ' . implode(', ', $tables));
 		}
 	}
 }
 
+/**
+ * Class for WdDatabase statements.
+ *
+ */
 class WdDatabaseStatement extends PDOStatement
 {
+	/**
+	 * Executes the statement and increments the connection queries count.
+	 *
+	 * The statement is executed in a try/catch block, if an exception of class PDOException is
+	 * caught an exception of class WdException is thrown with additionnal information.
+	 *
+	 * @see PDOStatement::execute()
+	 */
 	public function execute($args=array())
 	{
-		WdDatabase::$stats['queries_by_connection'][$this->connection->name]++;
+		$this->connection->queries_count++;
 
 		try
 		{
@@ -656,10 +738,20 @@ class WdDatabaseStatement extends PDOStatement
 		}
 	}
 
+	/**
+	 * Fetches the first row of the result set and closes the cursor.
+	 *
+	 * @param int $fetch_style[optional]
+	 * @param int $cursor_orientation[optional]
+	 * @param int $cursor_offset[optional]
+	 *
+	 * @return mixed
+	 *
+	 * @see PDOStatement::fetch()
+	 */
 	public function fetchAndClose($fetch_style=PDO::FETCH_BOTH, $cursor_orientation=PDO::FETCH_ORI_NEXT, $cursor_offset=0)
 	{
 		$args = func_get_args();
-
 		$rc = call_user_func_array(array($this, 'parent::fetch'), $args);
 
 		$this->closeCursor();
@@ -667,6 +759,13 @@ class WdDatabaseStatement extends PDOStatement
 		return $rc;
 	}
 
+	/**
+	 * Fetches a column of the first row of the result set and closes the cursor.
+	 *
+	 * @return string;
+	 *
+	 * @see PDOStatement::fetchColumn()
+	 */
 	public function fetchColumnAndClose($column_number=0)
 	{
 		$rc = parent::fetchColumn($column_number);
@@ -676,10 +775,15 @@ class WdDatabaseStatement extends PDOStatement
 		return $rc;
 	}
 
+	/**
+	 * Fetches an array of key/value pairs using the first column of the result set as keys and the
+	 * second column as values.
+	 *
+	 * @return array
+	 */
 	public function fetchPairs()
 	{
 		$rc = array();
-
 		$rows = parent::fetchAll(PDO::FETCH_NUM);
 
 		foreach ($rows as $row)

@@ -5,7 +5,7 @@
  *
  * @author Olivier Laviale <olivier.laviale@gmail.com>
  * @link http://www.weirdog.com/wdcore/
- * @copyright Copyright (c) 2007-2010 Olivier Laviale
+ * @copyright Copyright (c) 2007-2011 Olivier Laviale
  * @license http://www.weirdog.com/wdcore/license/
  */
 
@@ -121,7 +121,7 @@ class WdDatabaseTable extends WdObject
 		# parse definition schema to have a complete schema
 		#
 
-		$this->schema = $this->connection->parseSchema($this->schema);
+		$this->schema = $this->connection->parse_schema($this->schema);
 
 		#
 		# retrieve primary key
@@ -218,7 +218,7 @@ class WdDatabaseTable extends WdObject
 			throw new WdException('Missing schema to install table %name', array('%name' => $this->name_unprefixed));
 		}
 
-		return $this->connection->createTable($this->name_unprefixed, $this->schema);
+		return $this->connection->create_table($this->name_unprefixed, $this->schema);
 	}
 
 	public function uninstall()
@@ -228,7 +228,7 @@ class WdDatabaseTable extends WdObject
 
 	public function isInstalled()
 	{
-		return $this->connection->tableExists($this->name_unprefixed);
+		return $this->connection->table_exists($this->name_unprefixed);
 	}
 
 	public function getExtendedSchema()
@@ -245,7 +245,7 @@ class WdDatabaseTable extends WdObject
 
 		$schema = call_user_func_array('wd_array_merge_recursive', $schemas);
 
-		$this->connection->parseSchema($schema);
+		$this->connection->parse_schema($schema);
 
 		return $schema;
 	}
