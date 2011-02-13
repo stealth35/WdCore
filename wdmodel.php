@@ -362,7 +362,7 @@ class WdModel extends WdDatabaseTable implements ArrayAccess
 			$key = implode('-', $key);
 		}
 
-		return (WDMODEL_USE_APC ? 'ar:' . $_SERVER['DOCUMENT_ROOT'] . '/' : '') . $this->connection->name . '/' . $this->name . '/' . $key;
+		return (WDMODEL_USE_APC ? 'ar:' . $_SERVER['DOCUMENT_ROOT'] . '/' : '') . $this->connection->id . '/' . $this->name . '/' . $key;
 	}
 
 	/**

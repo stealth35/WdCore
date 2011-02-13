@@ -435,7 +435,7 @@ class WdModule extends WdObject
 
 		if (is_string($connection))
 		{
-			$tags[WdModel::T_CONNECTION] = $core->db($connection);
+			$tags[WdModel::T_CONNECTION] = $core->connections[$connection];
 		}
 
 		return $tags;

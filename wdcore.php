@@ -64,7 +64,7 @@ class WdCore extends WdObject
 	}
 
 	/**
-	 * Returns the accesor object for the modules.
+	 * Returns the modules accesor.
 	 */
 
 	protected function __get_modules()
@@ -73,7 +73,7 @@ class WdCore extends WdObject
 	}
 
 	/**
-	 * Returns the accessor object for the models.
+	 * Returns models accessor.
 	 */
 
 	protected function __get_models()
@@ -82,12 +82,23 @@ class WdCore extends WdObject
 	}
 
 	/**
-	 * Returns the accessor object for the variables.
+	 * Returns the non-volatile variables accessor.
 	 */
 
 	protected function __get_vars()
 	{
 		return new WdVarsAccessor();
+	}
+
+	/**
+	 * Returns the connections accessor.
+	 *
+	 * @return WdConnectionsAccessor
+	 */
+
+	protected function __get_connections()
+	{
+		return new WdConnectionsAccessor();
 	}
 
 	/**
@@ -161,77 +172,14 @@ class WdCore extends WdObject
 	}
 
 	/**
-	 * @var array Used to cache established database connections.
-	 */
-
-	protected $connections = array();
-
-	/**
-	 * Get a connection to a database.
-	 *
-	 * If the connection has not been established yet, it is created on the fly.
-	 *
-	 * Several connections may be defined.
-	 *
-	 * @param $name The name of the connection to get.
-	 * @return WdDatabase The connection as a WdDatabase object.
-	 */
-
-	public function db($name='primary')
-	{
-		if (empty($this->connections[$name]))
-		{
-			if (empty(self::$config['connections'][$name]))
-			{
-				throw new WdException('The connection %name is not defined', array('%name' => $name));
-			}
-
-			#
-			# default values for the connection
-			#
-
-			$params = self::$config['connections'][$name] + array
-			(
-				'dsn' => null,
-				'username' => 'root',
-				'password' => null,
-				'options' => array
-				(
-					'#name' => $name
-				)
-			);
-
-			#
-			# we catch connection exceptions and rethrow them in order to avoid the
-			# display of sensible information such as the user's identifier or password.
-			#
-
-			try
-			{
-				$connection = new WdDatabase($params['dsn'], $params['username'], $params['password'], $params['options']);
-			}
-			catch (PDOException $e)
-			{
-				throw new WdException($e->getMessage());
-			}
-
-//			$connection->optimize();
-
-			$this->connections[$name] = $connection;
-		}
-
-		return $this->connections[$name];
-	}
-
-	/**
 	 * Getter for the "primary" database connection.
 	 *
-	 * @return WdDatabase The "primary" database connection.
+	 * @return WdDatabase
 	 */
 
 	protected function __get_db()
 	{
-		return $this->db();
+		return $this->connections['primary'];
 	}
 
 	/**
@@ -361,8 +309,8 @@ class WdCore extends WdObject
 	}
 
 	/**
-	 * Keeps the user's session alive. Only already created sessions are kept alive, new session
-	 * will *not* be started.
+	 * Keeps the user's session alive. Only already created sessions are kept alive, new sessions
+	 * are *not* created.
 	 */
 
 	static public function operation_ping()
@@ -377,6 +325,16 @@ class WdCore extends WdObject
 		}
 
 		return 'pong';
+	}
+}
+
+if (!function_exists('class_alias'))
+{
+	function class_alias($original, $alias)
+	{
+		eval('final class ' . $alias . ' extends ' . $original . ' {}');
+
+		return true;
 	}
 }
 
@@ -1128,12 +1086,99 @@ class WdConfig
 	}
 }
 
-if (!function_exists('class_alias'))
-{
-	function class_alias($original, $alias)
-	{
-		eval('final class ' . $alias . ' extends ' . $original . ' {}');
+/**
+ * Connections accessor.
+ *
+ */
 
-		return true;
+class WdConnectionsAccessor implements ArrayAccess, IteratorAggregate
+{
+	private $connections = array();
+
+	public function offsetSet($offset, $value)
+	{
+		throw new WdException('Offset is not settable');
+	}
+
+	/**
+	 * Checks if a connection exists.
+	 *
+	 * @see ArrayAccess::offsetExists()
+	 */
+
+	public function offsetExists($id)
+	{
+		return WdCore::$config['connections'][$id];
+	}
+
+	public function offsetUnset($offset)
+	{
+		throw new WdException('Offset is not unsettable');
+	}
+
+	/**
+	 * Gets a connection to the specified database.
+	 *
+	 * If the connection has not been established yet, it is created on the fly.
+	 *
+	 * Several connections may be defined.
+	 *
+	 * @see ArrayAccess::offsetGet()
+	 * @param $id The name of the connection to get.
+	 * @return WdDatabase
+	 */
+
+	public function offsetGet($id)
+	{
+		if (isset($this->connections[$id]))
+		{
+			return $this->connections[$id];
+		}
+
+		if (empty(WdCore::$config['connections'][$id]))
+		{
+			throw new WdException('The connection %id is not defined', array('%id' => $id));
+		}
+
+		#
+		# default values for the connection
+		#
+
+		$options = WdCore::$config['connections'][$id] + array
+		(
+			'dsn' => null,
+			'username' => 'root',
+			'password' => null,
+			'options' => array
+			(
+				WdDatabase::T_ID => $id
+			)
+		);
+
+		#
+		# we catch connection exceptions and rethrow them in order to avoid displaing sensible
+		# information such as the username or password.
+		#
+
+		try
+		{
+			$this->connections[$id] = $connection = new WdDatabase($options['dsn'], $options['username'], $options['password'], $options['options']);
+		}
+		catch (PDOException $e)
+		{
+			throw new WdException($e->getMessage());
+		}
+
+		return $connection;
+	}
+
+	/**
+	 * @return Traversable
+	 * @see IteratorAggregate::getIterator()
+	 */
+
+	public function getIterator()
+	{
+		return new ArrayIterator($this->connections);
 	}
 }
