@@ -22,8 +22,8 @@ https://github.com/Weirdog/WdPatron
 Requirements
 ------------
 
-The minimum requirement for the WdCore framework is PHP5.2 *except* PHP5.2.12-13 (bug #49521,
-#50875). WdCore has been tested with Apache HTTP server on Linux, MacOS and Windows operating
+The minimum requirement for the WdCore framework is PHP5.2 *except* PHP5.2.12-13 (bug #49521, #50875).
+WdCore has been tested with Apache HTTP server on Linux, MacOS and Windows operating
 systems. The Apache server must support URL rewriting.
 
 
@@ -50,8 +50,6 @@ For example, you want to define the primary database connection:
 
 1. Edit your _core_ configuration file e.g. '/protected/all/config/core.php' with the following
 lines:
-
-	<?php
 	
 	return array
 	(
@@ -67,8 +65,6 @@ lines:
 	);
 	
 2. Then specify your config path while creating the _core_ object:
-
-	<?php
 
 	$core = new WdCore
 	(
