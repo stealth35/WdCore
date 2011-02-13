@@ -39,13 +39,13 @@ Configuring
 -----------
 
 Low-level components of the framework are configured using multiple configuration files, usually
-one per component. The default configuration files are available in the '/config/' folder. To
+one per component. The default configuration files are available in the `/config/` folder. To
 override the configuration or part of it, you can provide the path or pathes to your configuration
 files.
 
 For example, you want to define the primary database connection:
 
-1. Edit your _core_ configuration file e.g. '/protected/all/config/core.php' with the following
+1. Edit your _core_ configuration file e.g. `/protected/all/config/core.php` with the following
 lines:
 	
 	return array
@@ -78,10 +78,8 @@ lines:
 What's next
 -----------
 
-The project website is under construction, but some examples are available at the following URL
-(in french):
-
-http://www.weirdog.com/blog/wdcore/
+The project website is under construction, but some examples are available on my
+[blog](http://www.weirdog.com/blog/wdcore/) [fr].
 
 
 Inspiration
