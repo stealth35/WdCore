@@ -10,13 +10,10 @@ WdCore offers the following features: Models and activerecords, Internationaliza
 a RESTful API, runtime Mixins, Autoload, Operations, Events, Hooks, Sessions, Routes, Caching,
 Image resizing. 
 
-Together with WdElements and WdPatron, WdCore is the base framework for the Publishr CMS, you might
-want to check these projects too:
+Together with [WdElements](https://github.com/Weirdog/WdElements) and
+[WdPatron](https://github.com/Weirdog/WdPatron), WdCore is the base framework for the
+[Publishr](http://www.wdpublisher.com) CMS, you might want to check these projects too.
 
-http://www.wdpublisher.com
-https://github.com/Weirdog/Publishr
-https://github.com/Weirdog/WdElements
-https://github.com/Weirdog/WdPatron
 
 
 Requirements
@@ -90,6 +87,4 @@ http://www.weirdog.com/blog/wdcore/
 Inspiration
 -----------
 
-MooTools: http://mootools.net/
-Ruby on Rails: http://rubyonrails.org/
-Yii: http://www.yiiframework.com/
+[MooTools](http://mootools.net/), [Ruby on Rails](http://rubyonrails.org), [Yii](http://www.yiiframework.com)
