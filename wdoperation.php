@@ -26,7 +26,7 @@ class WdOperation
 	 * @param mixed $destination
 	 * @param string $name
 	 * @param array $params
-	 * @param integer $key
+	 * @param int|null $key
 	 */
 
 	static public function encode($destination, $name, array $params=array(), $key=null)
@@ -214,9 +214,19 @@ class WdOperation
 		}
 	}
 
+	/**
+	 * Used to skip `location` and `terminus` handling while dispatching sub operations.
+	 *
+	 * @var int sub operation nesting.
+	 */
+
+	static private $dispatch_nest=0;
+
 	public function dispatch()
 	{
 		global $core;
+
+		self::$dispatch_nest++;
 
 		$name = $this->name;
 
@@ -287,6 +297,11 @@ class WdOperation
 			);
 		}
 
+		if (--self::$dispatch_nest)
+		{
+			return $this->response->rc;
+		}
+
 		$terminus = $this->terminus;
 		$response = $this->response;
 
@@ -348,8 +363,8 @@ class WdOperation
 
 		if ($this->location && !headers_sent())
 		{
-			header('Referer: ' . $_SERVER['REQUEST_URI']);
 			header('Location: ' . $this->location);
+			header('Referer: ' . $_SERVER['REQUEST_URI']);
 
 			exit;
 		}
