@@ -190,6 +190,23 @@ return array
 		'ZWD' => 'Z$',
 	),
 
+	'dates' => array
+	(
+		'fields' => array
+		(
+			'day_relative' => array
+			(
+				-3 => 'Hace tres días',
+				-2 => 'antes de ayer',
+				-1 => 'ayer',
+				0 => 'hoy',
+				1 => 'mañana',
+				2 => 'pasado mañana',
+				3 => 'Dentro de tres días'
+			)
+		)
+	),
+
 	'date' => array
 	(
 		'month_names' => array

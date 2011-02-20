@@ -400,11 +400,6 @@ class WdI18n
 		{
 			$i++;
 
-			if (is_numeric($key))
-			{
-				$key = '\\' . $i;
-			}
-
 			if (is_array($value) || is_object($value))
 			{
 				$value = wd_dump($value);
@@ -417,7 +412,7 @@ class WdI18n
 			{
 				$value = '<em>null</em>';
 			}
-			else
+			else if (is_string($key))
 			{
 				switch ($key{0})
 				{
@@ -425,6 +420,12 @@ class WdI18n
 					case '!': $value = wd_entities($value); break;
 					case '%': $value = '<em>' . wd_entities($value) . '</em>'; break;
 				}
+			}
+
+			if (is_numeric($key))
+			{
+				$key = '\\' . $i;
+				$holders['{' . $i . '}'] = $value;
 			}
 
 			$holders[$key] = $value;
@@ -577,17 +578,13 @@ function wd_date_period($date)
 	$today_days = strtotime(date('Y-m-d')) / (60 * 60 * 24);
 	$date_days = strtotime(date('Y-m-d', $date_secs)) / (60 * 60 * 24);
 
-	$diff = $today_days - $date_days;
+	$diff = round($date_days - $today_days);
 
-	if ($diff == 0)
+	if (isset(WdI18n::$conventions['dates']['fields']['day_relative'][$diff]))
 	{
-		return "Aujourd'hui";
+		return WdI18n::$conventions['dates']['fields']['day_relative'][$diff];
 	}
-	else if ($diff == 1)
-	{
-		return 'Hier';
-	}
-	else if ($diff < 6)
+	else if ($diff > -6)
 	{
 		return ucfirst(strftime('%A', $date_secs));
 	}

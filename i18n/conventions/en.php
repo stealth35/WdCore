@@ -190,6 +190,19 @@ return array
 		'ZWD' => 'Z$',
 	),
 
+	'dates' => array
+	(
+		'fields' => array
+		(
+			'day_relative' => array
+			(
+				-1 => 'Yesterday',
+				0 => 'Today',
+				1 => 'Tomorrow'
+			)
+		)
+	),
+
 	'date' => array
 	(
 		'month_names' => array

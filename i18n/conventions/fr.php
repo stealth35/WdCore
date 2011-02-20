@@ -196,6 +196,23 @@ return array
 		'RWF' => 'FR',
 	),
 
+	'dates' => array
+	(
+		'fields' => array
+		(
+			'day_relative' => array
+			(
+				-3 => 'avant-avant-hier',
+				-2 => 'avant-hier',
+				-1 => 'hier',
+				0 => 'aujourd’hui',
+				1 => 'demain',
+				2 => 'après-demain',
+				3 => 'après-après-demain'
+			)
+		)
+	),
+
 	'date' => array
 	(
 		'month_names' => array
