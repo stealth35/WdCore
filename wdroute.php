@@ -1,11 +1,11 @@
 <?php
 
 /**
- * This file is part of the WdPublisher software
+ * This file is part of the Publishr software
  *
  * @author Olivier Laviale <olivier.laviale@gmail.com>
  * @link http://www.wdpublisher.com/
- * @copyright Copyright (c) 2007-2010 Olivier Laviale
+ * @copyright Copyright (c) 2007-2011 Olivier Laviale
  * @license http://www.wdpublisher.com/license.html
  */
 
@@ -15,8 +15,9 @@ class WdRoute
 
 	/**
 	 * Returns the routes defined using the configuration system or added using the add() method.
+	 *
+	 * @return array
 	 */
-
 	static public function routes()
 	{
 		static $constructed;
@@ -35,8 +36,9 @@ class WdRoute
 	 * Indexes routes, filtering out the route definitions which don't start with '/'
 	 *
 	 * @param array $fragments Configiration fragments
+	 *
+	 * @return array
 	 */
-
 	static public function routes_constructor(array $fragments)
 	{
 		$routes = array();
@@ -65,7 +67,6 @@ class WdRoute
 	 * @param array $route The route definition for the pattern, or nothing if the pattern is
 	 * actually a set of routes.
 	 */
-
 	static public function add($pattern, array $route=array())
 	{
 		if (is_array($pattern))
@@ -83,7 +84,6 @@ class WdRoute
 	 *
 	 * @param string $pattern The pattern for the route to remove.
 	 */
-
 	static public function remove($pattern)
 	{
 		self::routes();
@@ -98,8 +98,9 @@ class WdRoute
 	 * and the regular expression for the specified pattern.
 	 *
 	 * @param string $pattern The route pattern.
+	 *
+	 * @return array
 	 */
-
 	static public function parse($pattern)
 	{
 		if (isset(self::$parse_cache[$pattern]))
@@ -177,7 +178,7 @@ class WdRoute
 		return array_combine($params, $values);
 	}
 
-	static public function find_matching($uri)
+	static public function find($uri)
 	{
 		$routes = self::routes();
 
@@ -199,8 +200,9 @@ class WdRoute
 	 *
 	 * @param string $pattern The route pattern
 	 * @param mixed $values The values to format the pattern, either as an array or an object.
+	 *
+	 * @return string The formated route.
 	 */
-
 	static public function format($pattern, $values=null)
 	{
 		if (is_array($values))
@@ -217,5 +219,16 @@ class WdRoute
 		}
 
 		return $url;
+	}
+
+	/**
+	 * Checks if the given string is a route pattern.
+	 *
+	 * @param string $pattern
+	 * @return true is the given pattern is a route pattern, false otherwise.
+	 */
+	static public function is_pattern($pattern)
+	{
+		return (strpos($pattern, '<') !== false) || (strpos($pattern, ':') !== false);
 	}
 }
