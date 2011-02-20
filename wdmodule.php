@@ -992,7 +992,7 @@ class WdModule extends WdObject
 
 	protected function control_properties_for_operation_save(WdOperation $operation)
 	{
-		$schema = $this->model->getExtendedSchema();
+		$schema = $this->model->get_extended_schema();
 		$fields = $schema['fields'];
 		$properties = array_intersect_key($operation->params, $fields);
 

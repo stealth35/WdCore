@@ -16,21 +16,82 @@ class WdDatabaseTable extends WdObject
 	const T_EXTENDS = 'extends';
 	const T_IMPLEMENTS = 'implements';
 	const T_NAME = 'name';
-	const T_PRIMARY = 'primary';
 	const T_SCHEMA = 'schema';
 
+	/**
+	 * The model's connection to the database.
+	 *
+	 * @var WdDatabase A database connection.
+	 */
 	protected $connection;
 
-	public $name;
-	public $name_unprefixed;
-	public $primary;
+	/**
+	 * Name of the table, including the prefix defined by the model's connection.
+	 *
+	 * @var string
+	 */
+	protected $name;
+
+	/**
+	 * Unprefixed version of the table's name.
+	 *
+	 * The "{self}" placeholder used in queries is replaced by the propertie's value.
+	 *
+	 * @var string
+	 */
+	protected $name_unprefixed;
+
+	/**
+	 * Primary key of the table, retrieved from the schema defined using the T_SCHEMA tag.
+	 *
+	 * @var mixed
+	 */
+	protected $primary;
+
+	/**
+	 * Alias for the table's name, which can be defined using the T_ALIAS tag or automatically created.
+	 *
+	 * The "{primary}" placeholder used in queries is replaced by the propertie's value.
+	 *
+	 * @var string
+	 */
 
 	protected $alias;
+
+	/**
+	 * Schema for the table.
+	 *
+	 * The "{alias}" placeholder used in queries is replaced by the propertie's value.
+	 *
+	 * @var array
+	 */
 	protected $schema;
+
+	/**
+	 * The parent is used when the table is in a hierarchy, which is the case if the table
+	 * extends another table.
+	 *
+	 * @var WdDatabaseTable
+	 */
 	protected $parent;
 	protected $implements = array();
 
+	/**
+	 * SQL fragment for the FROM clause of the query, made of the table's name and alias and those
+	 * of the hierarchy.
+	 *
+	 * @var string
+	 */
 	protected $update_join;
+
+	/**
+	 * SQL fragment for the FROM clause of the query, made of the table's name and alias and those
+	 * of the related tables, inherited and implemented.
+	 *
+	 * The "{self_and_related}" placeholder used in queries is replaced by the propertie's value.
+	 *
+	 * @var string
+	 */
 	protected $select_join;
 
 	public function __construct($tags)
@@ -43,7 +104,6 @@ class WdDatabaseTable extends WdObject
 				case self::T_CONNECTION: $this->connection = $value; break;
 				case self::T_IMPLEMENTS: $this->implements = $value; break;
 				case self::T_NAME: $this->name_unprefixed = $value;	break;
-				case self::T_PRIMARY: $this->primary = $value; break;
 				case self::T_SCHEMA: $this->schema = $value; break;
 				case self::T_EXTENDS: $this->parent = $value; break;
 			}
@@ -200,7 +260,17 @@ class WdDatabaseTable extends WdObject
 
 	protected function __set_connection()
 	{
-		throw new WdException('Connection cannot be set');
+		throw new WdException('The %property property cannot be set', array('%property' => 'connection'));
+	}
+
+	protected function __volatile_get_primary()
+	{
+		return $this->primary;
+	}
+
+	protected function __set_primary()
+	{
+		throw new WdException('The %property property cannot be set', array('%property' => 'primary'));
 	}
 
 	/*
@@ -231,7 +301,7 @@ class WdDatabaseTable extends WdObject
 		return $this->connection->table_exists($this->name_unprefixed);
 	}
 
-	public function getExtendedSchema()
+	public function get_extended_schema()
 	{
 		$table = $this;
 		$schemas = array();
@@ -312,23 +382,13 @@ class WdDatabaseTable extends WdObject
 		return $statement;
 	}
 
-	/*
-	**
-
-	INSERT & UPDATE
-
-	TODO: move save() to WdModel
-
-	**
-	*/
-
 	protected function filter_values(array $values, $extended=false)
 	{
 		$filtered = array();
 		$holders = array();
 		$identifiers = array();
 
-		$schema = $extended ? $this->getExtendedSchema() : $this->schema;
+		$schema = $extended ? $this->get_extended_schema() : $this->schema;
 		$fields = $schema['fields'];
 
 		foreach ($values as $identifier => $value)
@@ -368,12 +428,6 @@ class WdDatabaseTable extends WdObject
 
 			return $id;
 		}
-
-
-
-
-
-
 
 		if (empty($this->schema['fields']))
 		{
