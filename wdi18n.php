@@ -299,7 +299,7 @@ class WdI18n
 
 		if (empty(self::$loaded_languages[$language]))
 		{
-			self::load_catalogs();
+			self::load_catalogs($language);
 
 			self::$loaded_languages[$language] = true;
 		}
@@ -444,16 +444,55 @@ class WdI18n
 	static private $scope;
 	static private $scope_chain = array();
 
-	static public function push_scope(array $scope)
+	static public function push_scope($scope)
 	{
 		array_push(self::$scope_chain, self::$scope);
 
-		self::$scope = $scope;
+		self::$scope = (array) $scope;
 	}
 
 	static public function pop_scope()
 	{
 		self::$scope = array_pop(self::$scope_chain);
+	}
+}
+
+/**
+ * The WdTranslator class creates translators, which can be used to easily translate string using
+ * a same set of options.
+ */
+class WdTranslator extends WdObject
+{
+	protected $options = array();
+
+	public function __construct(array $options)
+	{
+		$this->options = $options;
+	}
+
+	protected function __set_scope($scope)
+	{
+		$this->options['scope'] = explode('.', $scope);
+	}
+
+	protected function __set_language($language)
+	{
+		$this->options['language'] = $language;
+	}
+
+	protected function __set_default($default)
+	{
+		$this->options['default'] = $default;
+	}
+
+	public function t($str, array $args=array())
+	{
+		return WdI18n::translate($str, $args, $this->options);
+	}
+
+	public function __invoke($str, array $args=array())
+	{
+		return WdI18n::translate($str, $args, $this->options);
 	}
 }
 
