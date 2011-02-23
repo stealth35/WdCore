@@ -130,7 +130,6 @@ class WdModel extends WdDatabaseTable implements ArrayAccess
 	 *
 	 * @see WdObject::__call()
 	 */
-
 	public function __call($method, $arguments)
 	{
 		if (preg_match('#^find_by_#', $method))
@@ -146,7 +145,6 @@ class WdModel extends WdDatabaseTable implements ArrayAccess
 	/**
 	 * Override the method to handle scopes.
 	 */
-
 	public function __get($property)
 	{
 		$callback = 'scope_' . $property;
@@ -165,9 +163,10 @@ class WdModel extends WdDatabaseTable implements ArrayAccess
 	 * Finds a record or a collection of records.
 	 *
 	 * @param mixed $key A key or an array of keys.
-	 * @throws WdMissingRecordException
+	 * @throws WdMissingRecordException An exception of class WdMissingRecordException is raised
+	 * when the record, or one or more records of the records set, could not be found.
+	 * @return WdActiveRecord|array A record or a set of records.
 	 */
-
 	public function find($key)
 	{
 		if (func_num_args() > 1)
@@ -204,7 +203,7 @@ class WdModel extends WdDatabaseTable implements ArrayAccess
 					$records[$key] = $record;
 					unset($missing[$key]);
 
-					$this->store($key, $record);
+					$this->store($record);
 				}
 			}
 
@@ -212,14 +211,14 @@ class WdModel extends WdDatabaseTable implements ArrayAccess
 			{
 				if (count($missing) > 1)
 				{
-					throw new WdMissingRecordException('Missing records %keys from the %model model.', array('%model' => $this->name_unprefixed, '%keys' => implode(', ', array_keys($missing))), 404);
+					throw new WdMissingRecordException('Records %keys do not exists in model %model.', array('%model' => $this->name_unprefixed, '%keys' => implode(', ', array_keys($missing))), 404);
 				}
 				else
 				{
 					$key = array_keys($missing);
 					$key = array_shift($key);
 
-					throw new WdMissingRecordException('Missing record %key from the %model model.', array('%model' => $this->name_unprefixed, '%key' => $key), 404);
+					throw new WdMissingRecordException('Record %key does not exists in model %model.', array('%model' => $this->name_unprefixed, '%key' => $key), 404);
 				}
 			}
 
@@ -234,102 +233,93 @@ class WdModel extends WdDatabaseTable implements ArrayAccess
 
 			if (!$record)
 			{
-				throw new WdMissingRecordException('Missing record %key from the %model model.', array('%model' => $this->name_unprefixed, '%key' => $key), 404);
+				throw new WdMissingRecordException('Record %key does not exists in model %model.', array('%model' => $this->name_unprefixed, '%key' => $key), 404);
 			}
 
-			$this->store($key, $record);
+			$this->store($record);
 		}
 
 		return $record;
 	}
 
 	/**
-	 * Because objects are cached, we need to removed the object from the cache when it's saved, so
-	 * that loading the object again returns the updated object, not the one in the cache.
+	 * Because records are cached, we need to removed the record from the cache when it is saved,
+	 * so that loading the record again returns the updated record, not the one in the cache.
 	 *
-	 * @see $wd/wdcore/WdDatabaseTable#save($values, $id, $options)
+	 * @see WdDatabaseTable::save($properies, $key, $options)
 	 */
-
 	public function save(array $properties, $key=null, array $options=array())
 	{
-		$this->eliminate($key);
+		if ($key)
+		{
+			$this->eliminate($key);
+		}
 
 		return parent::save($properties, $key, $options);
 	}
 
-	static protected $cached_objects;
+	static protected $cached_records;
 
 	/**
-	 * Stores an object into the cache.
+	 * Stores a record in the records cache.
 	 *
-	 * Note that only WdActiveRecord instance object are actually stored.
-	 *
-	 * @param unknown_type $key
-	 * @param unknown_type $value
+	 * @param WdActiveRecord $record The record to store.
 	 */
-
-	protected function store($key, $value)
+	protected function store(WdActiveRecord $record)
 	{
-		if (!is_object($value) || !($value instanceof WdActiveRecord))
-		{
-			return;
-		}
-
-		$key = $this->createCacheKey($key);
+		$key = $this->create_cache_key($record->{$this->primary});
 
 		if (!$key)
 		{
 			return;
 		}
 
-		self::$cached_objects[$key] = $value;
+		self::$cached_records[$key] = $record;
 
 		if (WDMODEL_USE_APC)
 		{
-			apc_store($key, $value);
+			apc_store($key, $record);
 		}
 	}
 
 	/**
-	 * Retrieves an object from the cache.
+	 * Retrieves a record from the records cache.
 	 *
-	 * @param unknown_type $key
+	 * @param int $key
 	 */
-
 	protected function retrieve($key)
 	{
-		$key = $this->createCacheKey($key);
+		$key = $this->create_cache_key($key);
 
 		if (!$key)
 		{
 			return;
 		}
 
-		$entry = null;
+		$record = null;
 
-		if (isset(self::$cached_objects[$key]))
+		if (isset(self::$cached_records[$key]))
 		{
-			$entry = self::$cached_objects[$key];
+			$record = self::$cached_records[$key];
 		}
 		else if (WDMODEL_USE_APC)
 		{
-			$entry = apc_fetch($key, $success);
+			$record = apc_fetch($key, $success);
 
-			$success ? self::$cached_objects[$key] = $entry : $entry = null;
+			$success ? self::$cached_records[$key] = $record : $record = null;
 		}
 
-		return $entry;
+		return $record;
 	}
 
 	/**
 	 * Eliminate an object from the cache.
 	 *
-	 * @param unknown_type $key
+	 * @param int $key
 	 */
-
 	protected function eliminate($key)
 	{
-		$key = $this->createCacheKey($key);
+		$key = $this->create_cache_key($key);
 
 		if (!$key)
 		{
@@ -341,25 +331,19 @@ class WdModel extends WdDatabaseTable implements ArrayAccess
 			apc_delete($key);
 		}
 
-		self::$cached_objects[$key] = null;
+		self::$cached_records[$key] = null;
 	}
 
 	/**
 	 * Creates a unique cache key.
 	 *
-	 * @param unknown_type $key
+	 * @param int $key
 	 */
-
-	protected function createCacheKey($key)
+	protected function create_cache_key($key)
 	{
 		if ($key === null)
 		{
 			return;
-		}
-
-		if (is_array($key))
-		{
-			$key = implode('-', $key);
 		}
 
 		return (WDMODEL_USE_APC ? 'ar:' . $_SERVER['DOCUMENT_ROOT'] . '/' : '') . $this->connection->id . '/' . $this->name . '/' . $key;
@@ -370,7 +354,6 @@ class WdModel extends WdDatabaseTable implements ArrayAccess
 	 *
 	 * @return mixed
 	 */
-
 	private function defer_to_actionrecord_query()
 	{
 		$trace = debug_backtrace(false);
@@ -384,7 +367,6 @@ class WdModel extends WdDatabaseTable implements ArrayAccess
 	 *
 	 * @return WdActiveRecordQuery
 	 */
-
 	public function joins($expression)
 	{
 		return $this->defer_to_actionrecord_query();
@@ -395,7 +377,6 @@ class WdModel extends WdDatabaseTable implements ArrayAccess
 	 *
 	 * @return WdActiveRecordQuery
 	 */
-
 	public function select($expression)
 	{
 		return $this->defer_to_actionrecord_query();
@@ -406,7 +387,6 @@ class WdModel extends WdDatabaseTable implements ArrayAccess
 	 *
 	 * @return WdActiveRecordQuery
 	 */
-
 	public function where($conditions, $conditions_args=null)
 	{
 		return $this->defer_to_actionrecord_query();
@@ -417,7 +397,6 @@ class WdModel extends WdDatabaseTable implements ArrayAccess
 	 *
 	 * @return WdActiveRecordQuery
 	 */
-
 	public function group($group)
 	{
 		return $this->defer_to_actionrecord_query();
@@ -428,7 +407,6 @@ class WdModel extends WdDatabaseTable implements ArrayAccess
 	 *
 	 * @return WdActiveRecordQuery
 	 */
-
 	public function order($order)
 	{
 		return $this->defer_to_actionrecord_query();
@@ -439,7 +417,6 @@ class WdModel extends WdDatabaseTable implements ArrayAccess
 	 *
 	 * @return WdActiveRecordQuery
 	 */
-
 	public function limit($limit, $offset=null)
 	{
 		return $this->defer_to_actionrecord_query();
@@ -450,7 +427,6 @@ class WdModel extends WdDatabaseTable implements ArrayAccess
 	 *
 	 * @return WdActiveRecordQuery
 	 */
-
 	public function exists($key=null)
 	{
 		return $this->defer_to_actionrecord_query();
@@ -466,7 +442,6 @@ class WdModel extends WdDatabaseTable implements ArrayAccess
 	 *
 	 * @return WdActiveRecordQuery
 	 */
-
 	public function count($column=null)
 	{
 		return $this->defer_to_actionrecord_query();
@@ -482,7 +457,6 @@ class WdModel extends WdDatabaseTable implements ArrayAccess
 	 *
 	 * @return WdActiveRecordQuery
 	 */
-
 	public function average($column)
 	{
 		return $this->defer_to_actionrecord_query();
@@ -493,7 +467,6 @@ class WdModel extends WdDatabaseTable implements ArrayAccess
 	 *
 	 * @return WdActiveRecordQuery
 	 */
-
 	public function minimum($column)
 	{
 		return $this->defer_to_actionrecord_query();
@@ -504,7 +477,6 @@ class WdModel extends WdDatabaseTable implements ArrayAccess
 	 *
 	 * @return WdActiveRecordQuery
 	 */
-
 	public function maximum($column)
 	{
 		return $this->defer_to_actionrecord_query();
@@ -515,7 +487,6 @@ class WdModel extends WdDatabaseTable implements ArrayAccess
 	 *
 	 * @return WdActiveRecordQuery
 	 */
-
 	public function sum($column)
 	{
 		return $this->defer_to_actionrecord_query();
@@ -526,7 +497,6 @@ class WdModel extends WdDatabaseTable implements ArrayAccess
 	 *
 	 * @return array An array of records.
 	 */
-
 	public function all()
 	{
 		return $this->defer_to_actionrecord_query();
@@ -537,7 +507,6 @@ class WdModel extends WdDatabaseTable implements ArrayAccess
 	 *
 	 * @return array An array of records.
 	 */
-
 	protected function __volatile_get_all()
 	{
 		return $this->all();
@@ -573,16 +542,34 @@ class WdModel extends WdDatabaseTable implements ArrayAccess
 		throw new WdException('Offsets are not settable: %key !properties', array('%key' => $key, '!properties' => $properties));
     }
 
+    /**
+     * Checks if the record identified by the given key exists.
+     *
+     * @see ArrayAccess::offsetExists()
+     * @return bool true is the record exists, false otherwise.
+     */
     public function offsetExists($key)
     {
         return $this->exists($key);
     }
 
+    /**
+     * Deletes the record specified by the given key.
+     *
+     * @see ArrayAccess::offsetUnset()
+     * @see WdModel::delete();
+     */
     public function offsetUnset($key)
     {
         $this->delete($key);
     }
 
+    /**
+     * Returns the record corresponding to the given key.
+     *
+     * @see ArrayAccess::offsetGet()
+     * @see WdModel::find();
+     */
     public function offsetGet($key)
     {
     	return $this->find($key);
