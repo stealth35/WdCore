@@ -982,14 +982,26 @@ class WdModule extends WdObject
 	}
 
 	/**
-	 * Filters out the operation's parameters which are not defined as fields by the
-	 * primary model of the module, and take care of resolving properties defined as booleans.
+	 * Filters out the operation's parameters, which are not defined as fields by the
+	 * primary model of the module, and take care of filtering or resolving properties values.
 	 *
-	 * The resulting properties are stored in the 'properties' property of the operation's object.
+	 * Fields defined as 'boolean'
+	 * ---------------------------
+	 *
+	 * The value of the property is filtered using the filter_var() function and the
+	 * FILTER_VALIDATE_BOOLEAN filter. If the property in the operation params is empty, the
+	 * property value is set the `false`.
+	 *
+	 * Fields defined as 'varchar'
+	 * ---------------------------
+	 *
+	 * If the property is not empty in the operation params, the property value is trimed using the
+	 * trim() function, ensuring that there is no leading or trailing white spaces.
 	 *
 	 * @param WdOperation $operation
+	 *
+	 * @return array The controled properties.
 	 */
-
 	protected function control_properties_for_operation_save(WdOperation $operation)
 	{
 		$schema = $this->model->get_extended_schema();
@@ -998,7 +1010,9 @@ class WdModule extends WdObject
 
 		foreach ($fields as $identifier => $definition)
 		{
-			if ($definition['type'] == 'boolean')
+			$type = $definition['type'];
+
+			if ($type == 'boolean')
 			{
 				if (empty($properties[$identifier]))
 				{
@@ -1008,6 +1022,15 @@ class WdModule extends WdObject
 				}
 
 				$properties[$identifier] = filter_var($properties[$identifier], FILTER_VALIDATE_BOOLEAN);
+			}
+			else if ($type == 'varchar')
+			{
+				if (empty($properties[$identifier]) || !is_string($properties[$identifier]))
+				{
+					continue;
+				}
+
+				$properties[$identifier] = trim($properties[$identifier]);
 			}
 		}
 
@@ -1048,8 +1071,10 @@ class WdModule extends WdObject
 			# don't want to happen since the operation failed.
 			#
 
-			throw new WdException($operation_key ? 'Unable to update record %key in %module.' : 'Unable to create record in %module.', $log_params, 'save');
+			throw new WdException($operation_key ? 'Unable to update record %key in %module.' : 'Unable to create record in %module.', $log_params);
 		}
+
+		$operation->location = $_SERVER['REQUEST_URI'];
 
 		wd_log_done($operation_key ? 'The record %key in %module has been saved.' : 'A new record has been saved in %module.', $log_params, 'save');
 
@@ -1066,8 +1091,9 @@ class WdModule extends WdObject
 	 * Returns controls for the "delete" operation.
 	 *
 	 * @param WdOperation $operation
+	 *
+	 * @return array The controls for the "delete" operation.
 	 */
-
 	protected function controls_for_operation_delete(WdOperation $operation)
 	{
 		return array
@@ -1087,15 +1113,9 @@ class WdModule extends WdObject
 	 *
 	 * @param WdOperation $operation
 	 */
-
 	protected function validate_operation_delete(WdOperation $operation)
 	{
-		if (!$operation->key && empty($operation->params[WdOperation::KEYS]))
-		{
-			return false;
-		}
-
-		return true;
+		return (!empty($operation->key) || !empty($operation->params[WdOperation::KEYS]));
 	}
 
 	/**
@@ -1104,7 +1124,6 @@ class WdModule extends WdObject
 	 * @param WdOperation $operation
 	 * @throws WdException
 	 */
-
 	protected function operation_delete(WdOperation $operation)
 	{
 		$params = &$operation->params;
