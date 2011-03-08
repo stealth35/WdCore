@@ -24,7 +24,7 @@ class WdObject
 		return self::$methods;
 	}
 
-	static public function get_methods_definitions_constructor($fragments)
+	static public function get_methods_definitions_constructor(array $fragments)
 	{
 		$methods = array();
 
@@ -41,7 +41,7 @@ class WdObject
 			{
 				if (empty($definition['instanceof']))
 				{
-					throw new WdException('Missing <em>instanceof</em> in config (%root): !definition', array('!definition' => $definition, '%root' => $root));
+					throw new WdException('Missing <em>instanceof</em> in config (%root): !definition.', array('!definition' => $definition, '%root' => $root));
 				}
 
 				foreach ((array) $definition['instanceof'] as $class)
@@ -54,6 +54,58 @@ class WdObject
 		return $methods;
 	}
 
+	/**
+	 * Adds a method to a class.
+	 *
+	 * @param string $method The name of the method.
+	 * @param array $definition Definition of the method:
+	 *
+	 * 0 => callback - The callback for the method.
+	 * 'instanceof' => string|array The instance or instances to which the method is added.
+	 */
+	static public function add_method($method, array $definition)
+	{
+		self::add_methods(array($method => $definition));
+	}
+
+	/**
+	 * Adds methods to classes.
+	 *
+	 * @param array $definitions
+	 */
+	static public function add_methods(array $definitions)
+	{
+		if (self::$methods === null)
+		{
+			self::get_methods_definitions();
+		}
+
+		self::$class_methods = null;
+
+		foreach ($definitions as $method => $definition)
+		{
+			{
+				if (empty($definition['instanceof']))
+				{
+					throw new WdException('Missing <em>instanceof</em> in definition: !definition.', array('!definition' => $definition));
+				}
+
+				foreach ((array) $definition['instanceof'] as $class)
+				{
+					self::$methods[$class][$method] = $definition[0];
+				}
+			}
+		}
+	}
+
+	/**
+	 * Calls the method callback associated with the nonexistant method called or throws an
+	 * exception if none is defined.
+	 *
+	 * @param string $method
+	 * @param array $arguments
+	 * @return mixed The result of the callback.
+	 */
 	public function __call($method, $arguments)
 	{
 		$callback = $this->get_method_callback($method);
@@ -62,7 +114,7 @@ class WdObject
 		{
 			throw new WdException
 			(
-				'Unknown method %method for object of class %class', array
+				'Unknown method %method for object of class %class.', array
 				(
 					'%method' => $method,
 					'%class' => get_class($this)
