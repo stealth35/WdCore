@@ -296,7 +296,12 @@ class WdDatabaseTable extends WdObject
 		return $this->drop();
 	}
 
-	public function isInstalled()
+	/*
+	 * Checks whether the table is installed.
+	 *
+	 * @return bool true if the table exists, false otherwise.
+	 */
+	public function is_installed()
 	{
 		return $this->connection->table_exists($this->name_unprefixed);
 	}

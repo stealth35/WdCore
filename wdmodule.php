@@ -117,8 +117,7 @@ class WdModule extends WdObject
 	 * (or parts of) is not installed, NULL if the module has no installation.
 	 *
 	 */
-
-	public function isInstalled()
+	public function is_installed()
 	{
 		if (empty($this->tags[self::T_MODELS]))
 		{
@@ -129,7 +128,7 @@ class WdModule extends WdObject
 
 		foreach ($this->tags[self::T_MODELS] as $name => $tags)
 		{
-			if (!$this->model($name)->isInstalled())
+			if (!$this->model($name)->is_installed())
 			{
 				$rc = false;
 			}
@@ -166,7 +165,7 @@ class WdModule extends WdObject
 
 			$model = $this->model($name);
 
-			if ($model->isInstalled())
+			if ($model->is_installed())
 			{
 				//wd_log('model %model already installed', array('%model' => $name));
 
@@ -208,7 +207,7 @@ class WdModule extends WdObject
 		{
 			$model = $this->model($name);
 
-			if (!$model->isInstalled())
+			if (!$model->is_installed())
 			{
 				continue;
 			}
