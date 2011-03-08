@@ -215,7 +215,7 @@ class WdCore extends WdObject
 		$this->run_context();
 
 //		wd_log_time('run operation start');
-		$this->run_operation();
+		$this->run_operation($_SERVER['REQUEST_URI'], $_POST + $_GET);
 //		wd_log_time('run operation start');
 	}
 
@@ -258,10 +258,9 @@ class WdCore extends WdObject
 	/**
 	 * Dispatch the operation associated with the current request, if any.
 	 */
-
-	protected function run_operation()
+	protected function run_operation($uri, array $params)
 	{
-		$operation = WdOperation::decode($_POST + $_GET);
+		$operation = WdOperation::decode($uri, $params);
 
 		if (!$operation)
 		{
@@ -269,6 +268,8 @@ class WdCore extends WdObject
 		}
 
 		$operation->dispatch();
+
+		return $operation;
 	}
 
 	/**

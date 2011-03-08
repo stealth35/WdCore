@@ -36,7 +36,7 @@ class WdOperation
 		return self::RESTFUL_BASE . $destination . '/' . ($key !== null ? $key . '/' : '') . $name . ($query ? '?' . $query : '');
 	}
 
-	static public function decode($request)
+	static public function decode($uri, array $request)
 	{
 		$method = 'GET';
 		$destination = null;
@@ -52,8 +52,6 @@ class WdOperation
 		#
 		# RESTful
 		#
-
-		$uri = $_SERVER['REQUEST_URI'];
 
 		if (substr($uri, 0, 4) == '/do/')
 		{

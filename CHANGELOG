@@ -231,6 +231,8 @@ translation in the 'users.delete.operation', 'delete.operaton' and 'operation' n
 [CHG] Renamed WdModule::isInstalled() as WdModule::is_installed() and
 WdDatabaseTable::IsInstalled() as WdDatabaseTable::is_installed().
 
+[CHG] Data is now provided to the WdOperation::decode() method.
+
 [DEL] WdObject: The `__get_them_all` method is deprecated, override the `__defer_get` method
 instead.
 
