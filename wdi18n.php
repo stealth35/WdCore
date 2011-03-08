@@ -46,21 +46,24 @@ class WdI18n
 	{
 		self::$language = $language;
 
-		list($language, $country) = explode('-', $language) + array(1 => null);
+//		WdDebug::trigger("set language $language");
 
-		if (!$country)
+		list($language, $territory) = explode('-', $language) + array(1 => null);
+
+		if (!$territory)
 		{
-			static $country_by_language = array
+			static $territory_by_language = array
 			(
-				'en' => 'US'
+				'en' => 'US',
+				'cs' => 'CZ'
 			);
 
-			$country = isset($country_by_language[$language]) ? $country_by_language[$language] : strtoupper($language);
+			$territory = isset($territory_by_language[$language]) ? $territory_by_language[$language] : strtoupper($language);
 		}
 
-		setlocale(LC_ALL, "{$language}_{$country}.UTF-8");
+		setlocale(LC_ALL, "{$language}_{$territory}.UTF-8");
 
-		self::load_conventions($language, $country);
+		self::load_conventions($language, $territory);
 	}
 
 	static public function setTimezone($timezone)

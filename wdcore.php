@@ -64,9 +64,10 @@ class WdCore extends WdObject
 	}
 
 	/**
-	 * Returns the modules accesor.
+	 * Returns modules accessor.
+	 *
+	 * @return WdModulesAccessor The modules accessor.
 	 */
-
 	protected function __get_modules()
 	{
 		return new WdModulesAccessor();
@@ -74,8 +75,9 @@ class WdCore extends WdObject
 
 	/**
 	 * Returns models accessor.
+	 *
+	 * @return WdModelsAccessor The models accessor.
 	 */
-
 	protected function __get_models()
 	{
 		return new WdModelsAccessor();
@@ -83,8 +85,9 @@ class WdCore extends WdObject
 
 	/**
 	 * Returns the non-volatile variables accessor.
+	 *
+	 * @return WdVarsAccessor The non-volatie variables accessor.
 	 */
-
 	protected function __get_vars()
 	{
 		return new WdVarsAccessor();
@@ -95,7 +98,6 @@ class WdCore extends WdObject
 	 *
 	 * @return WdConnectionsAccessor
 	 */
-
 	protected function __get_connections()
 	{
 		return new WdConnectionsAccessor();
@@ -312,7 +314,6 @@ class WdCore extends WdObject
 	 * Keeps the user's session alive. Only already created sessions are kept alive, new sessions
 	 * are *not* created.
 	 */
-
 	static public function operation_ping()
 	{
 		global $core;

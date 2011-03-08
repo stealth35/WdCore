@@ -799,7 +799,6 @@ class WdModule extends WdObject
 	 *
 	 * @param WdOperation $operation
 	 */
-
 	protected function control_authentication_for_operation(WdOperation $operation)
 	{
 		global $core;
@@ -814,7 +813,6 @@ class WdModule extends WdObject
 	 * @param mixed $permission The required permission.
 	 * @throws WdException if the user doesn't have the specified permission.
 	 */
-
 	protected function control_permission_for_operation(WdOperation $operation, $permission)
 	{
 		global $core;
@@ -859,7 +857,6 @@ class WdModule extends WdObject
 	 * @param $operation The operation object.
 	 * @throws WdException when the record cannot be found in the model.
 	 */
-
 	protected function control_record_for_operation(WdOperation $operation)
 	{
 		return $this->model[$operation->key];
@@ -871,7 +868,6 @@ class WdModule extends WdObject
 	 *
 	 * @param WdOperation $operation
 	 */
-
 	protected function control_record_for_operation_save(WdOperation $operation)
 	{
 		return $operation->key ? $this->control_record_for_operation($operation) : null;
@@ -888,7 +884,6 @@ class WdModule extends WdObject
 	 * @param WdOperation $operation
 	 * @return bool
 	 */
-
 	protected function control_ownership_for_operation(WdOperation $operation)
 	{
 		global $core;
@@ -918,7 +913,6 @@ class WdModule extends WdObject
 	 * @param $operation
 	 * @return bool
 	 */
-
 	protected function control_form_for_operation(WdOperation $operation)
 	{
 		$params = &$operation->params;
@@ -939,13 +933,11 @@ class WdModule extends WdObject
 	}
 
 	/**
-	 * Default callback for the 'validate' control.
+	 * Default operations validator.
 	 *
-	 * If the module doesn't define a validator for an operation, an exception is thrown.
-	 *
-	 * @param array $operation
+	 * @param WdOperation $operation
+	 * @throws WdException because a validator *must* be defined for each operation.
 	 */
-
 	protected function validate_operation(WdOperation $operation)
 	{
 		throw new WdException
@@ -966,7 +958,6 @@ class WdModule extends WdObject
 	 * @param WdOperation $operation
 	 * @return array The controls of the operation.
 	 */
-
 	protected function controls_for_operation_save(WdOperation $operation)
 	{
 		return array
@@ -975,8 +966,8 @@ class WdModule extends WdObject
 			self::CONTROL_PERMISSION => self::PERMISSION_CREATE,
 			self::CONTROL_OWNERSHIP => true,
 			self::CONTROL_FORM => true,
-			self::CONTROL_VALIDATOR => true,
-			self::CONTROL_PROPERTIES => true
+			self::CONTROL_PROPERTIES => true,
+			self::CONTROL_VALIDATOR => true
 		);
 	}
 
@@ -998,7 +989,6 @@ class WdModule extends WdObject
 	 * trim() function, ensuring that there is no leading or trailing white spaces.
 	 *
 	 * @param WdOperation $operation
-	 *
 	 * @return array The controled properties.
 	 */
 	protected function control_properties_for_operation_save(WdOperation $operation)
@@ -1048,14 +1038,8 @@ class WdModule extends WdObject
 	 * @param WdOperation $operation An operation object.
 	 * @return array An array composed of the save mode ('update' or 'create') and the record's
 	 * key.
-	 * @throws WdException if the method fails to save the record.
+	 * @throws WdException when saving the record failed.
 	 */
-
-	// TODO-20110121: the operation should throw exceptions on failure. Will the current
-	// implementation support this ? Those relying on test for cleanup would have to use
-	// _try/catch_, the others could just forget about checking the return value, assuming it is
-	// good since no exception was raised.
-
 	protected function operation_save(WdOperation $operation)
 	{
 		$operation_key = $operation->key;
@@ -1064,12 +1048,6 @@ class WdModule extends WdObject
 
 		if (!$key)
 		{
-			#
-			# We need to return `null` because `false` is a valid result for the
-			# WdOperation::dispatch() method, and will trigger an event, which is something we
-			# don't want to happen since the operation failed.
-			#
-
 			throw new WdException($operation_key ? 'Unable to update record %key in %module.' : 'Unable to create record in %module.', $log_params);
 		}
 
@@ -1169,13 +1147,9 @@ class WdModule extends WdObject
 	/**
 	 * Get a block.
 	 *
-	 * @param $name
-	 * The name of the block to get.
-	 *
-	 * @return mixed
-	 * Depends on the implementation. Should return a string or a stringifyable object.
+	 * @param $name The name of the block to get.
+	 * @return mixed Depends on the implementation. Should return a string or a stringifyable object.
 	 */
-
 	public function getBlock($name)
 	{
 		$args = func_get_args();

@@ -5,7 +5,7 @@
  *
  * @author Olivier Laviale <olivier.laviale@gmail.com>
  * @link http://www.weirdog.com/wdcore/
- * @copyright Copyright (c) 2007-2010 Olivier Laviale
+ * @copyright Copyright (c) 2007-2011 Olivier Laviale
  * @license http://www.weirdog.com/wdcore/license/
  */
 
@@ -29,7 +29,12 @@ class WdActiveRecordQuery extends WdObject implements Iterator
 
 	protected $mode;
 
-	public function __construct($model)
+	/**
+	 * Constructor.
+	 *
+	 * @param WdModel $model The model to query.
+	 */
+	public function __construct(WdModel $model)
 	{
 		$this->model = $model;
 	}
@@ -73,7 +78,6 @@ class WdActiveRecordQuery extends WdObject implements Iterator
 	/**
 	 * @return WdActiveRecordQuery
 	 */
-
 	public function select($expression)
 	{
 		$this->select = $expression;
@@ -84,7 +88,6 @@ class WdActiveRecordQuery extends WdObject implements Iterator
 	/**
 	 * @return WdActiveRecordQuery
 	 */
-
 	public function joins($expression)
 	{
 		global $core;

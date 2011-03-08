@@ -12,12 +12,21 @@
 class WdActiveRecord extends WdObject
 {
 	/**
+	 * Constructor.
+	 *
+	 * The constructor function is required when retrieving rows as objects.
+	 */
+	public function __construct()
+	{
+
+	}
+
+	/**
 	 * Returns the model of the activerecord.
 	 *
 	 * @param string $name The name of the model.
 	 * @return WdModel
 	 */
-
 	protected function model($name=null)
 	{
 		global $core;
@@ -27,8 +36,10 @@ class WdActiveRecord extends WdObject
 
 	/**
 	 * Saves the activerecord to the database using the activerecord model.
+	 *
+	 * @return int|bool the primary key value of the record, or false if the record could not be
+	 * saved.
 	 */
-
 	public function save()
 	{
 		$model = $this->model();
@@ -45,7 +56,6 @@ class WdActiveRecord extends WdObject
 	/**
 	 * Deletes the activerecord from the database.
 	 */
-
 	public function delete()
 	{
 		$model = $this->model();

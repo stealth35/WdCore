@@ -143,9 +143,8 @@ class WdObject
 	 *
 	 * @param string $property
 	 * @return mixed The value of the innaccessible property. `null` is returned if the property
-	 * could not be retrieved, in that case, an error is also triggered.
+	 * could not be retrieved, in which case an exception is raised.
 	 */
-
 	public function __get($property)
 	{
 		$getter = '__volatile_get_' . $property;
@@ -192,15 +191,31 @@ class WdObject
 			return $this->$property = $rc;
 		}
 
-		throw new WdException
-		(
-			'Unknow property %property for object of class %class (available properties: :list)', array
+		$properties = array_keys(get_object_vars($this));
+
+		if ($properties)
+		{
+			throw new WdException
 			(
-				'%property' => $property,
-				'%class' => get_class($this),
-				':list' => implode(', ', array_keys(get_object_vars($this)))
-			)
-		);
+				'Unknow property %property for object of class %class (available properties: :list).', array
+				(
+					'%property' => $property,
+					'%class' => get_class($this),
+					':list' => implode(', ', $properties)
+				)
+			);
+		}
+		else
+		{
+			throw new WdException
+			(
+				'Unknow property %property for object of class %class (the object has no accessible property).', array
+				(
+					'%property' => $property,
+					'%class' => get_class($this)
+				)
+			);
+		}
 	}
 
 	protected function __defer_get($property, &$success)
@@ -231,10 +246,19 @@ class WdObject
 		return $event->value;
 	}
 
+	/**
+	 * Sets the value of inaccessible properties.
+	 *
+	 * If the `__volatile_set_<property>` or `__set_<property>` setter methods exists, they are
+	 * used to set the value to the property, otherwise the value is set _as is_.
+	 *
+	 * For performance reason, external setters are not used.
+	 *
+	 * @param string $property
+	 * @param mixed $value
+	 */
 	public function __set($property, $value)
 	{
-//		echo get_class($this) . '.set(' . $property . ')<br />';
-
 		$setter = '__volatile_set_' . $property;
 
 		if (method_exists($this, $setter))
@@ -271,14 +295,14 @@ class WdObject
 	}
 
 	/**
-	 * Checks wheter the object has the specified property.
+	 * Checks if the object has the specified property.
 	 *
 	 * Unlike the property_exists() function, this method uses all the getters available to find
 	 * the property.
 	 *
-	 * @param bool Returns TRUE if the object has the property, FALSE otherwise.
+	 * @param string $property The property to check.
+	 * @return bool true if the object has the property, false otherwise.
 	 */
-
 	public function has_property($property)
 	{
 		if (property_exists($this, $property))
@@ -326,25 +350,22 @@ class WdObject
 		return false;
 	}
 
-	public function has_method($name)
+	/**
+	 * Checks whether this object supports the specified method.
+	 *
+	 * @param string $method Name of the method.
+	 * @return bool true if the object supports the method, false otherwise.
+	 */
+	public function has_method($method)
 	{
-		if (method_exists($this, $name))
-		{
-			return true;
-		}
-
-		if ($this->get_method_callback($name))
-		{
-			return true;
-		}
-
-		return false;
+		return method_exists($this, $method) || $this->get_method_callback($method);
 	}
 
 	/**
-	 * Returns the callbacks associated with the object's class.
+	 * Returns the callbacks associated with the class of the object.
+	 *
+	 * @return array The callbacks associated with the class of the object.
 	 */
-
 	protected function get_methods()
 	{
 		$class = get_class($this);
@@ -375,16 +396,17 @@ class WdObject
 	}
 
 	/**
-	 * Returns the callback for a given method.
+	 * Returns the callback for a given unimplemented method.
 	 *
-	 * Callbacks defined as 'm:<module_id>' are supported and get resolved when the method is
-	 * called.
+	 * Callbacks defined as 'm:<module_id>' are supported and resolved when the method is called.
 	 *
 	 * @param $method
+	 * @return mixed Callback for the given unimplemented method.
 	 */
-
 	protected function get_method_callback($method)
 	{
+		global $core;
+
 		$methods = $this->get_methods();
 
 		if (isset($methods[$method]))
@@ -393,8 +415,6 @@ class WdObject
 
 			if (is_array($callback) && $callback[0][1] == ':' && $callback[0][0] == 'm')
 			{
-				global $core;
-
 				$callback[0] = $core->modules[substr($callback[0], 2)];
 
 				// TODO-20100809: replace method definition
