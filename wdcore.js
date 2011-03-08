@@ -3,11 +3,9 @@
  *
  * @author Olivier Laviale <olivier.laviale@gmail.com>
  * @link http://www.weirdog.com/wdcore/
- * @copyright Copyright (c) 2007-2010 Olivier Laviale
+ * @copyright Copyright (c) 2007-2011 Olivier Laviale
  * @license http://www.weirdog.com/wdcore/license/
  */
-
-"use strict";
 
 var WdOperation = new Class
 ({
@@ -70,134 +68,123 @@ var WdOperation = new Class
 	}
 });
 
-WdOperation.encode = function(destination, operation, params)
-{
-	var query = '/api/' + destination + '/' + operation;
-	var parts = [];
+(function() {
 
-	Object.each
-	(
-		params, function (value, key)
+	var available_css;
+	var available_js;
+
+	Document.implement
+	({
+
+		/**
+		 * Update the document by adding missing CSS and JS assets.
+		 *
+		 * @param object assets
+		 * @param function done
+		 */
+		updateAssets: function (assets, done)
 		{
-			parts.push(key + '=' + encodeURIComponent(value));
-		}
-	);
-
-	if (parts)
-	{
-		query += '?' + parts.join('&');
-	}
-
-	return query;
-};
-
-Document.implement
-({
-
-	updateAssets: function (assets, done)
-	{
-		var base = window.location.protocol + '//' + window.location.hostname;
-
-		//
-		// initialize css
-		//
-
-		var css = [];
-
-		if (typeof(document_cached_css_assets) !== 'undefined')
-		{
-			//console.log('cached css assets: %a', document_cached_css_assets);
-
-			css = document_cached_css_assets;
-		}
-
-		if (assets.css)
-		{
-			css = assets.css;
-
-			$(document.head).getElements('link[type="text/css"]').each
-			(
-				function(el)
-				{
-					var href = el.href.substring(base.length);
-
-					if (css.indexOf(href) != -1)
-					{
-						//console.info('css already exists: %s', href);
-
-						css.erase(href);
-					}
-				}
-			);
-		}
-
-		//console.info('css final: %a', css);
-
-		css.each
-		(
-			function(href)
+			if (available_css === undefined)
 			{
-				new Asset.css(href);
-			}
-		);
+				available_css = [];
 
-		//
-		// initialize javascript
-		//
-
-		var js = [];
-
-		if (typeof(document_cached_js_assets) !== 'undefined')
-		{
-			//console.log('cached js assets: %a', document_cached_js_assets);
-
-			js = document_cached_js_assets;
-		}
-
-		if (assets.js)
-		{
-			js = assets.js;
-
-			$(document.html).getElements('script').each
-			(
-				function(el)
+				if (typeof(document_cached_css_assets) !== 'undefined')
 				{
-					var src = el.src.substring(base.length);
+					available_css = document_cached_css_assets;
+				}
 
-					if (js.indexOf(src) != -1)
+				$(document.head).getElements('link[type="text/css"]').each
+				(
+					function(el)
 					{
-						//console.info('script alredy exixts: %s', src);
-
-						js.erase(src);
+						available_css.push(el.get('href'));
 					}
+				);
+			}
+
+			if (available_js === undefined)
+			{
+				available_js = [];
+
+				if (typeof(document_cached_js_assets) !== 'undefined')
+				{
+					available_js = document_cached_js_assets;
+				}
+
+				$(document.html).getElements('script').each
+				(
+					function(el)
+					{
+						var src = el.get('src');
+
+						if (src) available_js.push(src);
+					}
+				);
+			}
+
+			var css = [];
+
+			assets.css.each
+			(
+				function(url)
+				{
+					if (available_css.indexOf(url) != -1)
+					{
+						return;
+					}
+
+					css.push(url);
 				}
 			);
-		}
 
-		//console.info('js: %a', js);
+			css.each
+			(
+				function(url)
+				{
+					new Asset.css(url);
 
-		if (js.length)
-		{
+					available_css.push(url);
+				}
+			);
+
+			var js = [];
+
+			assets.js.each
+			(
+				function(url)
+				{
+					if (available_js.indexOf(url) != -1)
+					{
+						return;
+					}
+
+					js.push(url);
+				}
+			);
+
 			var js_count = js.length;
+
+			if (!js_count)
+			{
+				done();
+
+				return;
+			}
 
 			js.each
 			(
-				function(src)
+				function(url)
 				{
 					new Asset.javascript
 					(
-						src,
+						url,
 						{
 							onload: function()
 							{
-								//console.info('loaded: %a', src);
+								available_js.push(url);
 
-								js_count--;
-
-								if (!js_count)
+								if (!--js_count)
 								{
-									//console.info('no js remaingn, initialize editor');
-
 									done();
 								}
 							}
@@ -206,14 +193,13 @@ Document.implement
 				}
 			);
 		}
-		else
-		{
-			done();
-		}
-	}
-});
+	});
 
+}) ();
 
+/**
+ * Extends the Request.JSON to support the loading of single HTML elements.
+ */
 Request.Element = new Class
 ({
 	Extends: Request.JSON,
@@ -223,28 +209,24 @@ Request.Element = new Class
 		link: 'cancel'
 	},
 
-	onSuccess: function(response)
+	onSuccess: function(response, text)
 	{
 		var el = Elements.from(response.rc).shift();
 
 		if (!response.assets)
 		{
-			this.parent(el, response);
+			this.parent(el, response, text);
 
 			return;
 		}
-
-//		document.updateAssets(response.assets, this.parent.bind(this, el, response));
-
-		// https://github.com/mootools/mootools-core/blob/master/Source/Request/Request.js
 
 		document.updateAssets
 		(
 			response.assets, function()
 			{
-				this.fireEvent('complete', arguments).fireEvent('success', arguments).callChain();
+				this.fireEvent('complete', [ response, text ]).fireEvent('success', [ el, response, text ]).callChain();
 			}
-			.bind(this, el, response)
+			.bind(this)
 		);
 	}
 });
