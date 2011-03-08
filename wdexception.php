@@ -110,6 +110,14 @@ class WdException extends Exception
 	{
 		return $this->code . ' ' . $this->title;
 	}
+
+	/**
+	 * Alters the HTTP header according to the exception code and title.
+	 */
+	public function alter_header()
+	{
+		header("HTTP/1.0 $this->code $this->title");
+	}
 }
 
 class WdHTTPException extends WdException
