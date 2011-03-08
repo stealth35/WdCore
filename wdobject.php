@@ -5,7 +5,7 @@
  *
  * @author Olivier Laviale <olivier.laviale@gmail.com>
  * @link http://www.weirdog.com/wdcore/
- * @copyright Copyright (c) 2007-2010 Olivier Laviale
+ * @copyright Copyright (c) 2007-2011 Olivier Laviale
  * @license http://www.weirdog.com/wdcore/license/
  */
 
@@ -52,11 +52,6 @@ class WdObject
 		}
 
 		return $methods;
-	}
-
-	public function __construct()
-	{
-
 	}
 
 	public function __call($method, $arguments)
