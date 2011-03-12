@@ -1,4 +1,4 @@
-2011-03-02 # 0.9.0-dev
+2011-03-12 # 0.9.0-dev
 
 * Modules accessor:
 
@@ -210,6 +210,8 @@ a class method or a mixin.
 
 [NEW] RESTful operations are now constructed from the 'routes' config.
 
+[NEW] the wd_hypenate() function.
+
 [CHG] When defined as an array, the `scope` option is now cascading, a translation is searched in
 the different scopes : array('users', 'delete', 'operation') can be used to search for a
 translation in the 'users.delete.operation', 'delete.operaton' and 'operation' namespaces.
@@ -232,6 +234,8 @@ translation in the 'users.delete.operation', 'delete.operaton' and 'operation' n
 WdDatabaseTable::IsInstalled() as WdDatabaseTable::is_installed().
 
 [CHG] Data is now provided to the WdOperation::decode() method.
+
+[CHG] Renamed the wd_camelCase() function as wd_camelize();
 
 [DEL] WdObject: The `__get_them_all` method is deprecated, override the `__defer_get` method
 instead.

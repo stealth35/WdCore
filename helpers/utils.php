@@ -579,7 +579,7 @@ function wd_excerpt($str, $limit=55)
 }
 
 
-function wd_camelCase($str, $separator='-')
+function wd_camelize($str, $separator='-')
 {
 	static $callback;
 
@@ -589,6 +589,18 @@ function wd_camelCase($str, $separator='-')
 	}
 
 	return preg_replace_callback('/' . preg_quote($separator) . '\D/', $callback, $str);
+}
+
+function wd_hyphenate($str)
+{
+	static $callback;
+
+	if (!$callback)
+	{
+		$callback = create_function('$match', 'return "-" . mb_strtolower(mb_substr($match[0], 0, 1));');
+	}
+
+	return trim(preg_replace_callback('/[A-Z]/', $callback, $str), '-');
 }
 
 function wd_shorten($str, $length=32, $position=.75, &$shortened=null)
