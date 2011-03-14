@@ -784,13 +784,21 @@ class WdDatabaseStatement extends PDOStatement
 	public function fetchPairs()
 	{
 		$rc = array();
-		$rows = parent::fetchAll(PDO::FETCH_NUM);
-
-		foreach ($rows as $row)
+		
+		if(parent::columnCount() === 2)
 		{
-			$rc[$row[0]] = $row[1];
+			$rc = parent::fetchAll(PDO::FETCH_KEY_PAIR);
 		}
+		else
+		{
+			$rows = parent::fetchAll(PDO::FETCH_NUM);
 
+			foreach ($rows as $row)
+			{
+				$rc[$row[0]] = $row[1];
+			}			
+		}
+		
 		return $rc;
 	}
 }
