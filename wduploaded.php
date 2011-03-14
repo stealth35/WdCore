@@ -343,14 +343,7 @@ class WdUploaded
 
 	static public function getMIME($filename, &$extension=null)
 	{
-		$pos = strrpos($filename, '.');
-
-		if ($pos === false)
-		{
-			return;
-		}
-
-		$extension = strtolower(substr($filename, $pos));
+		$extension = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
 
 		return isset(self::$mimes_by_extension[$extension]) ? self::$mimes_by_extension[$extension] : 'application/octet-stream';
 	}
