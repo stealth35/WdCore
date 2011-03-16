@@ -718,8 +718,11 @@ class WdDatabaseStatement extends PDOStatement
 	 */
 	public function execute($args=array())
 	{
-		$this->connection->queries_count++;
-
+		if(!empty($this->connection))
+		{
+			$this->connection->queries_count++;
+		}
+		
 		try
 		{
 			return parent::execute($args);
