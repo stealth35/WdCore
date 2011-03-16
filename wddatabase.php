@@ -804,4 +804,35 @@ class WdDatabaseStatement extends PDOStatement
 		
 		return $rc;
 	}
+	
+	/**
+	 * Returns an array containing all of the result set rows (FETCH_LAZY supported)
+	 *
+	 * @param int $fetch_style
+	 * @param mixed $fetch_argument[optional]
+	 * @param array $ctor_args[optional]
+	 * 
+	 * @return array
+	 */
+	public function fetchGroups($fetch_style, $fetch_argument=null, array $ctor_args=array())
+	{
+		$args = func_get_args();		
+		$rc = array();		
+		
+		if($fetch_style === PDO::FETCH_LAZY)
+		{			
+			while($row = call_user_func_array(array($this, 'parent::fetch'), $args))
+			{				
+				$rc[$row[0]][] = $row;
+			}
+			
+			return $rc;
+		}		
+		
+		$args[0] = PDO::FETCH_GROUP | $fetch_style;
+			
+		$rc = call_user_func_array(array($this, 'parent::fetchAll'), $args);
+		
+		return $rc;
+	}
 }
