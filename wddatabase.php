@@ -837,58 +837,58 @@ class WdDatabaseStatement extends PDOStatement
 
 class WdDatabaseIterator implements Iterator
 {
-    private $stmt;
-    private $current;
-    private $position;
-    private $fetch_style;
-    private $cursor_orientation;
-    private $cursor_offset;
-    
-    /**
-     * @param WdDatabaseStatement $stmt
-     * @param int $fetch_style optional
-     * @param int $cursor_orientation optional
-     * @param int $cursor_offset optional
-     */
-    public function __construct(WdDatabaseStatement $stmt, $fetch_style = null, $cursor_orientation = null, $cursor_offset = null)
-    {
-        $this->stmt = $stmt;
-        $this->fetch_style = $fetch_style;
-        $this->cursor_orientation = $cursor_orientation;
-        $this->cursor_offset = $cursor_offset;
-        
-        $this->position = -1;
-        $this->next();
-    }
-    
-    public function current()
-    {
-        return $this->current;
-    }
+	private $stmt;
+	private $current;
+	private $position;
+	private $fetch_style;
+	private $cursor_orientation;
+	private $cursor_offset;
+	
+	/**
+	 * @param WdDatabaseStatement $stmt
+	 * @param int $fetch_style optional
+	 * @param int $cursor_orientation optional
+	 * @param int $cursor_offset optional
+	 */
+	public function __construct(WdDatabaseStatement $stmt, $fetch_style = null, $cursor_orientation = null, $cursor_offset = null)
+	{
+		$this->stmt = $stmt;
+		$this->fetch_style = $fetch_style;
+		$this->cursor_orientation = $cursor_orientation;
+		$this->cursor_offset = $cursor_offset;
+		
+		$this->position = -1;
+		$this->next();
+	}
+	
+	public function current()
+	{
+		return $this->current;
+	}
 
-    public function key()
-    {
-        return $this->position;
-    }
+	public function key()
+	{
+		return $this->position;
+	}
 
-    public function next()
-    {
-        $this->current = $this->stmt->fetch($this->fetch_style, $this->cursor_orientation, $this->cursor_offset);
-        ++$this->position;
-    }
+	public function next()
+	{
+		$this->current = $this->stmt->fetch($this->fetch_style, $this->cursor_orientation, $this->cursor_offset);
+		++$this->position;
+	}
 
-    public function rewind()
-    {
-        return;
-    }
+	public function rewind()
+	{
+		return;
+	}
 
-    public function valid()
-    {
-        return $this->current;
-    }
+	public function valid()
+	{
+		return $this->current;
+	}
 
-    public function __destruct()
-    {
-        $this->stmt->closeCursor();
-    }
+	public function __destruct()
+	{
+		$this->stmt->closeCursor();
+	}
 }
