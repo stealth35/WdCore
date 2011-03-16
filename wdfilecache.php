@@ -15,7 +15,7 @@ define('WDCACHE_USE_APC', false);
 
 if (!defined('WDCACHE_USE_APC'))
 {
-	define('WDCACHE_USE_APC', function_exists('apc_store'));
+	define('WDCACHE_USE_APC', version_compare(phpversion('apc'), '3.1.4') > -1);
 }
 
 class WdFileCache
