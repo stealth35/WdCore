@@ -40,7 +40,7 @@ class WdDatabase extends PDO
 
 	/**
 	 * Used to specify the collate while creating tables.
-	 * @var unknown_type
+	 * @var string
 	 */
 	public $collate = 'utf8_general_ci';
 
