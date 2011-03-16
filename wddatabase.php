@@ -40,7 +40,7 @@ class WdDatabase extends PDO
 
 	/**
 	 * Used to specify the collate while creating tables.
-	 * @var string
+	 * @var unknown_type
 	 */
 	public $collate = 'utf8_general_ci';
 
@@ -79,10 +79,6 @@ class WdDatabase extends PDO
 	 */
 	public function __construct($dsn, $username=null, $password=null, $options=array())
 	{
-		list($driver_name) = explode(':', $dsn, 2);
-
-		$this->driver_name = $driver_name;
-
 		$timezone = null;
 
 		foreach ($options as $option => $value)
@@ -95,8 +91,15 @@ class WdDatabase extends PDO
 				case self::T_COLLATE: $this->collate = $value; break;
 				case self::T_TIMEZONE: $timezone = $value; break;
 			}
-		}
+		}		
 
+		parent::__construct($dsn, $username, $password, $options);		
+
+		$this->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+		$this->setAttribute(PDO::ATTR_STATEMENT_CLASS, array('WdDatabaseStatement'));
+		
+		$this->driver_name = $this->getAttribute(PDO::ATTR_DRIVER_NAME);
+		
 		if ($driver_name == 'mysql')
 		{
 			$init_command = 'SET NAMES ' . $this->charset;
@@ -106,13 +109,8 @@ class WdDatabase extends PDO
 				$init_command .= ', time_zone = "' . $timezone . '"';
 			}
 
-			$options += array(self::MYSQL_ATTR_INIT_COMMAND => $init_command);
+			$this->exec($init_command);
 		}
-
-		parent::__construct($dsn, $username, $password, $options);
-
-		$this->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-		$this->setAttribute(PDO::ATTR_STATEMENT_CLASS, array('WdDatabaseStatement'));
 
 		if ($driver_name == 'oci')
 		{
