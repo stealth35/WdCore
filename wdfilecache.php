@@ -15,7 +15,7 @@ define('WDCACHE_USE_APC', false);
 
 if (!defined('WDCACHE_USE_APC'))
 {
-	define('WDCACHE_USE_APC', version_compare(phpversion('apc'), '3.1.4') > -1);
+	define('WDCACHE_USE_APC', version_compare(phpversion('apc'), '3.0.0') > -1);
 }
 
 class WdFileCache
@@ -93,7 +93,14 @@ class WdFileCache
 	{
 		if (WDCACHE_USE_APC)
 		{
-			return apc_exists($key);
+			if(function_exists('apc_exists'))
+			{
+				return apc_exists($key);
+			}
+			
+			apc_fetch($key, $success);
+			
+			return $success;
 		}
 
 		$location = getcwd();
