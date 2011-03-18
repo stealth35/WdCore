@@ -663,9 +663,9 @@ class WdDatabase extends PDO
 	 */
     public function table_exists($unprefixed_name)
     {
-    	$name = $this->prefix . $unprefixed_name;
+		$name = $this->prefix . $unprefixed_name;
 
-    	if ($this->driver_name == 'sqlite')
+		if ($this->driver_name == 'sqlite')
 		{
 			$tables = $this->query('SELECT name FROM sqlite_master WHERE type = "table" AND name = ?', array($name))->fetchAll(self::FETCH_COLUMN);
 
@@ -792,7 +792,7 @@ class WdDatabaseStatement extends PDOStatement
 		}
 		else
 		{
-			$this->setFetchMode(PDO::FETCH_NUM);
+			parent::setFetchMode(PDO::FETCH_NUM);
 
 			foreach($this as $row)
 			{
