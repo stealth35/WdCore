@@ -100,7 +100,7 @@ class WdDatabase extends PDO
 		
 		$this->driver_name = $this->getAttribute(PDO::ATTR_DRIVER_NAME);
 		
-		if ($driver_name == 'mysql')
+		if ($this->driver_name == 'mysql')
 		{
 			$init_command = 'SET NAMES ' . $this->charset;
 
@@ -112,7 +112,7 @@ class WdDatabase extends PDO
 			$this->exec($init_command);
 		}
 
-		if ($driver_name == 'oci')
+		if ($this->driver_name == 'oci')
 		{
 			$this->exec("ALTER SESSION SET NLS_DATE_FORMAT = 'YYYY-MM-DD'");
 		}
@@ -792,9 +792,9 @@ class WdDatabaseStatement extends PDOStatement
 		}
 		else
 		{
-			$rows = parent::fetchAll(PDO::FETCH_NUM);
+			$this->setFetchMode(PDO::FETCH_NUM);
 
-			foreach ($rows as $row)
+			foreach($this as $row)
 			{
 				$rc[$row[0]] = $row[1];
 			}			
