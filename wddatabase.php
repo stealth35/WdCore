@@ -679,7 +679,7 @@ class WdDatabase extends PDO
 		}
 
 		return false;
-    }
+	}
 
     /**
      * Optimizes the tables of the database.
