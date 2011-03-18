@@ -681,10 +681,10 @@ class WdDatabase extends PDO
 		return false;
 	}
 
-    /**
-     * Optimizes the tables of the database.
-     *
-     */
+	/**
+	 * Optimizes the tables of the database.
+	 *
+	 */
 	public function optimize()
 	{
 		if ($this->driver_name == 'sqlite')
