@@ -661,8 +661,8 @@ class WdDatabase extends PDO
 	 * @param string $unprefixed_name The unprefixed name of the table.
 	 * @return bool true if the table exists, false otherwise.
 	 */
-    public function table_exists($unprefixed_name)
-    {
+	public function table_exists($unprefixed_name)
+	{
 		$name = $this->prefix . $unprefixed_name;
 
 		if ($this->driver_name == 'sqlite')
