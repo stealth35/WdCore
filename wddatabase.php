@@ -818,8 +818,10 @@ class WdDatabaseStatement extends PDOStatement
 		$rc = array();		
 		
 		if($fetch_style === PDO::FETCH_LAZY)
-		{			
-			while($row = call_user_func_array(array($this, 'parent::fetch'), $args))
+		{
+			call_user_func_array(array($this, 'setFetchMode'), $args);
+			
+			foreach($this as $row)
 			{				
 				$rc[$row[0]][] = $row;
 			}
