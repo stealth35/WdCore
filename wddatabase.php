@@ -100,7 +100,7 @@ class WdDatabase extends PDO
 		
 		$this->driver_name = $this->getAttribute(PDO::ATTR_DRIVER_NAME);
 		
-		if ($driver_name == 'mysql')
+		if ($this->driver_name == 'mysql')
 		{
 			$init_command = 'SET NAMES ' . $this->charset;
 
@@ -112,7 +112,7 @@ class WdDatabase extends PDO
 			$this->exec($init_command);
 		}
 
-		if ($driver_name == 'oci')
+		if ($this->driver_name == 'oci')
 		{
 			$this->exec("ALTER SESSION SET NLS_DATE_FORMAT = 'YYYY-MM-DD'");
 		}
@@ -661,11 +661,11 @@ class WdDatabase extends PDO
 	 * @param string $unprefixed_name The unprefixed name of the table.
 	 * @return bool true if the table exists, false otherwise.
 	 */
-    public function table_exists($unprefixed_name)
-    {
-    	$name = $this->prefix . $unprefixed_name;
+	public function table_exists($unprefixed_name)
+	{
+		$name = $this->prefix . $unprefixed_name;
 
-    	if ($this->driver_name == 'sqlite')
+		if ($this->driver_name == 'sqlite')
 		{
 			$tables = $this->query('SELECT name FROM sqlite_master WHERE type = "table" AND name = ?', array($name))->fetchAll(self::FETCH_COLUMN);
 
@@ -679,12 +679,12 @@ class WdDatabase extends PDO
 		}
 
 		return false;
-    }
+	}
 
-    /**
-     * Optimizes the tables of the database.
-     *
-     */
+	/**
+	 * Optimizes the tables of the database.
+	 *
+	 */
 	public function optimize()
 	{
 		if ($this->driver_name == 'sqlite')
@@ -792,9 +792,9 @@ class WdDatabaseStatement extends PDOStatement
 		}
 		else
 		{
-			$rows = parent::fetchAll(PDO::FETCH_NUM);
+			parent::setFetchMode(PDO::FETCH_NUM);
 
-			foreach ($rows as $row)
+			foreach($this as $row)
 			{
 				$rc[$row[0]] = $row[1];
 			}			
