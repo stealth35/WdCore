@@ -91,16 +91,16 @@ class WdDatabase extends PDO
 				case self::T_COLLATE: $this->collate = $value; break;
 				case self::T_TIMEZONE: $timezone = $value; break;
 			}
-		}		
+		}
 
 		parent::__construct($dsn, $username, $password, $options);		
 
 		$this->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 		$this->setAttribute(PDO::ATTR_STATEMENT_CLASS, array('WdDatabaseStatement'));
 		
-		$this->driver_name = $this->getAttribute(PDO::ATTR_DRIVER_NAME);
+		$this->driver_name = $driver_name = $this->getAttribute(PDO::ATTR_DRIVER_NAME);
 		
-		if ($this->driver_name == 'mysql')
+		if ($driver_name == 'mysql')
 		{
 			$init_command = 'SET NAMES ' . $this->charset;
 
@@ -112,7 +112,7 @@ class WdDatabase extends PDO
 			$this->exec($init_command);
 		}
 
-		if ($this->driver_name == 'oci')
+		if ($driver_name == 'oci')
 		{
 			$this->exec("ALTER SESSION SET NLS_DATE_FORMAT = 'YYYY-MM-DD'");
 		}
@@ -716,11 +716,11 @@ class WdDatabaseStatement extends PDOStatement
 	 */
 	public function execute($args=array())
 	{
-		if(!empty($this->connection))
+		if (!empty($this->connection))
 		{
 			$this->connection->queries_count++;
 		}
-		
+
 		try
 		{
 			return parent::execute($args);
@@ -784,23 +784,7 @@ class WdDatabaseStatement extends PDOStatement
 	 */
 	public function fetchPairs()
 	{
-		$rc = array();
-		
-		if(parent::columnCount() === 2)
-		{
-			$rc = parent::fetchAll(PDO::FETCH_KEY_PAIR);
-		}
-		else
-		{
-			parent::setFetchMode(PDO::FETCH_NUM);
-
-			foreach($this as $row)
-			{
-				$rc[$row[0]] = $row[1];
-			}			
-		}
-		
-		return $rc;
+		return parent::fetchAll(PDO::FETCH_KEY_PAIR);
 	}
 	
 	/**

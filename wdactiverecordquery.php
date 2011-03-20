@@ -507,21 +507,7 @@ class WdActiveRecordQuery extends WdObject implements Iterator
 
 	protected function __volatile_get_pairs()
 	{
-		$rows = $this->all(PDO::FETCH_NUM);
-
-		if (!$rows)
-		{
-			return $rows;
-		}
-
-		$rc = array();
-
-		foreach ($rows as $row)
-		{
-			$rc[$row[0]] = $row[1];
-		}
-
-		return $rc;
+		return $this->all(PDO::FETCH_KEY_PAIR);
 	}
 
 	/**

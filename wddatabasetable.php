@@ -55,7 +55,6 @@ class WdDatabaseTable extends WdObject
 	 *
 	 * @var string
 	 */
-
 	protected $alias;
 
 	/**
