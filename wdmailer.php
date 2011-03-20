@@ -1,12 +1,12 @@
 <?php
 
-/**
- * This file is part of the WdCore framework
+/*
+ * This file is part of the WdCore package.
  *
- * @author Olivier Laviale <olivier.laviale@gmail.com>
- * @link http://www.weirdog.com/wdcore/
- * @copyright Copyright (c) 2007-2010 Olivier Laviale
- * @license http://www.weirdog.com/wdcore/license/
+ * (c) Olivier Laviale <olivier.laviale@gmail.com>
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
  */
 
 class WdMailer
