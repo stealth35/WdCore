@@ -16,9 +16,12 @@ require_once 'helpers/utils.php';
 require_once 'helpers/debug.php';
 require_once 'wdobject.php';
 
+/**
+ * @property WdDatabase $db The primary database connection.
+ */
 class WdCore extends WdObject
 {
-	const VERSION = '0.9.0-dev';
+	const VERSION = '0.10.0-dev';
 
 	static public $config = array();
 
@@ -267,66 +270,9 @@ class WdCore extends WdObject
 			return;
 		}
 
-		$operation->dispatch();
+		$operation->__invoke();
 
 		return $operation;
-	}
-
-	/**
-	 * Display information about the core and its modules.
-	 *
-	 * This is the callback used by the "/api/core/aloha" operation.
-	 */
-
-	static public function operation_aloha()
-	{
-		global $core;
-
-		$enabled = array();
-		$disabled = array();
-
-		foreach ($core->modules->descriptors as $module_id => $descriptor)
-		{
-			if (!empty($descriptor[WdModule::T_DISABLED]))
-			{
-				$disabled[] = $module_id;
-
-				continue;
-			}
-
-			$enabled[] = $module_id;
-		}
-
-		sort($enabled);
-		sort($disabled);
-
-		header('Content-Type: text/plain; charset=utf-8');
-
-		$rc  = 'WdCore version ' . self::VERSION . ' is running here with:';
-		$rc .= PHP_EOL . PHP_EOL . implode(PHP_EOL, $enabled);
-		$rc .= PHP_EOL . PHP_EOL . 'Disabled modules:';
-		$rc .= PHP_EOL . PHP_EOL . implode(PHP_EOL, $disabled);
-		$rc .= PHP_EOL . PHP_EOL . strip_tags(implode(PHP_EOL, WdDebug::fetchMessages('debug')));
-
-		return $rc;
-	}
-
-	/**
-	 * Keeps the user's session alive. Only already created sessions are kept alive, new sessions
-	 * are *not* created.
-	 */
-	static public function operation_ping()
-	{
-		global $core;
-
-		header('Content-Type: text/plain; charset=utf-8');
-
-		if (WdSession::exists())
-		{
-			$core->session;
-		}
-
-		return 'pong';
 	}
 }
 
@@ -698,15 +644,11 @@ class WdModulesAccessor extends WdObject implements ArrayAccess
 
 		$autoload = array();
 
-		//COMPAT-20110108
+		$operations_dir = $path . 'operations' . DIRECTORY_SEPARATOR;
 
-		$autoload_dir = $path . 'autoload' . DIRECTORY_SEPARATOR;
-
-		if (is_dir($autoload_dir))
+		if (is_dir($operations_dir))
 		{
-			$dh = opendir($autoload_dir);
-
-			WdDebug::trigger('the autoload dir was a bad idea, we should remove it: \1', array($autoload_dir));
+			$dh = opendir($operations_dir);
 
 			while (($file = readdir($dh)) !== false)
 			{
@@ -715,20 +657,12 @@ class WdModulesAccessor extends WdObject implements ArrayAccess
 					continue;
 				}
 
-				$name = basename($file, '.php');
-
-				if ($name[0] == '_')
-				{
-					$name = $flat_id . $name;
-				}
-
-				$autoload[$name] = $autoload_dir . $file;
+				$name = $flat_id . '__' . basename($file, '.php') . '_WdOperation';
+				$autoload[$name] = $operations_dir . $file;
 			}
 
 			closedir($dh);
 		}
-
-		// /COMPAT
 
 		if (file_exists($path . 'module.php'))
 		{

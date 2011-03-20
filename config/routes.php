@@ -4,11 +4,11 @@ return array
 (
 	'/api/core/aloha' => array
 	(
-		'callback' => array('WdCore', 'operation_aloha')
+		'class' => 'core__aloha_WdOperation'
 	),
 
 	'/api/core/ping' => array
 	(
-		'callback' => array('WdCore', 'operation_ping')
+		'class' => 'core__ping_WdOperation'
 	)
 );

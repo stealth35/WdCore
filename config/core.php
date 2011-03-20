@@ -1,5 +1,7 @@
 <?php
 
+$operations_path = $path . 'operations' . DIRECTORY_SEPARATOR;
+
 return array
 (
 	'autoload' => array
@@ -25,7 +27,12 @@ return array
 		'WdRoute' => $path . 'wdroute.php',
 		'WdSession' => $path . 'wdsession.php',
 		'WdTranslator' => $path . 'wdi18n.php',
-		'WdUploaded' => $path . 'wduploaded.php'
+		'WdUploaded' => $path . 'wduploaded.php',
+
+		'delete_WdOperation' => $operations_path . 'delete.php',
+		'save_WdOperation' => $operations_path . 'save.php',
+		'core__aloha_WdOperation' => $operations_path . 'core__aloha.php',
+		'core__ping_WdOperation' => $operations_path . 'core__ping.php'
 	),
 
 	'cache configs' => false,
