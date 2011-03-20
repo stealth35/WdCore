@@ -25,6 +25,14 @@ class WdUploaded
 	public $er;
 	public $er_message;
 
+	/**
+	 * Constructor.
+	 *
+	 * @param string $key Identifier for the $_FILES array.
+	 * @param array|null $accepted_types
+	 * @param bool $required
+	 * @param int $index
+	 */
 	public function __construct($key, $accepted_types=null, $required=false, $index=0)
 	{
 		$this->accepted_types = $accepted_types;
@@ -229,19 +237,7 @@ class WdUploaded
 
 			case self::ERR_TYPE:
 			{
-				$list = $this->accepted_types;
-				$last = array_pop($list);
-
-				$this->er_message = t
-				(
-					$list ? '@upload.error.mimeList' : '@upload.error.mime', array
-					(
-						'%mime' => $this->mime,
-						'%type' => $last,
-						':list' => implode(', ', $list),
-						':last' => $last
-					)
-				);
+				$this->er_message = t('error.message.upload.mime', array('%accepted' => implode(', ', array_keys($this->accepted_types))));
 			}
 			break;
 
@@ -320,6 +316,7 @@ class WdUploaded
 	static public $mimes_by_extension = array
 	(
 		'.doc' => 'application/msword',
+		'.docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
 		'.flv' => 'video/x-flv',
 		'.gif' => 'image/gif',
 		'.jpg' => 'image/jpeg',
@@ -332,7 +329,8 @@ class WdUploaded
 		'.psd' => 'application/psd',
 		'.rar' => 'application/rar',
 		'.zip' => 'application/zip',
-		'.xls' => 'application/vnd.ms-excel'
+		'.xls' => 'application/vnd.ms-excel',
+		'.xlsx' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
 	);
 
 	static public function getMIME($filename, &$extension=null)

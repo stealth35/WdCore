@@ -32,8 +32,7 @@ return array
 	# WdUpload
 	#
 
-	'@upload.error.mime' => "Le type de fichier %mime n'est pas supporté. Le type fichier doit être %type.",
-	'@upload.error.mimeList' => "Le type de fichier %mime n'est pas supporté. Le type de fichier doit être un des suivant : :list or :last.",
+	'error.message.upload.mime' => "Seuls les types de fichier suivant sont acceptés : %accepted.",
 
 	'@gender.misses' => 'Madame',
 	'@gender.miss' => 'Mademoiselle',
@@ -48,8 +47,8 @@ return array
 		'mister' => 'Monsieur'
 	),
 
-	":size\xC2\xA0b" => ":size\xC2\xA0o",
-	":size\xC2\xA0Kb" => ":size\xC2\xA0Ko",
-	":size\xC2\xA0Mb" => ":size\xC2\xA0Mo",
-	":size\xC2\xA0Gb" => ":size\xC2\xA0Go"
+	":size\xC2\xA0b" => ":size o",
+	":size\xC2\xA0Kb" => ":size Ko",
+	":size\xC2\xA0Mb" => ":size Mo",
+	":size\xC2\xA0Gb" => ":size Go"
 );

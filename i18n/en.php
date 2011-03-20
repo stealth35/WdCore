@@ -30,8 +30,7 @@ return array
 	# WdUpload
 	#
 
-	'@upload.error.mime' => "The file type %mime is not supported. The file type must be %type.",
-	'@upload.error.mimeList' => "The file type %mime is not supported. The file type must be of the following: :list or :last.",
+	'error.message.upload.mime' => "Only the following file types are accepted: %accepted.",
 
 	'label.salutation' => 'Salutation',
 
