@@ -830,7 +830,7 @@ class WdDatabaseStatement extends PDOStatement
 	 * 
 	 * @return mixed
 	 */
-	public function fetchCsv($delimiter = ';', $header = true, $return = false, $filename = 'php://temp')
+	public function fetchCsv($delimiter=';', $header=true, $return=false, $filename='php://temp')
 	{
 		if(($fp = fopen($filename, 'rb+')) === false)
 		{
