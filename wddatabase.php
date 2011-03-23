@@ -830,7 +830,7 @@ class WdDatabaseStatement extends PDOStatement
 	 */
 	public function fetchCsv($delimiter = ';', $header = true, $return = false, $filename = 'php://temp')
 	{
-		$fp = fopen($filename, 'wb');
+		$fp = fopen($filename, 'rb+');
 		
 		$row = $this->fetch(PDO::FETCH_ASSOC);
 
