@@ -334,7 +334,7 @@ class WdUploaded
 	);
 
 	static public function getMIME($filename, &$extension=null)
-	{		
+	{	
 		$extension = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
 		
 		if(array_key_exists($extension, self::$mimes_by_extension))
