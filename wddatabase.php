@@ -850,7 +850,7 @@ class WdDatabaseStatement extends PDOStatement
 		}
 		while($row = $this->fetch(PDO::FETCH_NUM));
 		
-		if($return = true)
+		if($return === true)
 		{
 			rewind($fp);
 			$content = stream_get_contents($fp);
