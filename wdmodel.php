@@ -11,8 +11,6 @@
 
 require_once 'wddatabasetable.php';
 
-define('WDMODEL_USE_APC', false);
-
 if (!defined('WDMODEL_USE_APC'))
 {
 	define('WDMODEL_USE_APC', function_exists('apc_store'));
