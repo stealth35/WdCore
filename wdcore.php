@@ -644,20 +644,14 @@ class WdModulesAccessor extends WdObject implements ArrayAccess
 
 		if (is_dir($operations_dir))
 		{
-			$dh = opendir($operations_dir);
-
-			while (($file = readdir($dh)) !== false)
+			$dir = new DirectoryIterator($operations_dir);
+			$filter = new RegexIterator($dir, '#\.php$#');
+			
+			foreach ($dir as $file)
 			{
-				if (substr($file, -4, 4) != '.php')
-				{
-					continue;
-				}
-
-				$name = $flat_id . '__' . basename($file, '.php') . '_WdOperation';
+				$name = $flat_id . '__' . $file->getBasename('.php') . '_WdOperation';
 				$autoload[$name] = $operations_dir . $file;
 			}
-
-			closedir($dh);
 		}
 
 		if (file_exists($path . 'module.php'))
