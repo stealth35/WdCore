@@ -315,27 +315,27 @@ class WdUploaded
 
 	static public $mimes_by_extension = array
 	(
-		'doc' => 'application/msword',
-		'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-		'flv' => 'video/x-flv',
-		'gif' => 'image/gif',
-		'jpg' => 'image/jpeg',
-		'jpeg' => 'image/jpeg',
-		'js' => 'application/javascript',
-		'mp3' => 'audio/mpeg',
-		'odt' => 'application/vnd.oasis.opendocument.text',
-		'pdf' => 'application/pdf',
-		'png' => 'image/png',
-		'psd' => 'application/psd',
-		'rar' => 'application/rar',
-		'zip' => 'application/zip',
-		'xls' => 'application/vnd.ms-excel',
-		'xlsx' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+		'.doc' => 'application/msword',
+		'.docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+		'.flv' => 'video/x-flv',
+		'.gif' => 'image/gif',
+		'.jpg' => 'image/jpeg',
+		'.jpeg' => 'image/jpeg',
+		'.js' => 'application/javascript',
+		'.mp3' => 'audio/mpeg',
+		'.odt' => 'application/vnd.oasis.opendocument.text',
+		'.pdf' => 'application/pdf',
+		'.png' => 'image/png',
+		'.psd' => 'application/psd',
+		'.rar' => 'application/rar',
+		'.zip' => 'application/zip',
+		'.xls' => 'application/vnd.ms-excel',
+		'.xlsx' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
 	);
 
 	static public function getMIME($filename, &$extension=null)
 	{
-		$extension = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
+		$extension = '.' . strtolower(pathinfo($filename, PATHINFO_EXTENSION));
 		
 		if(array_key_exists($extension, self::$mimes_by_extension))
 		{
