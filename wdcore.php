@@ -647,7 +647,7 @@ class WdModulesAccessor extends WdObject implements ArrayAccess
 			$dir = new DirectoryIterator($operations_dir);
 			$filter = new RegexIterator($dir, '#\.php$#');
 			
-			foreach ($dir as $file)
+			foreach ($filter as $file)
 			{
 				$name = $flat_id . '__' . $file->getBasename('.php') . '_WdOperation';
 				$autoload[$name] = $operations_dir . $file;
