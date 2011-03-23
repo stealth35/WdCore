@@ -526,29 +526,29 @@ class WdModulesAccessor extends WdObject implements ArrayAccess
 
 		foreach (WdCore::$config['modules'] as $root)
 		{
-			$location = getcwd();
-
-			chdir($root);
-
-			$dh = opendir($root);
-
-			if (!$dh)
+			try
+			{
+				$dir = new DirectoryIterator($root);
+			}
+			catch(UnexpectedValueException $e)
 			{
 				throw new WdException
-				(
-					'Unable to open directory %root', array
 					(
-						'%root' => $root
-					)
-				);
+						'Unable to open directory %root', array
+						(
+							'%root' => $root
+						)
+					);
 			}
 
-			while (($module_id = readdir($dh)) !== false)
+			foreach ($dir as $file)
 			{
-				if ($module_id{0} == '.' || !is_dir($module_id))
+				if ($file->isDot() || !$file->isDir())
 				{
 					continue;
 				}
+				
+				$module_id = $file->getFilename();
 
 				$module_path = $root . DIRECTORY_SEPARATOR . $module_id;
 				$read = $this->index_module($module_id, $module_path . DIRECTORY_SEPARATOR);
@@ -590,10 +590,6 @@ class WdModulesAccessor extends WdObject implements ArrayAccess
 					}
 				}
 			}
-
-			closedir($dh);
-
-			chdir($location);
 		}
 
 		return $index;
