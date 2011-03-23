@@ -94,6 +94,10 @@ class WdSession
 		{
 			output_add_rewrite_var(session_name(), session_id());
 		}
+		else
+		{
+			output_reset_rewrite_vars();	
+		}
 
 		session_start();
 	}
