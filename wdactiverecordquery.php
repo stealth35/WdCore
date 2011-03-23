@@ -9,7 +9,7 @@
  * file that was distributed with this source code.
  */
 
-class WdActiveRecordQuery extends WdObject implements Iterator
+class WdActiveRecordQuery extends WdObject implements IteratorAggregate
 {
 	protected $model;
 
