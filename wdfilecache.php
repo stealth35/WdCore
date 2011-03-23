@@ -271,39 +271,22 @@ class WdFileCache
 			return false;
 		}
 
-		$dh = opendir($root);
-
-		if (!$dh)
-		{
-			return false;
-		}
+		$dir = new DirectoryIterator($root);
 
 		#
 		# create file list, with the filename as key and ctime and size as value.
 		# we set the ctime first to be able to sort the file by ctime when necessary.
 		#
 
-		$location = getcwd();
-
-		chdir($root);
-
 		$files = array();
 
-		while (($file = readdir($dh)) !== false)
+		foreach ($dir as $file)
 		{
-			if ($file{0} == '.')
+			if (!$file->isDot())
 			{
-				continue;
-			}
-
-			$stat = stat($file);
-
-			$files[$file] = array($stat['ctime'], $stat['size']);
+				$files[$file->getFilename()] = array($file->getCTime(), $file->getSize());
+			}			
 		}
-
-		closedir($dh);
-
-		chdir($location);
 
 		return $files;
 	}
