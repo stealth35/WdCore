@@ -9,7 +9,7 @@
  * file that was distributed with this source code.
  */
 
-class WdActiveRecordQuery extends WdObject implements Iterator
+class WdActiveRecordQuery extends WdObject implements IteratorAggregate
 {
 	protected $model;
 
@@ -695,32 +695,8 @@ class WdActiveRecordQuery extends WdObject implements Iterator
 	 * ITERATOR
 	 */
 
-	private $position;
-	private $entries;
-
-	function rewind()
+	public function getIterator()
 	{
-		$this->position = 0;
-		$this->entries = $this->all();
-	}
-
-	function current()
-	{
-		return $this->entries[$this->position];
-	}
-
-	function key()
-	{
-		return $this->position;
-	}
-
-	function next()
-	{
-		++$this->position;
-	}
-
-	function valid()
-	{
-		return isset($this->entries[$this->position]);
-	}
+		return new ArrayIterator($this->all());
+    }
 }
