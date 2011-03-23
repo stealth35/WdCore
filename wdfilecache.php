@@ -270,8 +270,21 @@ class WdFileCache
 
 			return false;
 		}
-
-		$dir = new DirectoryIterator($root);
+		
+		try
+		{
+			$dir = new DirectoryIterator($root);
+		}
+		catch(UnexpectedValueException $e)
+		{
+			throw new WdException
+				(
+					'Unable to open directory %root', array
+					(
+						'%root' => $root
+					)
+				);
+		}
 
 		#
 		# create file list, with the filename as key and ctime and size as value.
