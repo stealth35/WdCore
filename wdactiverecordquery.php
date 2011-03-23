@@ -698,5 +698,5 @@ class WdActiveRecordQuery extends WdObject implements IteratorAggregate
 	public function getIterator()
 	{
 		return new ArrayIterator($this->all());
-    }
+	}
 }
