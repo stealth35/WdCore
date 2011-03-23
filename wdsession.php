@@ -81,8 +81,11 @@ class WdSession
 		{
 			session_id($id);
 		}
-
-		ini_set('session.use_trans_sid', $options['use_trans_sid']);
+		
+		if($options['use_trans_sid'])
+		{
+			output_add_rewrite_var(session_name(), session_id());
+		}		
 
 		session_name($options['name']);
 		session_set_cookie_params($options['lifetime'], $options['path'], $options['domain'], $options['secure'], $options['httponly']);
