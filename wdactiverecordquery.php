@@ -695,32 +695,8 @@ class WdActiveRecordQuery extends WdObject implements IteratorAggregate
 	 * ITERATOR
 	 */
 
-	private $position;
-	private $entries;
-
-	function rewind()
+	public function getIterator()
 	{
-		$this->position = 0;
-		$this->entries = $this->all();
-	}
-
-	function current()
-	{
-		return $this->entries[$this->position];
-	}
-
-	function key()
-	{
-		return $this->position;
-	}
-
-	function next()
-	{
-		++$this->position;
-	}
-
-	function valid()
-	{
-		return isset($this->entries[$this->position]);
+		return new ArrayIterator($this->all());
 	}
 }
