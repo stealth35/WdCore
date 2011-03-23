@@ -827,10 +827,15 @@ class WdDatabaseStatement extends PDOStatement
 	 * @param boolean $header[optional]
 	 * @param boolean $return[optional]
 	 * @param string $filename[optional]
+	 * 
+	 * @return mixed
 	 */
 	public function fetchCsv($delimiter = ';', $header = true, $return = false, $filename = 'php://temp')
 	{
-		$fp = fopen($filename, 'rb+');
+		if(($fp = fopen($filename, 'rb+')) === false)
+		{
+			return false;
+		}
 		
 		$row = $this->fetch(PDO::FETCH_ASSOC);
 
@@ -855,5 +860,7 @@ class WdDatabaseStatement extends PDOStatement
 		}
 		
 		fclose($fp);
+		
+		return true;
 	}
 }
