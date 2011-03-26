@@ -80,9 +80,7 @@ class WdSession
 		if ($id)
 		{
 			session_id($id);
-		}
-
-		ini_set('session.use_trans_sid', $options['use_trans_sid']);
+		}				
 
 		session_name($options['name']);
 		session_set_cookie_params($options['lifetime'], $options['path'], $options['domain'], $options['secure'], $options['httponly']);
@@ -90,6 +88,15 @@ class WdSession
 		if ($options['cache_limiter'] !== null)
 		{
 			session_cache_limiter($options['cache_limiter']);
+		}
+		
+		if($options['use_trans_sid'])
+		{
+			output_add_rewrite_var(session_name(), session_id());
+		}
+		else
+		{
+			output_reset_rewrite_vars();	
 		}
 
 		session_start();
