@@ -121,8 +121,6 @@ function wd_kill_magic_quotes()
 		$_POST = array_map('wd_strip_slashes_recursive', $_POST);
 		$_COOKIE = array_map('wd_strip_slashes_recursive', $_COOKIE);
 		$_REQUEST = array_map('wd_strip_slashes_recursive', $_REQUEST);
-
-		ini_set('magic_quotes_gpc', 'Off');
 	}
 }
 
