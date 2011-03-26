@@ -55,5 +55,5 @@ return array
 	'repository.files' => '/repository/files',
 	'repository.vars' => '/repository/lib',
 
-	'sessionId' => 'wdsid'
+	'session_id' => 'wdsid'
 );
