@@ -17,7 +17,12 @@ require_once 'helpers/debug.php';
 require_once 'wdobject.php';
 
 /**
+ * @property WdConnectionsAccessor $connections Database connections accessor.
  * @property WdDatabase $db The primary database connection.
+ * @property WdModelsAccessor $models Models accessor.
+ * @property WdModulesAccessor $modules Modules accessor.
+ * @property WdSession $session User's session. Injected by the WdSession class.
+ * @property WdVarsAccessor $vars Persistant variables accessor.
  */
 class WdCore extends WdObject
 {
@@ -111,7 +116,6 @@ class WdCore extends WdObject
 	 *
 	 * @param Exception $exception
 	 */
-
 	public static function exception_handler(Exception $exception)
 	{
 		exit($exception);
@@ -142,7 +146,6 @@ class WdCore extends WdObject
 	 * @param string $name The name of the class
 	 * @return boolean Whether or not the required file could be found.
 	 */
-
 	static private function autoload_handler($name)
 	{
 		if ($name == 'parent')
@@ -181,18 +184,14 @@ class WdCore extends WdObject
 	 *
 	 * @return WdDatabase
 	 */
-
 	protected function __get_db()
 	{
 		return $this->connections['primary'];
 	}
 
 	/**
-	 * Whether or not the core is running.
-	 *
-	 * @var boolean
+	 * @var boolean true if the core is running, false otherwise.
 	 */
-
 	static public $is_running = false;
 
 	/**
@@ -200,9 +199,7 @@ class WdCore extends WdObject
 	 *
 	 * Running the core object implies running startup modules, decoding operation, dispatching
 	 * operation.
-	 *
 	 */
-
 	public function run()
 	{
 		self::$is_running = true;
@@ -228,7 +225,6 @@ class WdCore extends WdObject
 	 * Before the modules are actually ran, their index is used to alter the I18n load paths, the
 	 * config paths and the core's `autoload` and `classes aliases` config properties.
 	 */
-
 	protected function run_modules()
 	{
 		$index = $this->modules->index;
@@ -252,7 +248,6 @@ class WdCore extends WdObject
 	/**
 	 * One can override this method to provide a context for the application.
 	 */
-
 	protected function run_context()
 	{
 
@@ -288,9 +283,7 @@ if (!function_exists('class_alias'))
 
 /**
  * Accessor class for the modules of the framework.
- *
  */
-
 class WdModulesAccessor extends WdObject implements ArrayAccess
 {
 	/**
@@ -299,27 +292,18 @@ class WdModulesAccessor extends WdObject implements ArrayAccess
 	protected $core;
 
 	/**
-	 * If true, loaded module are run when loaded for the first time.
-	 *
-	 * @var boolean
+	 * @var boolean If true, loaded module are run when loaded for the first time.
 	 */
-
 	public $autorun = false;
 
 	/**
-	 * The descriptors for the modules.
-	 *
-	 * @var array
+	 * @var array The descriptors for the modules.
 	 */
-
 	public $descriptors = array();
 
 	/**
-	 * Loaded modules.
-	 *
-	 * @var array
+	 * @var array Loaded modules.
 	 */
-
 	private $modules = array();
 
 	/**
@@ -339,7 +323,6 @@ class WdModulesAccessor extends WdObject implements ArrayAccess
 	 *
 	 * @see ArrayAccess::offsetSet()
 	 */
-
 	public function offsetSet($id, $enable)
 	{
 		if (empty($this->descriptors[$id]))
@@ -359,7 +342,6 @@ class WdModulesAccessor extends WdObject implements ArrayAccess
 	 * @param string $id The module's id.
 	 * @return boolean Whether or not the module is available.
 	 */
-
 	public function offsetExists($id)
 	{
 		$descriptors = $this->core->modules->descriptors;
@@ -377,7 +359,6 @@ class WdModulesAccessor extends WdObject implements ArrayAccess
 	 *
 	 * @see ArrayAccess::offsetUnset()
 	 */
-
 	public function offsetUnset($id)
 	{
 		if (empty($this->descriptors[$id]))
@@ -398,7 +379,6 @@ class WdModulesAccessor extends WdObject implements ArrayAccess
 	 * @throws WdException If the module's descriptor is not defined, or the module is disabled.
 	 * @return WdModule The module object.
 	 */
-
 	public function offsetGet($id)
 	{
 		if (isset($this->modules[$id]))
@@ -468,7 +448,6 @@ class WdModulesAccessor extends WdObject implements ArrayAccess
 	 * configuration paths to the configuration and alters the core's configuration for autoloads
 	 * and more.
 	 */
-
 	protected function index()
 	{
 		$paths = WdCore::$config['modules'];
@@ -515,7 +494,6 @@ class WdModulesAccessor extends WdObject implements ArrayAccess
 	 *
 	 * @return array
 	 */
-
 	public function index_construct()
 	{
 		$index = array
@@ -536,12 +514,12 @@ class WdModulesAccessor extends WdObject implements ArrayAccess
 			catch(UnexpectedValueException $e)
 			{
 				throw new WdException
+				(
+					'Unable to open directory %root', array
 					(
-						'Unable to open directory %root', array
-						(
-							'%root' => $root
-						)
-					);
+						'%root' => $root
+					)
+				);
 			}
 
 			foreach ($dir as $file)
@@ -617,7 +595,6 @@ class WdModulesAccessor extends WdObject implements ArrayAccess
 	 * @param string $id The module's identifier
 	 * @param string $path The module's directory
 	 */
-
 	protected function index_module($id, $path)
 	{
 		$descriptor_path = $path . 'descriptor.php';
@@ -700,9 +677,7 @@ class WdModulesAccessor extends WdObject implements ArrayAccess
 	 *
 	 * The T_STARTUP tag defines the priority of the module in the run sequence.
 	 * The higher the value, the earlier the module is ran.
-	 *
 	 */
-
 	public function run()
 	{
 		$list = array();
@@ -728,9 +703,7 @@ class WdModulesAccessor extends WdObject implements ArrayAccess
 
 /**
  * Accessor for the models of the framework.
- *
  */
-
 class WdModelsAccessor implements ArrayAccess
 {
 	/**
@@ -743,6 +716,11 @@ class WdModelsAccessor implements ArrayAccess
 	 */
 	private $models = array();
 
+	public function __construct(WdCore $core)
+	{
+		$this->core = $core;
+	}
+
 	public function offsetSet($offset, $value)
 	{
 		throw new WdException('Offset is not settable');
@@ -753,8 +731,8 @@ class WdModelsAccessor implements ArrayAccess
 	 * the module actually defines the model.
 	 *
 	 * @see ArrayAccess::offsetExists()
+	 * @return true if the model exists and is accessible, false otherwise.
 	 */
-
 	public function offsetExists($offset)
 	{
 		list($module_id, $model_id) = explode('/', $offset) + array(1 => 'primary');
@@ -782,8 +760,8 @@ class WdModelsAccessor implements ArrayAccess
 	 * _model_ part is optionnal, if it's not defined it defaults to "primary".
 	 *
 	 * @see ArrayAccess::offsetGet()
+	 * @return WdModel The model for the specified offset.
 	 */
-
 	public function offsetGet($offset)
 	{
 		if (empty($this->models[$offset]))
@@ -801,9 +779,7 @@ class WdModelsAccessor implements ArrayAccess
 
 /**
  * Accessor for the variables stored as files in the "/repository/var" directory.
- *
  */
-
 class WdVarsAccessor implements ArrayAccess
 {
 	public function offsetSet($name, $value)
@@ -848,7 +824,6 @@ class WdVarsAccessor implements ArrayAccess
 	 * (or if the _tll_ is __0__), the value will persist until it is removed from the cache
 	 * manualy or otherwise fails to exist in the cache.
 	 */
-
 	public function store($key, $value, $ttl=0)
 	{
 		$ttl_mark = $this->get_filename($key . '.ttl');
@@ -891,9 +866,7 @@ class WdVarsAccessor implements ArrayAccess
 
 /**
  * Handles the configuration of the framework's components.
- *
  */
-
 class WdConfig
 {
 	static private $pending_paths = array();
@@ -1023,9 +996,7 @@ class WdConfig
 
 /**
  * Connections accessor.
- *
  */
-
 class WdConnectionsAccessor implements ArrayAccess, IteratorAggregate
 {
 	private $connections = array();
@@ -1040,7 +1011,6 @@ class WdConnectionsAccessor implements ArrayAccess, IteratorAggregate
 	 *
 	 * @see ArrayAccess::offsetExists()
 	 */
-
 	public function offsetExists($id)
 	{
 		return WdCore::$config['connections'][$id];
@@ -1062,7 +1032,6 @@ class WdConnectionsAccessor implements ArrayAccess, IteratorAggregate
 	 * @param $id The name of the connection to get.
 	 * @return WdDatabase
 	 */
-
 	public function offsetGet($id)
 	{
 		if (isset($this->connections[$id]))
@@ -1108,10 +1077,9 @@ class WdConnectionsAccessor implements ArrayAccess, IteratorAggregate
 	}
 
 	/**
-	 * @return Traversable
 	 * @see IteratorAggregate::getIterator()
+	 * @return Traversable
 	 */
-
 	public function getIterator()
 	{
 		return new ArrayIterator($this->connections);
