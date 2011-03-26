@@ -73,7 +73,7 @@ class WdCore extends WdObject
 	 */
 	protected function __get_modules()
 	{
-		return new WdModulesAccessor();
+		return new WdModulesAccessor($this);
 	}
 
 	/**
@@ -83,7 +83,7 @@ class WdCore extends WdObject
 	 */
 	protected function __get_models()
 	{
-		return new WdModelsAccessor();
+		return new WdModelsAccessor($this);
 	}
 
 	/**
@@ -294,6 +294,11 @@ if (!function_exists('class_alias'))
 class WdModulesAccessor extends WdObject implements ArrayAccess
 {
 	/**
+	 * @var WdCore Core object, better than using globals.
+	 */
+	protected $core;
+
+	/**
 	 * If true, loaded module are run when loaded for the first time.
 	 *
 	 * @var boolean
@@ -320,9 +325,9 @@ class WdModulesAccessor extends WdObject implements ArrayAccess
 	/**
 	 * The index for the available modules is created with the accessor object.
 	 */
-
-	public function __construct()
+	public function __construct(WdCore $core)
 	{
+		$this->core = $core;
 		$this->index;
 	}
 
@@ -357,9 +362,7 @@ class WdModulesAccessor extends WdObject implements ArrayAccess
 
 	public function offsetExists($id)
 	{
-		global $core;
-
-		$descriptors = $core->modules->descriptors;
+		$descriptors = $this->core->modules->descriptors;
 
 		if (empty($descriptors[$id]) || !empty($descriptors[$id][WdModule::T_DISABLED]))
 		{
@@ -730,6 +733,14 @@ class WdModulesAccessor extends WdObject implements ArrayAccess
 
 class WdModelsAccessor implements ArrayAccess
 {
+	/**
+	 * @var WdCore The core object. Better then using globals.
+	 */
+	protected $core;
+
+	/**
+	 * @var Loaded models.
+	 */
 	private $models = array();
 
 	public function offsetSet($offset, $value)
@@ -746,16 +757,14 @@ class WdModelsAccessor implements ArrayAccess
 
 	public function offsetExists($offset)
 	{
-		global $core;
-
 		list($module_id, $model_id) = explode('/', $offset) + array(1 => 'primary');
 
-		if (empty($core->modules[$module_id]))
+		if (empty($this->core->modules[$module_id]))
 		{
 			return false;
 		}
 
-		$descriptor = $core->modules->descriptors[$module_id];
+		$descriptor = $this->core->modules->descriptors[$module_id];
 
 		return isset($descriptor[WdModule::T_MODELS][$model_id]);
 	}
