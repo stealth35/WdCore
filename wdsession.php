@@ -11,11 +11,17 @@
 
 class WdSession
 {
-	static public function hook_get_session($caller)
+	/**
+	 * Returns the session object.
+	 *
+	 * This is the getter for the `session` property injected in the {@link WdCore} class.
+	 *
+	 * @param WdCore $core
+	 * @return WdSession
+	 */
+	static public function hook_get_session(WdCore $core)
 	{
-		// FIXME-20100708: use config
-
-		$session_name = 'wdsid';
+		$session_name = WdCore::$config['session_id'];
 
 		$session = new WdSession
 		(
@@ -31,7 +37,7 @@ class WdSession
 		// Maybe we could trigger an event 'application.session.load', giving a chance to others
 		// to handle the session, with a 'application.session.load:before' too.
 
-		WdEvent::fire('application.session.load', array('application' => $caller, 'session' => $session));
+		WdEvent::fire('application.session.load', array('application' => $core, 'session' => $session));
 
 		if (isset($session->wddebug['messages']))
 		{
@@ -44,16 +50,11 @@ class WdSession
 	/**
 	 * Checks if a session identifier can be found to retrieve a session.
 	 *
-	 * @return bool
+	 * @return bool true if the session identifier exists in the cookie, false otherwise.
 	 */
-
 	static public function exists()
 	{
-		// FIXME-20100708: use config
-
-		$session_name = 'wdsid';
-
-		return !empty($_COOKIE[$session_name]);
+		return !empty($_COOKIE[WdCore::$config['session_id']]);
 	}
 
 	public function __construct(array $options=array())
