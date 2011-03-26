@@ -157,7 +157,7 @@ class WdDebug
 		#
 		#
 
-		$rc = '<code class="wd-core-debug">' . join("<br />\n", $lines) . '</code><br />';
+		$rc = '<code class="wd-core-debug">' . implode("<br />\n", $lines) . '</code><br />';
 
 		self::report($rc);
 
@@ -251,7 +251,7 @@ class WdDebug
 				'%02d ➦ %s(%d): %s%s%s(%s)',
 
 				$count - $i, $trace_file, $trace_line, $trace_class, $trace_type,
-				$trace_function, wd_entities(join(', ', $params))
+				$trace_function, wd_entities(implode(', ', $params))
 			);
 		}
 

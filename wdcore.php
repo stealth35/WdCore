@@ -114,7 +114,7 @@ class WdCore extends WdObject
 
 	public static function exception_handler(Exception $exception)
 	{
-		die($exception);
+		exit($exception);
 	}
 
 	/**
