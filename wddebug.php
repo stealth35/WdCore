@@ -263,7 +263,7 @@ class WdDebug
 		return $lines;
 	}
 
-	public static function codeSample($file, $line, &$saveback=null)
+	public static function codeSample($file, $line = 0, &$saveback=null)
 	{
 		if (!self::$config['codeSample'])
 		{
@@ -277,39 +277,26 @@ class WdDebug
 			return array();
 		}
 
-		$lines =  array('<br /><strong>Code sample:</strong><br />');
+		$lines = array('<br /><strong>Code sample:</strong><br />');
+		
+		$line < 5 ? $start = 0 : $start = $line - 5;		
+		
+		$fh = new SplFileObject($file);
+		$sample = new LimitIterator($fh, $start, 10); 
 
-		$fh = fopen($file, 'r');
-
-		$i = 0;
-		$start = $line - 5;
-		$stop = $line + 5;
-
-		while ($str = fgets($fh))
+		foreach ($sample as $i => $str)
 		{
-			$i++;
+			$str = wd_entities(rtrim($str));
 
-			if ($i > $start)
+			if (++$i == $line)
 			{
-				$str = wd_entities(rtrim($str));
-
-				if ($i == $line)
-				{
-					$str = '<ins>' . $str . '</ins>';
-				}
-
-				$str = str_replace("\t", '&nbsp;&nbsp;&nbsp;&nbsp;', $str);
-
-				$lines[] = $str;
+				$str = '<ins>' . $str . '</ins>';
 			}
 
-			if ($i > $stop)
-			{
-				break;
-			}
-		}
+			$str = str_replace("\t", '&nbsp;&nbsp;&nbsp;&nbsp;', $str);
 
-		fclose($fh);
+			$lines[] = $str;			
+		}		
 
 		if (is_array($saveback))
 		{

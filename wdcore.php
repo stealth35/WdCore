@@ -526,29 +526,29 @@ class WdModulesAccessor extends WdObject implements ArrayAccess
 
 		foreach (WdCore::$config['modules'] as $root)
 		{
-			$location = getcwd();
-
-			chdir($root);
-
-			$dh = opendir($root);
-
-			if (!$dh)
+			try
+			{
+				$dir = new DirectoryIterator($root);
+			}
+			catch(UnexpectedValueException $e)
 			{
 				throw new WdException
-				(
-					'Unable to open directory %root', array
 					(
-						'%root' => $root
-					)
-				);
+						'Unable to open directory %root', array
+						(
+							'%root' => $root
+						)
+					);
 			}
 
-			while (($module_id = readdir($dh)) !== false)
+			foreach ($dir as $file)
 			{
-				if ($module_id{0} == '.' || !is_dir($module_id))
+				if ($file->isDot() || !$file->isDir())
 				{
 					continue;
 				}
+				
+				$module_id = $file->getFilename();
 
 				$module_path = $root . DIRECTORY_SEPARATOR . $module_id;
 				$read = $this->index_module($module_id, $module_path . DIRECTORY_SEPARATOR);
@@ -590,10 +590,6 @@ class WdModulesAccessor extends WdObject implements ArrayAccess
 					}
 				}
 			}
-
-			closedir($dh);
-
-			chdir($location);
 		}
 
 		return $index;
@@ -648,20 +644,14 @@ class WdModulesAccessor extends WdObject implements ArrayAccess
 
 		if (is_dir($operations_dir))
 		{
-			$dh = opendir($operations_dir);
-
-			while (($file = readdir($dh)) !== false)
+			$dir = new DirectoryIterator($operations_dir);
+			$filter = new RegexIterator($dir, '#\.php$#');
+			
+			foreach ($filter as $file)
 			{
-				if (substr($file, -4, 4) != '.php')
-				{
-					continue;
-				}
-
-				$name = $flat_id . '__' . basename($file, '.php') . '_WdOperation';
+				$name = $flat_id . '__' . $file->getBasename('.php') . '_WdOperation';
 				$autoload[$name] = $operations_dir . $file;
 			}
-
-			closedir($dh);
 		}
 
 		if (file_exists($path . 'module.php'))
