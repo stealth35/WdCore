@@ -378,16 +378,16 @@ class WdObject
 		$methods = self::get_methods_definitions();
 		$methods_by_class = array();
 
-		$c = $class;
+		$classes = array($class => $class) + class_parents($class);
 
-		while ($c)
+		foreach ($classes as $c)
 		{
-			if (isset($methods[$c]))
+			if (empty($methods[$c]))
 			{
-				$methods_by_class += $methods[$c];
+				continue;
 			}
 
-			$c = get_parent_class($c);
+			$methods_by_class += $methods[$c];
 		}
 
 		self::$class_methods[$class] = $methods_by_class;
