@@ -335,8 +335,39 @@ class WdUploaded
 
 	static public function getMIME($filename, &$extension=null)
 	{
-		$extension = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
+		$extension = '.' . strtolower(pathinfo($filename, PATHINFO_EXTENSION));
+		
+		if(array_key_exists($extension, self::$mimes_by_extension))
+		{
+			return self::$mimes_by_extension[$extension];
+		}
+		
+		if(file_exists($filename))
+		{
+			if(extension_loaded('fileinfo'))
+			{
+				$fi = finfo_open(FILEINFO_MIME_TYPE);
+				
+				if($fi !== false)
+				{
+					if($mime = finfo_file($fi, $filename))
+					{
+						finfo_close($fi);
+					
+						return $mime;
+					}
+				}			
+			}
+	
+			if(function_exists('mime_content_type'))
+			{
+				if($mime = mime_content_type($filename))
+				{
+					return $mime;
+				}
+			}
+		}
 
-		return isset(self::$mimes_by_extension[$extension]) ? self::$mimes_by_extension[$extension] : 'application/octet-stream';
+		return 'application/octet-stream';
 	}
 }
