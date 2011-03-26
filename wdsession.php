@@ -57,7 +57,15 @@ class WdSession
 		return !empty($_COOKIE[WdCore::$config['session_id']]);
 	}
 
-	public function __construct(array $options=array())
+	/**
+	 * Constructor.
+	 *
+	 * The constructor is protected, only the `session` getter injected in the {@link WdCore} class
+	 * can create an instance of the class.
+	 *
+	 * @param array $options
+	 */
+	protected function __construct(array $options=array())
 	{
 		if (session_id())
 		{
@@ -81,7 +89,7 @@ class WdSession
 		if ($id)
 		{
 			session_id($id);
-		}				
+		}
 
 		session_name($options['name']);
 		session_set_cookie_params($options['lifetime'], $options['path'], $options['domain'], $options['secure'], $options['httponly']);
@@ -90,14 +98,14 @@ class WdSession
 		{
 			session_cache_limiter($options['cache_limiter']);
 		}
-		
+
 		if($options['use_trans_sid'])
 		{
 			output_add_rewrite_var(session_name(), session_id());
 		}
 		else
 		{
-			output_reset_rewrite_vars();	
+			output_reset_rewrite_vars();
 		}
 
 		session_start();
