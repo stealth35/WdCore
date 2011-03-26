@@ -111,6 +111,14 @@ class WdSession
 		session_start();
 	}
 
+	/**
+	 * Regenerates the id of the session.
+	 */
+	public function regenerate_id($delete_old_session=false)
+	{
+		return session_regenerate_id($delete_old_session);
+	}
+
 	public function &__get($property)
 	{
 		return $_SESSION[$property];
