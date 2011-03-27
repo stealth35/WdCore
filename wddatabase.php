@@ -819,48 +819,4 @@ class WdDatabaseStatement extends PDOStatement
 		
 		return $rc;
 	}
-	
-	/**
-	 * Fetch all results and put them into a file and/or string as CSV format
-	 * 
-	 * @param string $delimiter[optional]
-	 * @param boolean $header[optional]
-	 * @param boolean $return[optional]
-	 * @param string $filename[optional]
-	 * 
-	 * @return mixed
-	 */
-	public function fetchCsv($delimiter=';', $header=true, $return=false, $filename='php://temp')
-	{
-		if(($fp = fopen($filename, 'rb+')) === false)
-		{
-			return false;
-		}
-		
-		$row = $this->fetch(PDO::FETCH_ASSOC);
-
-		if($header == true)
-		{
-			fputcsv($fp, array_keys($row), $delimiter);
-		}
-		
-		do
-		{
-			fputcsv($fp, $row, $delimiter);
-		}
-		while($row = $this->fetch(PDO::FETCH_NUM));
-		
-		if($return === true)
-		{
-			rewind($fp);
-			$content = stream_get_contents($fp);
-			fclose($fp);
-			
-			return $content;
-		}
-		
-		fclose($fp);
-		
-		return true;
-	}
 }

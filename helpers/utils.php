@@ -644,3 +644,37 @@ function wd_isolated_require($__file__, $__exposed__)
 
 	return require $__file__;
 }
+
+function wd_fetch_into_csv(PDOStatement $stmt, $delimiter=';', $header=true, $return=false, $filename='php://temp')
+{
+	if(($fp = fopen($filename, 'rb+')) === false)
+	{
+		return false;
+	}
+		
+	$row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+	if($header == true)
+	{
+		fputcsv($fp, array_keys($row), $delimiter);
+	}
+		
+	do
+	{
+			fputcsv($fp, $row, $delimiter);
+	}
+	while($row = $stmt->fetch(PDO::FETCH_NUM));
+		
+	if($return === true)
+	{
+		rewind($fp);
+		$content = stream_get_contents($fp);
+		fclose($fp);
+			
+		return $content;
+	}
+		
+	fclose($fp);
+		
+	return true;
+}
