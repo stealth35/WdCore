@@ -79,7 +79,8 @@ class WdSession
 			'use_cookies' => true,
 			'use_only_cookies' => true,
 			'use_trans_sid' => false,
-			'cache_limiter' => null
+			'cache_limiter' => null,
+			'module_name' => 'files'
 		)
 
 		+ session_get_cookie_params();
@@ -97,6 +98,11 @@ class WdSession
 		if ($options['cache_limiter'] !== null)
 		{
 			session_cache_limiter($options['cache_limiter']);
+		}
+		
+		if($options['module_name'] <> session_module_name())
+		{
+			session_module_name($options['module_name']);
 		}
 
 		if($options['use_trans_sid'])
