@@ -276,12 +276,12 @@ class WdFileCache
 		catch(UnexpectedValueException $e)
 		{
 			throw new WdException
+			(
+				'Unable to open directory %root', array
 				(
-					'Unable to open directory %root', array
-					(
-						'%root' => $root
-					)
-				);
+					'%root' => $root
+				)
+			);
 		}
 
 		#
