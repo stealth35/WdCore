@@ -11,11 +11,9 @@
 
 require_once 'wddatabasetable.php';
 
-define('WDMODEL_USE_APC', false);
-
 if (!defined('WDMODEL_USE_APC'))
 {
-	define('WDMODEL_USE_APC', function_exists('apc_store'));
+	define('WDMODEL_USE_APC', version_compare(phpversion('apc'), '3.0.17') > -1);
 }
 
 class WdModel extends WdDatabaseTable implements ArrayAccess

@@ -11,8 +11,6 @@
 
 // @TODO implement time rules
 
-define('WDCACHE_USE_APC', false);
-
 if (!defined('WDCACHE_USE_APC'))
 {
 	define('WDCACHE_USE_APC', version_compare(phpversion('apc'), '3.0.17') > -1);
