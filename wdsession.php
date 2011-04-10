@@ -100,7 +100,7 @@ class WdSession
 			session_cache_limiter($options['cache_limiter']);
 		}
 
-		if($options['module_name'] <> session_module_name())
+		if($options['module_name'] != session_module_name())
 		{
 			session_module_name($options['module_name']);
 		}
