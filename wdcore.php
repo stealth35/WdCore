@@ -254,6 +254,30 @@ class WdCore extends WdObject
 	}
 
 	/**
+	 * Contextualize the API string.
+	 *
+	 * One can override the method to modify the API string in order to provide a context for the
+	 * operation e.g. prefixing the API string with a site path in order to identify the site
+	 * which the operation is intended for.
+	 *
+	 * @return string The contextualize API string.
+	 */
+	public function contextualize_api_string($string)
+	{
+		return $string;
+	}
+
+	/**
+	 * Decontextualize the API string.
+	 *
+	 * @return string The decontextualized API string.
+	 */
+	public function decontextualize_api_string($string)
+	{
+		return $string;
+	}
+
+	/**
 	 * Dispatch the operation associated with the current request, if any.
 	 */
 	protected function run_operation($uri, array $params)

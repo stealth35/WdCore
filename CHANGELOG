@@ -8,6 +8,8 @@
 
 [NEW] Fatal errors can now be reported by the WdDebug class.
 
+[NEW] The contextualize_api_string() and decontextualize_api_string() of the WdCore class.
+
 
 
 

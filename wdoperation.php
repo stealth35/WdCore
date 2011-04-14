@@ -29,9 +29,12 @@ abstract class WdOperation extends WdObject
 	 *
 	 * @param string $pattern
 	 * @param array $params
+	 * @uses WdCore::contextualize_api_string() to contextualize the API string.
 	 */
 	static public function encode($pattern, array $params=array())
 	{
+		global $core;
+
 		$destination = null;
 		$name = null;
 		$key = null;
@@ -59,7 +62,7 @@ abstract class WdOperation extends WdObject
 
 		$qs = http_build_query($params, '', '&');
 
-		return self::RESTFUL_BASE . strtr
+		$rc = self::RESTFUL_BASE . strtr
 		(
 			$pattern, array
 			(
@@ -70,6 +73,8 @@ abstract class WdOperation extends WdObject
 		)
 
 		. ($qs ? '?' . $qs : '');
+
+		return $core->contextualize_api_string($rc);
 	}
 
 	/**
@@ -132,10 +137,13 @@ abstract class WdOperation extends WdObject
 	 * @param array $params The request parameters.
 	 * @throws WdException When there is an error in the operation request.
 	 * @throws WdHTTPException When the specified operation doesn't exists.
+	 * @uses WdCore::decontextualize_api_string() to decontextualize the API string.
 	 */
 	static public function decode($uri, array $params=array())
 	{
 		global $core;
+
+		$uri = $core->decontextualize_api_string($uri);
 
 		if (substr($uri, 0, self::RESTFUL_BASE_LENGHT) == self::RESTFUL_BASE)
 		{
