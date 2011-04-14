@@ -607,11 +607,15 @@ abstract class WdOperation extends WdObject
 				)
 			);
 
+			WdEvent::fire
+			(
+				'process:before', array
+				(
+					'target' => $this
+				)
+			);
+
 			$rc = $this->process();
-		}
-		else
-		{
-			wd_log('Operation control or validation failed.');
 		}
 
 		$this->response->rc = $rc;
@@ -631,6 +635,15 @@ abstract class WdOperation extends WdObject
 				(
 					'target' => $module,
 					'operation' => $this,
+					'rc' => &$this->response->rc
+				)
+			);
+
+			WdEvent::fire
+			(
+				'process', array
+				(
+					'target' => $this,
 					'rc' => &$this->response->rc
 				)
 			);
