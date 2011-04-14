@@ -26,6 +26,7 @@ return array
 		'WdOperation' => $path . 'wdoperation.php',
 		'WdRoute' => $path . 'wdroute.php',
 		'WdSession' => $path . 'wdsession.php',
+		'WdSecurity' => $path . 'wdsecurity.php',
 		'WdTranslator' => $path . 'wdi18n.php',
 		'WdUploaded' => $path . 'wduploaded.php',
 
@@ -42,6 +43,11 @@ return array
 	'classes aliases' => array
 	(
 
+	),
+
+	'config constructors' => array
+	(
+		'objects.methods' => array(array('WdObject', 'get_methods_definitions_constructor'), 'hooks')
 	),
 
 	'connections' => array

@@ -10,6 +10,8 @@
 
 [NEW] The contextualize_api_string() and decontextualize_api_string() of the WdCore class.
 
+[NEW] Configs accessor.
+
 
 
 

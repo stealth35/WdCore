@@ -46,13 +46,15 @@ class WdHook
 
 	static public function find($ns, $name)
 	{
+		global $core;
+
 		if (!self::$hooks)
 		{
 			#
 			# the (array) cast is a workaround for an APC bug: http://pecl.php.net/bugs/bug.php?id=8118
 			#
 
-			self::$hooks = (array) WdConfig::get_constructed('hooks', array(__CLASS__, 'config_constructor'));
+			self::$hooks = (array) $core->configs->fuse('hooks', array(__CLASS__, 'config_constructor'));
 		}
 
 		if (empty(self::$hooks[$ns . '/' . $name]))

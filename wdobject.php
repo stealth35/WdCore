@@ -16,9 +16,11 @@ class WdObject
 
 	static private function get_methods_definitions()
 	{
+		global $core;
+
 		if (self::$methods === null)
 		{
-			self::$methods = WdConfig::get_constructed('objects.methods', array(__CLASS__, 'get_methods_definitions_constructor'), 'hooks');
+			self::$methods = $core->configs['objects.methods'];
 		}
 
 		return self::$methods;

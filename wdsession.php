@@ -21,7 +21,7 @@ class WdSession
 	 */
 	static public function hook_get_session(WdCore $core)
 	{
-		$session_name = WdCore::$config['session_id'];
+		$session_name = $core->config['session_id'];
 
 		$session = new WdSession
 		(
@@ -54,7 +54,9 @@ class WdSession
 	 */
 	static public function exists()
 	{
-		return !empty($_COOKIE[WdCore::$config['session_id']]);
+		global $core;
+
+		return !empty($_COOKIE[$core->config['session_id']]);
 	}
 
 	/**

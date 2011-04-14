@@ -167,7 +167,7 @@ abstract class WdOperation extends WdObject
 				}
 			}
 
-			$routes = WdConfig::get_constructed('api', array(__CLASS__, 'api_constructor'), 'routes');
+			$routes = $core->configs->fuse('api', array(__CLASS__, 'api_constructor'), 'routes');
 
 			foreach ($routes as $pattern => $route)
 			{

@@ -21,9 +21,9 @@ class WdI18n
 
 	static public function __static_construct()
 	{
-		$fragments = WdConfig::get('i18n');
+		global $core;
 
-		$config = call_user_func_array('array_merge', $fragments);
+		$config = $core->configs->fuse('i18n', 'merge');
 
 		self::$config = $config;
 

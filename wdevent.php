@@ -17,9 +17,11 @@ class WdEvent
 
 	static protected function listeners()
 	{
+		global $core;
+
 		if (empty(self::$listeners))
 		{
-			self::$listeners = WdConfig::get_constructed('events', array(__CLASS__, 'listeners_construct'), 'hooks');
+			self::$listeners = $core->configs->fuse('events', array(__CLASS__, 'listeners_construct'), 'hooks');
 		}
 
 		return self::$listeners;

@@ -15,11 +15,11 @@ class WdDebug
 
 	static public function __static_construct()
 	{
-		$fragments = WdConfig::get('debug');
+		global $core;
 
-		self::$config = call_user_func_array('wd_array_merge_recursive', $fragments);
+		$config = $core->configs['debug'];
 
-		self::$config = array_merge(self::$config, self::$config['modes'][self::$config['mode']]);
+		self::$config = array_merge($config, $config['modes'][$config['mode']]);
 	}
 
 	static public function shutdown_handler()
@@ -63,7 +63,7 @@ EOT;
 	**
 	*/
 
-	public static function errorHandler($no, $str, $file, $line, $context)
+	public static function error_handler($no, $str, $file, $line, $context)
 	{
 		if (!headers_sent())
 		{

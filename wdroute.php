@@ -20,13 +20,14 @@ class WdRoute
 	 */
 	static public function routes()
 	{
+		global $core;
 		static $constructed;
 
 		if (!$constructed)
 		{
 			$constructed = true;
 
-			self::$routes += WdConfig::get_constructed('routes', array(__CLASS__, 'routes_constructor'));
+			self::$routes += $core->configs->fuse('routes', array(__CLASS__, 'routes_constructor'));
 		}
 
 		return self::$routes;

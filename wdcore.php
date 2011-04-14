@@ -9,26 +9,23 @@
  * file that was distributed with this source code.
  */
 
-defined('WDCORE_CHECK_CIRCULAR_DEPENDENCIES') or define('WDCORE_CHECK_CIRCULAR_DEPENDENCIES', false);
-defined('WDCORE_VERBOSE_MAGIC_QUOTES') or define('WDCORE_VERBOSE_MAGIC_QUOTES', false);
-
 require_once 'helpers/utils.php';
 require_once 'helpers/debug.php';
 require_once 'wdobject.php';
 
 /**
+ * @property WdConfigsAccessor $configs Configurations accessor.
  * @property WdConnectionsAccessor $connections Database connections accessor.
  * @property WdDatabase $db The primary database connection.
  * @property WdModelsAccessor $models Models accessor.
  * @property WdModulesAccessor $modules Modules accessor.
  * @property WdSession $session User's session. Injected by the WdSession class.
  * @property WdVarsAccessor $vars Persistant variables accessor.
+ * @property array $config The "core" configuration.
  */
 class WdCore extends WdObject
 {
 	const VERSION = '0.10.0-dev';
-
-	static public $config = array();
 
 	/**
 	 * @var boolean true if core is running, false otherwise.
@@ -44,6 +41,9 @@ class WdCore extends WdObject
 	{
 		exit($exception);
 	}
+
+	static protected $autoload = array();
+	static protected $classes_aliases = array();
 
 	/**
 	 * Loads the file defining the specified class.
@@ -77,7 +77,7 @@ class WdCore extends WdObject
 			return false;
 		}
 
-		$list = self::$config['autoload'];
+		$list = self::$autoload;
 
 		if (isset($list[$name]))
 		{
@@ -91,7 +91,7 @@ class WdCore extends WdObject
 			return true;
 		}
 
-		$list = self::$config['classes aliases'];
+		$list = self::$classes_aliases;
 
 		if (isset($list[$name]))
 		{
@@ -103,8 +103,17 @@ class WdCore extends WdObject
 		return false;
 	}
 
+	/**
+	 * Constructor.
+	 *
+	 * @param array $tags
+	 */
 	public function __construct(array $tags=array())
 	{
+		global $core;
+
+		$core = $this;
+
 		$path = dirname(__FILE__);
 
 		$tags = wd_array_merge_recursive
@@ -121,25 +130,29 @@ class WdCore extends WdObject
 			$tags
 		);
 
-		WdConfig::add($tags['paths']['config']);
-
-		self::$config = call_user_func_array('wd_array_merge_recursive', WdConfig::get('core'));
-
 		$class = get_class($this);
 
 		spl_autoload_register(array($class, 'autoload_handler'));
 		set_exception_handler(array($class, 'exception_handler'));
-		set_error_handler(array('WdDebug', 'errorHandler'));
+
+		# the order is important, there's magic involved.
+
+		$this->configs->add($tags['paths']['config']);
+
+		$config = $this->config;
+
+		set_error_handler(array('WdDebug', 'error_handler'));
 
 		WdI18n::$load_paths = array_merge(WdI18n::$load_paths, $tags['paths']['i18n']);
 
+		if ($config['cache configs'])
+		{
+			$this->configs->cache_fused_fragments = true;
+			$this->configs->cache_repository = $config['repository.cache'] . '/core';
+		}
+
 		if (get_magic_quotes_gpc())
 		{
-			if (WDCORE_VERBOSE_MAGIC_QUOTES)
-			{
-				wd_log('You should disable magic quotes');
-			}
-
 			wd_kill_magic_quotes();
 		}
 	}
@@ -171,7 +184,7 @@ class WdCore extends WdObject
 	 */
 	protected function __get_vars()
 	{
-		return new WdVarsAccessor(self::$config['repository.vars']);
+		return new WdVarsAccessor($this->config['repository.vars']);
 	}
 
 	/**
@@ -181,7 +194,7 @@ class WdCore extends WdObject
 	 */
 	protected function __get_connections()
 	{
-		return new WdConnectionsAccessor(self::$config['connections']);
+		return new WdConnectionsAccessor($this->config['connections']);
 	}
 
 	/**
@@ -192,6 +205,33 @@ class WdCore extends WdObject
 	protected function __get_db()
 	{
 		return $this->connections['primary'];
+	}
+
+	/**
+	 * Returns the configs accessor.
+	 *
+	 * @return WdConfigsAccessor
+	 */
+	protected function __get_configs()
+	{
+		return new WdConfigsAccessor();
+	}
+
+	/**
+	 * Returns the code configuration.
+	 *
+	 * @return array
+	 */
+	protected function __get_config()
+	{
+		$config = $this->configs['core'];
+
+		self::$autoload = $config['autoload'];
+		self::$classes_aliases = $config['classes aliases'];
+
+		$this->configs->constructors += $config['config constructors'];
+
+		return $config;
 	}
 
 	/**
@@ -230,16 +270,22 @@ class WdCore extends WdObject
 		$index = $this->modules->index;
 
 		WdI18n::$load_paths = array_merge(WdI18n::$load_paths, $index['catalogs']);
-		WdConfig::add($index['configs'], 5);
+
+		$this->configs->add($index['configs'], 5);
 
 		if ($index['autoload'])
 		{
-			self::$config['autoload'] += $index['autoload'];
+			self::$autoload += $index['autoload'];
 		}
 
 		if ($index['classes aliases'])
 		{
-			self::$config['classes aliases'] += $index['classes aliases'];
+			self::$classes_aliases += $index['classes aliases'];
+		}
+
+		if ($index['config constructors'])
+		{
+			$this->configs->constructors += $index['config constructors'];
 		}
 
 		$this->modules->run();
@@ -443,7 +489,7 @@ class WdModulesAccessor extends WdObject implements ArrayAccess
 		# has been defined or not.
 		#
 
-		if (empty(WdCore::$config['autoload'][$class]))
+		if (!class_exists($class, true))
 		{
 			throw new WdException
 			(
@@ -474,7 +520,8 @@ class WdModulesAccessor extends WdObject implements ArrayAccess
 	 */
 	protected function index()
 	{
-		$paths = WdCore::$config['modules'];
+		$config = $this->core->config;
+		$paths = $config['modules'];
 
 		if (!$paths)
 		{
@@ -483,18 +530,18 @@ class WdModulesAccessor extends WdObject implements ArrayAccess
 
 //		wd_log_time('cache modules start');
 
-		if (WdCore::$config['cache modules'])
+		if ($config['cache modules'])
 		{
 			$cache = new WdFileCache
 			(
 				array
 				(
-					WdFileCache::T_REPOSITORY => WdCore::$config['repository.cache'] . '/core',
+					WdFileCache::T_REPOSITORY => $config['repository.cache'] . '/core',
 					WdFileCache::T_SERIALIZE => true
 				)
 			);
 
-			$index = $cache->load('modules_' . sha1(implode($paths)), array($this, 'index_construct'));
+			$index = $cache->load('modules_' . md5(implode($paths)), array($this, 'index_construct'));
 		}
 		else
 		{
@@ -525,17 +572,19 @@ class WdModulesAccessor extends WdObject implements ArrayAccess
 			'descriptors' => array(),
 			'catalogs' => array(),
 			'configs' => array(),
+
 			'autoload' => array(),
-			'classes aliases' => array()
+			'classes aliases' => array(),
+			'config constructors' => array()
 		);
 
-		foreach (WdCore::$config['modules'] as $root)
+		foreach ($this->core->config['modules'] as $root)
 		{
 			try
 			{
 				$dir = new DirectoryIterator($root);
 			}
-			catch(UnexpectedValueException $e)
+			catch(Exception $e)
 			{
 				throw new WdException
 				(
@@ -552,7 +601,7 @@ class WdModulesAccessor extends WdObject implements ArrayAccess
 				{
 					continue;
 				}
-				
+
 				$module_id = $file->getFilename();
 
 				$module_path = $root . DIRECTORY_SEPARATOR . $module_id;
@@ -585,6 +634,11 @@ class WdModulesAccessor extends WdObject implements ArrayAccess
 							if (isset($core_config['classes aliases']))
 							{
 								$index['classes aliases'] += $core_config['classes aliases'];
+							}
+
+							if (isset($core_config['config constructors']))
+							{
+								$index['config constructors'] += $core_config['config constructors'];
 							}
 						}
 					}
@@ -650,7 +704,7 @@ class WdModulesAccessor extends WdObject implements ArrayAccess
 		{
 			$dir = new DirectoryIterator($operations_dir);
 			$filter = new RegexIterator($dir, '#\.php$#');
-			
+
 			foreach ($filter as $file)
 			{
 				$name = $flat_id . '__' . $file->getBasename('.php') . '_WdOperation';
@@ -893,136 +947,6 @@ class WdVarsAccessor implements ArrayAccess
 }
 
 /**
- * Handles the configuration of the framework's components.
- */
-class WdConfig
-{
-	static private $pending_paths = array();
-
-	static public function add($path, $weight=0)
-	{
-		if (is_array($path))
-		{
-			$combined = array_combine($path, array_fill(0, count($path), $weight));
-
-			self::$pending_paths = array_merge(self::$pending_paths, $combined);
-
-			return;
-		}
-
-		self::$pending_paths[$path] = $weight;
-	}
-
-	static private $required = array();
-
-	static protected function isolated_require($__file__, $path)
-	{
-		$root = $path; // COMPAT-20110108
-
-		if (empty(self::$required[$__file__]))
-		{
-			self::$required[$__file__] = require $__file__;
-		}
-
-		return self::$required[$__file__];
-	}
-
-	static public function get($which)
-	{
-		$pending = self::$pending_paths;
-
-		#
-		# because PHP's sorting algorithm doesn't respect the order in which entries are added,
-		# we need to create a temporary table to sort them.
-		#
-
-		$pending_by_weight = array();
-
-		foreach ($pending as $path => $weight)
-		{
-			$pending_by_weight[$weight][] = $path;
-		}
-
-		arsort($pending_by_weight);
-
-		$pending = call_user_func_array('array_merge', array_values($pending_by_weight));
-
-		foreach ($pending as $path)
-		{
-			$file = $path . '/config/' . $which . '.php';
-
-			if (!file_exists($file))
-			{
-				continue;
-			}
-
-			$fragments[$path] = self::isolated_require($file, $path . '/');
-		}
-
-		return $fragments;
-	}
-
-	static private $constructed;
-	static private $cache;
-
-	static public function get_constructed($name, $constructor, $from=null)
-	{
-		if (isset(self::$constructed[$name]))
-		{
-			return self::$constructed[$name];
-		}
-
-//		wd_log_time("construct config '$name' - start");
-
-		if (WdCore::$config['cache configs'])
-		{
-			$cache = self::$cache ? self::$cache : self::$cache = new WdFileCache
-			(
-				array
-				(
-					WdFileCache::T_REPOSITORY => WdCore::$config['repository.cache'] . '/core',
-					WdFileCache::T_SERIALIZE => true
-				)
-			);
-
-			$rc = $cache->load('config_' . wd_normalize($name, '_'), array(__CLASS__, 'get_constructed_constructor'), array($from ? $from : $name, $constructor));
-		}
-		else
-		{
-			$rc = self::get_constructed_constructor(array($from ? $from : $name, $constructor));
-		}
-
-		self::$constructed[$name] = $rc;
-
-//		wd_log_time("construct config '$name' - finish");
-
-		return $rc;
-	}
-
-	static public function get_constructed_constructor(array $userdata)
-	{
-		list($name, $constructor) = $userdata;
-
-		$fragments = self::get($name);
-
-		if ($constructor == 'merge')
-		{
-			$rc = call_user_func_array('array_merge', $fragments);
-		}
-		else if ($constructor == 'merge_recursive')
-		{
-			$rc = call_user_func_array('wd_array_merge_recursive', $fragments);
-		}
-		else
-		{
-			$rc = call_user_func($constructor, $fragments);
-		}
-
-		return $rc;
-	}
-}
-
-/**
  * Connections accessor.
  */
 class WdConnectionsAccessor implements ArrayAccess, IteratorAggregate
@@ -1117,5 +1041,201 @@ class WdConnectionsAccessor implements ArrayAccess, IteratorAggregate
 	public function getIterator()
 	{
 		return new ArrayIterator($this->established);
+	}
+}
+
+class WdConfigsAccessor implements ArrayAccess
+{
+	protected $paths = array();
+	protected $configs = array();
+
+	public $cache_fused_fragments = false;
+	public $cache_repository = '/repository/cache/core/';
+
+	public $constructors = array
+	(
+		'core' => array('merge_recursive', 'core'),
+		'debug' => array('merge_recursive', 'debug'),
+		'i18n' => array('merge', 'i18n')
+	);
+
+	public function offsetSet($offset, $value)
+	{
+		throw new WdException('Offset is not settable');
+	}
+
+	public function offsetExists($id)
+	{
+		throw new WdException('Not implemented');
+	}
+
+	public function offsetUnset($offset)
+	{
+		throw new WdException('Offset is not unsettable');
+	}
+
+	/**
+	 * Gets a connection to the specified database.
+	 *
+	 * If the connection has not been established yet, it is created on the fly.
+	 *
+	 * Several connections may be defined.
+	 *
+	 * @see ArrayAccess::offsetGet()
+	 * @param string $id The name of the connection to get.
+	 * @return WdDatabase
+	 */
+	public function offsetGet($id)
+	{
+		if (isset($this->configs[$id]))
+		{
+			return $this->configs[$id];
+		}
+
+		if (empty($this->constructors[$id]))
+		{
+			throw new WdException('There is not constructor defined to build the %id config.', array('%id' => $id));
+		}
+
+		list($constructor, $from) = $this->constructors[$id];
+
+		return $this->fuse($id, $constructor, $from);
+	}
+
+	public function add($path, $weight=0)
+	{
+		$this->sorted_paths = null;
+
+		if (is_array($path))
+		{
+			$combined = array_combine($path, array_fill(0, count($path), $weight));
+
+			$this->paths += $combined;
+
+			return;
+		}
+
+		$this->paths[$path] = $weight;
+	}
+
+	protected $sorted_paths;
+
+	/**
+	 * Sorts paths by weight while preserving their odrer.
+	 *
+	 * Because PHP's sorting algorithm doesn't respect the order in which entries are added,
+	 * we need to create a temporary table to sort them.
+	 *
+	 * @return array Sorted paths by weight, from heavier to lighter.
+	 */
+	protected function get_sorted_paths()
+	{
+		$by_weight = array();
+
+		foreach ($this->paths as $path => $weight)
+		{
+			$by_weight[$weight][] = $path;
+		}
+
+		arsort($by_weight);
+
+		return $this->sorted_paths = call_user_func_array('array_merge', array_values($by_weight));
+	}
+
+	static private $require_cache = array();
+
+	static private function isolated_require($__file__, $path)
+	{
+		if (isset(self::$require_cache[$__file__]))
+		{
+			return self::$require_cache[$__file__];
+		}
+
+		$root = $path; // COMPAT-20110108
+
+		return self::$require_cache[$__file__] = require $__file__;
+	}
+
+	static private function get($name, $paths)
+	{
+		foreach ($paths as $path)
+		{
+			$path = $path . '/';
+			$file = $path . 'config/' . $name . '.php';
+
+			if (!file_exists($file))
+			{
+				continue;
+			}
+
+			$fragments[$path] = self::isolated_require($file, $path);
+		}
+
+		return $fragments;
+	}
+
+	static private $cache;
+
+	public function fuse($name, $constructor, $from=null)
+	{
+		if (isset($this->configs[$name]))
+		{
+			return $this->configs[$name];
+		}
+
+		if (!$from)
+		{
+			$from = $name;
+		}
+
+		$args = array($from, $constructor);
+
+//		wd_log_time("construct config '$name' - start");
+
+		if ($this->cache_fused_fragments)
+		{
+			$cache = self::$cache ? self::$cache : self::$cache = new WdFileCache
+			(
+				array
+				(
+					WdFileCache::T_REPOSITORY => $this->cache_repository,
+					WdFileCache::T_SERIALIZE => true
+				)
+			);
+
+			$rc = $cache->load('config_' . wd_normalize($name, '_'), array($this, 'fuse_constructor'), $args);
+		}
+		else
+		{
+			$rc = $this->fuse_constructor($args);
+		}
+
+		$this->configs[$name] = $rc;
+
+//		wd_log_time("construct config '$name' - finish");
+
+		return $rc;
+	}
+
+	public function fuse_constructor(array $userdata)
+	{
+		list($name, $constructor) = $userdata;
+
+		$fragments = self::get($name, $this->sorted_paths ? $this->sorted_paths : $this->get_sorted_paths());
+
+		if ($constructor == 'merge')
+		{
+			$rc = call_user_func_array('array_merge', $fragments);
+		}
+		else if ($constructor == 'merge_recursive')
+		{
+			$rc = call_user_func_array('wd_array_merge_recursive', $fragments);
+		}
+		else
+		{
+			$rc = call_user_func($constructor, $fragments);
+		}
+
+		return $rc;
 	}
 }
