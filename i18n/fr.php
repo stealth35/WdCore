@@ -18,7 +18,7 @@ return array
 
 	'permission' => array
 	(
-		'none' => 'Néan',
+		'none' => 'Néant',
 		'access' => 'Accéder',
 		'create' => 'Créer',
 		'delete' => 'Supprimer',
