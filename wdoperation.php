@@ -672,6 +672,14 @@ abstract class WdOperation extends WdObject
 			}
 		}
 
+		if ($this->location && !headers_sent())
+		{
+			header('Location: ' . $this->location);
+			header('Referer: ' . $_SERVER['REQUEST_URI']);
+
+			exit;
+		}
+
 		#
 		# If the `terminus` is set the script stops.
 		#
@@ -700,15 +708,7 @@ abstract class WdOperation extends WdObject
 				}
 			}
 
-			echo $rc;
-
-			exit;
-		}
-
-		if ($this->location && !headers_sent())
-		{
-			header('Location: ' . $this->location);
-			header('Referer: ' . $_SERVER['REQUEST_URI']);
+			echo $rc ? $rc : $this->response->rc;
 
 			exit;
 		}
