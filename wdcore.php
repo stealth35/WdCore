@@ -181,7 +181,7 @@ class WdCore extends WdObject
 	 */
 	protected function __get_connections()
 	{
-		return new WdConnectionsAccessor();
+		return new WdConnectionsAccessor(self::$config['connections']);
 	}
 
 	/**
@@ -1023,7 +1023,13 @@ class WdConfig
  */
 class WdConnectionsAccessor implements ArrayAccess, IteratorAggregate
 {
-	private $connections = array();
+	private $connections;
+	private $established = array();
+
+	public function __construct(array $connections)
+	{
+		$this->connections = $connections;
+	}
 
 	public function offsetSet($offset, $value)
 	{
@@ -1037,7 +1043,7 @@ class WdConnectionsAccessor implements ArrayAccess, IteratorAggregate
 	 */
 	public function offsetExists($id)
 	{
-		return WdCore::$config['connections'][$id];
+		return $this->connections[$id];
 	}
 
 	public function offsetUnset($offset)
@@ -1058,12 +1064,12 @@ class WdConnectionsAccessor implements ArrayAccess, IteratorAggregate
 	 */
 	public function offsetGet($id)
 	{
-		if (isset($this->connections[$id]))
+		if (isset($this->established[$id]))
 		{
-			return $this->connections[$id];
+			return $this->established[$id];
 		}
 
-		if (empty(WdCore::$config['connections'][$id]))
+		if (empty($this->connections[$id]))
 		{
 			throw new WdException('The connection %id is not defined', array('%id' => $id));
 		}
@@ -1072,7 +1078,7 @@ class WdConnectionsAccessor implements ArrayAccess, IteratorAggregate
 		# default values for the connection
 		#
 
-		$options = WdCore::$config['connections'][$id] + array
+		$options = $this->connections[$id] + array
 		(
 			'dsn' => null,
 			'username' => 'root',
@@ -1084,13 +1090,13 @@ class WdConnectionsAccessor implements ArrayAccess, IteratorAggregate
 		);
 
 		#
-		# we catch connection exceptions and rethrow them in order to avoid displaing sensible
+		# we catch connection exceptions and rethrow them in order to avoid displaying sensible
 		# information such as the username or password.
 		#
 
 		try
 		{
-			$this->connections[$id] = $connection = new WdDatabase($options['dsn'], $options['username'], $options['password'], $options['options']);
+			$this->established[$id] = $connection = new WdDatabase($options['dsn'], $options['username'], $options['password'], $options['options']);
 		}
 		catch (PDOException $e)
 		{
@@ -1106,6 +1112,6 @@ class WdConnectionsAccessor implements ArrayAccess, IteratorAggregate
 	 */
 	public function getIterator()
 	{
-		return new ArrayIterator($this->connections);
+		return new ArrayIterator($this->established);
 	}
 }
