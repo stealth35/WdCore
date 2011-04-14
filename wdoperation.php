@@ -580,7 +580,19 @@ abstract class WdOperation extends WdObject
 
 		$rc = null;
 
-		if ($this->control($this->controls) && $this->validate())
+		if (!$this->control($this->controls))
+		{
+			WdEvent::fire('failed', array('target' => $this, 'type' => 'control'));
+
+			wd_log('Operation control failed.');
+		}
+		else if (!$this->validate())
+		{
+			WdEvent::fire('failed', array('target' => $this, 'type' => 'validation'));
+
+			wd_log('Operation validation failed.');
+		}
+		else
 		{
 			#
 			# The 'operation.<name>:before' event is fired before the operation is processed.
