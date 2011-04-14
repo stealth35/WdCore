@@ -11,8 +11,6 @@
 
 class WdActiveRecordQuery extends WdObject implements IteratorAggregate
 {
-	protected $model;
-
 	protected $select;
 	protected $join;
 
@@ -28,6 +26,8 @@ class WdActiveRecordQuery extends WdObject implements IteratorAggregate
 	protected $limit;
 
 	protected $mode;
+
+	protected $model;
 
 	/**
 	 * Constructor.
