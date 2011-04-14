@@ -40,6 +40,19 @@ class WdDebug
 		}
 
 		$_SESSION['wddebug']['messages'] = self::$messages;
+
+		$error = error_get_last();
+
+		if ($error && $error['type'] == 1)
+		{
+			$message = <<<EOT
+<strong>Fatal error with the following message:</strong><br />
+$error[message].<br />
+in <em>$error[file]</em> at line <em>$error[line]</em><br />
+EOT;
+
+			self::report($message);
+		}
 	}
 
 	/*
@@ -92,7 +105,7 @@ class WdDebug
 		#
 		#
 
-		$rc = '<code class="wd-core-debug">' . implode('<br />', $lines) . '</code><br />';
+		$rc = '<pre class="wd-core-debug"><code>' . implode('<br />', $lines) . '</code></pre><br />';
 
 		self::report($rc);
 
@@ -157,7 +170,7 @@ class WdDebug
 		#
 		#
 
-		$rc = '<code class="wd-core-debug">' . implode("<br />\n", $lines) . '</code><br />';
+		$rc = '<pre class="wd-core-debug"><code>' . implode("<br />\n", $lines) . '</code></pre><br />';
 
 		self::report($rc);
 
@@ -263,7 +276,7 @@ class WdDebug
 		return $lines;
 	}
 
-	public static function codeSample($file, $line = 0, &$saveback=null)
+	public static function codeSample($file, $line=0, &$saveback=null)
 	{
 		if (!self::$config['codeSample'])
 		{
@@ -278,11 +291,11 @@ class WdDebug
 		}
 
 		$lines = array('<br /><strong>Code sample:</strong><br />');
-		
-		$line < 5 ? $start = 0 : $start = $line - 5;		
-		
+
+		$line < 5 ? $start = 0 : $start = $line - 5;
+
 		$fh = new SplFileObject($file);
-		$sample = new LimitIterator($fh, $start, 10); 
+		$sample = new LimitIterator($fh, $start, 10);
 
 		foreach ($sample as $i => $str)
 		{
@@ -295,8 +308,8 @@ class WdDebug
 
 			$str = str_replace("\t", '&nbsp;&nbsp;&nbsp;&nbsp;', $str);
 
-			$lines[] = $str;			
-		}		
+			$lines[] = $str;
+		}
 
 		if (is_array($saveback))
 		{

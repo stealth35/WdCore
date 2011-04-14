@@ -6,6 +6,8 @@
 
 [NEW] Database queries profiling.
 
+[NEW] Fatal errors can now be reported by the WdDebug class.
+
 
 
 
