@@ -356,7 +356,7 @@ abstract class WdOperation extends WdObject
 	/**
 	 * @var array Controls to pass before validation.
 	 */
-	private $controls;
+	protected $controls;
 
 	const CONTROL_AUTHENTICATION = 101;
 	const CONTROL_PERMISSION = 102;
@@ -444,9 +444,8 @@ abstract class WdOperation extends WdObject
 	/**
 	 * Constructor.
 	 *
-	 * The {@link $controls}, {@link $record}, {@link $form} and {@link $properties} properties
-	 * are unset in order for their getters to be called on the next access, while keeping their
-	 * scope.
+	 * The {@link $controls} property is unset in order for its getters to be called on the next
+	 * access, while keeping its scope.
 	 *
 	 * @param WdModule|array $destination The destination of the operation, either a module or a
 	 * route.
@@ -456,9 +455,6 @@ abstract class WdOperation extends WdObject
 	public function __construct($destination, $name, array $params=array())
 	{
 		unset($this->controls);
-		unset($this->record);
-		unset($this->form);
-		unset($this->properties);
 
 		$this->destination = $destination;
 		$this->name = $name;
@@ -483,6 +479,8 @@ abstract class WdOperation extends WdObject
 	/**
 	 * Handles the operation and prints or returns its result.
 	 *
+ 	 * The {@link $record}, {@link $form} and {@link $properties} properties are unset in order
+ 	 * for their getters to be called on the next access, while keeping their scope.
 	 *
 	 * The response object
 	 * -------------------
@@ -572,9 +570,15 @@ abstract class WdOperation extends WdObject
 			$name = substr($name, self::RESTFUL_BASE_LENGHT);
 		}
 
-		$rc = null;
 		$this->response = (object) array('rc' => null, 'log' => array());
+
+		unset($this->form);
+		unset($this->record);
+		unset($this->properties);
+
 		$module = $this->destination instanceof WdModule ? $this->destination : null;
+
+		$rc = null;
 
 		if ($this->control($this->controls) && $this->validate())
 		{
