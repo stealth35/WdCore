@@ -58,6 +58,8 @@ class WdDatabase extends PDO
 	 */
 	public $queries_count = 0;
 
+	public $profiling = array();
+
 	/**
 	 * Creates a WdDatabase instance representing a connection to a database.
 	 *
@@ -716,6 +718,8 @@ class WdDatabaseStatement extends PDOStatement
 	 */
 	public function execute($args=array())
 	{
+		$start = microtime(true);
+
 		if (!empty($this->connection))
 		{
 			$this->connection->queries_count++;
@@ -723,6 +727,10 @@ class WdDatabaseStatement extends PDOStatement
 
 		try
 		{
+			$finish = microtime(true);
+
+			$this->connection->profiling[] = array($finish - $start, $this->queryString);
+
 			return parent::execute($args);
 		}
 		catch (PDOException $e)
@@ -786,37 +794,37 @@ class WdDatabaseStatement extends PDOStatement
 	{
 		return parent::fetchAll(PDO::FETCH_KEY_PAIR);
 	}
-	
+
 	/**
 	 * Returns an array containing all of the result set rows (FETCH_LAZY supported)
 	 *
 	 * @param int $fetch_style
 	 * @param mixed $fetch_argument[optional]
 	 * @param array $ctor_args[optional]
-	 * 
+	 *
 	 * @return array
 	 */
 	public function fetchGroups($fetch_style, $fetch_argument=null, array $ctor_args=array())
 	{
-		$args = func_get_args();		
-		$rc = array();		
-		
+		$args = func_get_args();
+		$rc = array();
+
 		if($fetch_style === PDO::FETCH_LAZY)
 		{
 			call_user_func_array(array($this, 'setFetchMode'), $args);
-			
+
 			foreach($this as $row)
-			{				
+			{
 				$rc[$row[0]][] = $row;
 			}
-			
+
 			return $rc;
-		}		
-		
+		}
+
 		$args[0] = PDO::FETCH_GROUP | $fetch_style;
-			
+
 		$rc = call_user_func_array(array($this, 'parent::fetchAll'), $args);
-		
+
 		return $rc;
 	}
 }
