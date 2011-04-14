@@ -171,7 +171,7 @@ class WdCore extends WdObject
 	 */
 	protected function __get_vars()
 	{
-		return new WdVarsAccessor();
+		return new WdVarsAccessor(self::$config['repository.vars']);
 	}
 
 	/**
@@ -806,6 +806,13 @@ class WdModelsAccessor implements ArrayAccess
  */
 class WdVarsAccessor implements ArrayAccess
 {
+	protected $path;
+
+	public function __construct($path)
+	{
+		$this->path = $_SERVER['DOCUMENT_ROOT'] . $path . '/';
+	}
+
 	public function offsetSet($name, $value)
 	{
 		$this->store($name, $value);
@@ -832,10 +839,7 @@ class WdVarsAccessor implements ArrayAccess
 
 	private function get_filename($name)
 	{
-		$root = $_SERVER['DOCUMENT_ROOT'];
-		$path = WdCore::$config['repository.vars'];
-
-		return $root . $path . '/' . $name;
+		return $this->path . $name;
 	}
 
 	/**
