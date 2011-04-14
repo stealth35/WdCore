@@ -195,19 +195,48 @@ var WdOperation = new Class
 		}
 	});
 
+	var api_base = $(document.html).get('data-api-base');
+
+	if (!api_base)
+	{
+		api_base = '';
+	}
+
+	api_base += '/api/';
+
+	/**
+	 * Extends Request.JSON adding specific support to the Core API.
+	 */
+	Request.API = new Class
+	({
+		Extends: Request.JSON,
+
+		options:
+		{
+			link: 'cancel'
+		},
+
+		initialize: function(options)
+		{
+			if (options.url.match(/^\/api\//))
+			{
+				options.url = options.url.substring(5);
+			}
+
+			options.url = api_base + options.url;
+
+			this.parent(options);
+		}
+	});
+
 }) ();
 
 /**
- * Extends the Request.JSON to support the loading of single HTML elements.
+ * Extends Request.API to support the loading of single HTML elements.
  */
 Request.Element = new Class
 ({
-	Extends: Request.JSON,
-
-	options:
-	{
-		link: 'cancel'
-	},
+	Extends: Request.API,
 
 	onSuccess: function(response, text)
 	{

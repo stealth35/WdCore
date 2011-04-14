@@ -1,6 +1,8 @@
-2011-03-14 # 0.10.0-dev
+2011-04-12 # 0.10.0-dev
 
 [NEW] Redesigned Operation API.
+
+[NEW] Request.API class.
 
 
 
