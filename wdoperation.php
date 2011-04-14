@@ -686,6 +686,11 @@ abstract class WdOperation extends WdObject
 					$this->response->log[$type] = WdDebug::fetchMessages($type);
 				}
 
+				if ($this->form)
+				{
+					$this->response->log['form'] = $this->form->fetch_log();
+				}
+
 				$rc = $this->$format_callback();
 
 				header('Content-Type: ' . $format_mime);
