@@ -97,9 +97,9 @@ class WdFileCache
 			{
 				return apc_exists($key);
 			}
-			
+
 			apc_fetch($key, $success);
-			
+
 			return $success;
 		}
 
@@ -270,7 +270,7 @@ class WdFileCache
 
 			return false;
 		}
-		
+
 		try
 		{
 			$dir = new DirectoryIterator($root);
@@ -298,7 +298,7 @@ class WdFileCache
 			if (!$file->isDot())
 			{
 				$files[$file->getFilename()] = array($file->getCTime(), $file->getSize());
-			}			
+			}
 		}
 
 		return $files;
