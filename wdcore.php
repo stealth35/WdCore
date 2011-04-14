@@ -30,6 +30,79 @@ class WdCore extends WdObject
 
 	static public $config = array();
 
+	/**
+	 * @var boolean true if core is running, false otherwise.
+	 */
+	static public $is_running = false;
+
+	/**
+	 * Echos the exception and kills PHP.
+	 *
+	 * @param Exception $exception
+	 */
+	static public function exception_handler(Exception $exception)
+	{
+		exit($exception);
+	}
+
+	/**
+	 * Loads the file defining the specified class.
+	 *
+	 * The 'autoload' config property is used to define an array of 'class_name => file_path' pairs
+	 * used to find the file required by the class.
+	 *
+	 * Class alias
+	 * -----------
+	 *
+	 * Using the 'classes aliases' config property, one can specify aliases for classes. The
+	 * 'classes aliases' config property is an array where the key is the alias name and the value
+	 * the class name.
+	 *
+	 * When needed, a final class is created for the alias by extending the real class. The class
+	 * is made final so that it cannot be subclassed.
+	 *
+	 * Class initializer
+	 * -----------------
+	 *
+	 * If the loaded class defines the '__static_construct' method, the method is invoked to
+	 * initialize the class.
+	 *
+	 * @param string $name The name of the class
+	 * @return boolean Whether or not the required file could be found.
+	 */
+	static private function autoload_handler($name)
+	{
+		if ($name == 'parent')
+		{
+			return false;
+		}
+
+		$list = self::$config['autoload'];
+
+		if (isset($list[$name]))
+		{
+			require_once $list[$name];
+
+			if (method_exists($name, '__static_construct'))
+			{
+				call_user_func(array($name, '__static_construct'));
+			}
+
+			return true;
+		}
+
+		$list = self::$config['classes aliases'];
+
+		if (isset($list[$name]))
+		{
+			class_alias($list[$name], $name);
+
+			return true;
+		}
+
+		return false;
+	}
+
 	public function __construct(array $tags=array())
 	{
 		$path = dirname(__FILE__);
@@ -112,74 +185,6 @@ class WdCore extends WdObject
 	}
 
 	/**
-	 * Echos the exception and kills PHP.
-	 *
-	 * @param Exception $exception
-	 */
-	public static function exception_handler(Exception $exception)
-	{
-		exit($exception);
-	}
-
-	/**
-	 * Loads the file defining the specified class.
-	 *
-	 * The 'autoload' config property is used to define an array of 'class_name => file_path' pairs
-	 * used to find the file required by the class.
-	 *
-	 * Class alias
-	 * -----------
-	 *
-	 * Using the 'classes aliases' config property, one can specify aliases for classes. The
-	 * 'classes aliases' config property is an array where the key is the alias name and the value
-	 * the class name.
-	 *
-	 * When needed, a final class is created for the alias by extending the real class. The class
-	 * is made final so that it cannot be subclassed.
-	 *
-	 * Class initializer
-	 * -----------------
-	 *
-	 * If the loaded class defines the '__static_construct' method, the method is invoked to
-	 * initialize the class.
-	 *
-	 * @param string $name The name of the class
-	 * @return boolean Whether or not the required file could be found.
-	 */
-	static private function autoload_handler($name)
-	{
-		if ($name == 'parent')
-		{
-			return false;
-		}
-
-		$list = self::$config['autoload'];
-
-		if (isset($list[$name]))
-		{
-			require_once $list[$name];
-
-			if (method_exists($name, '__static_construct'))
-			{
-				call_user_func(array($name, '__static_construct'));
-			}
-
-			return true;
-		}
-
-		$list = self::$config['classes aliases'];
-
-		if (isset($list[$name]))
-		{
-			class_alias($list[$name], $name);
-
-			return true;
-		}
-
-		return false;
-	}
-
-	/**
 	 * Getter for the "primary" database connection.
 	 *
 	 * @return WdDatabase
@@ -188,11 +193,6 @@ class WdCore extends WdObject
 	{
 		return $this->connections['primary'];
 	}
-
-	/**
-	 * @var boolean true if the core is running, false otherwise.
-	 */
-	static public $is_running = false;
 
 	/**
 	 * Run the core object.
